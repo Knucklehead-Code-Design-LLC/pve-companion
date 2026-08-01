@@ -115,8 +115,13 @@ class ClusterStorage {
 
   bool get hasAvailabilityTelemetry => reportedAvailabilityNodeCount > 0;
 
-  bool get isAvailable =>
-      resources.any((ClusterStorageResource resource) => resource.isAvailable);
+  bool get isAvailable => availableNodeCount > 0;
+
+  bool get isFullyAvailable =>
+      hasAvailabilityTelemetry &&
+      availableNodeCount == reportedAvailabilityNodeCount;
+
+  bool get isPartiallyAvailable => isAvailable && !isFullyAvailable;
 
   int? _aggregateResourceBytes(
     int? Function(ClusterStorageResource resource) selector,
@@ -154,9 +159,7 @@ class ClusterStorageResource {
 
   bool get isAvailable {
     final String normalizedStatus = status.trim().toLowerCase();
-    return normalizedStatus.isEmpty ||
-        normalizedStatus == 'available' ||
-        normalizedStatus == 'active';
+    return normalizedStatus == 'available' || normalizedStatus == 'active';
   }
 
   bool get hasCapacity =>
@@ -188,20 +191,39 @@ class ClusterTask {
   final DateTime? endedAt;
 
   ClusterTaskState get state {
-    if (endedAt == null) {
-      return ClusterTaskState.running;
-    }
     final String normalisedStatus = status?.trim().toLowerCase() ?? '';
-    if (normalisedStatus.isEmpty) {
-      return ClusterTaskState.unknown;
+    if (endedAt == null &&
+        (normalisedStatus.isEmpty ||
+            normalisedStatus == 'running' ||
+            normalisedStatus == 'in progress')) {
+      return ClusterTaskState.running;
     }
     if (normalisedStatus == 'ok' ||
         normalisedStatus == 'success' ||
         normalisedStatus == 'successful') {
       return ClusterTaskState.successful;
     }
+    if (normalisedStatus.isEmpty) {
+      return ClusterTaskState.unknown;
+    }
     return ClusterTaskState.failed;
   }
 
   bool get isRunning => state == ClusterTaskState.running;
+}
+
+int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {
+  final DateTime? leftTime = left.startedAt;
+  final DateTime? rightTime = right.startedAt;
+  if (leftTime == null && rightTime == null) {
+    return left.upid.compareTo(right.upid);
+  }
+  if (leftTime == null) {
+    return 1;
+  }
+  if (rightTime == null) {
+    return -1;
+  }
+  final int timeComparison = rightTime.compareTo(leftTime);
+  return timeComparison != 0 ? timeComparison : left.upid.compareTo(right.upid);
 }

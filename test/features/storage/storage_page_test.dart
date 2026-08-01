@@ -36,6 +36,7 @@ void main() {
     WidgetTester tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(1366, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = await readyDashboardController(
@@ -46,6 +47,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: PveCompanionTheme.light(),
+        builder: _largeTextBuilder,
         home: Scaffold(
           body: StoragePage(
             controller: controller,
@@ -69,6 +71,36 @@ void main() {
       find.byKey(const ValueKey<String>('ipad-storage-card-backup-nfs')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
+
+  testWidgets('shows a retry state after an initial cluster failure', (
+    WidgetTester tester,
+  ) async {
+    final controller = await failedDashboardController();
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: StoragePage(controller: controller, onRefresh: () async {}),
+        ),
+      ),
+    );
+
+    expect(find.text('Datacenter unavailable'), findsOneWidget);
+    expect(find.text('Initial load failed.'), findsOneWidget);
+    expect(find.text('Try Again'), findsOneWidget);
+  });
+}
+
+Widget _largeTextBuilder(BuildContext context, Widget? child) {
+  return MediaQuery(
+    data: MediaQuery.of(
+      context,
+    ).copyWith(textScaler: const TextScaler.linear(2)),
+    child: child!,
+  );
 }

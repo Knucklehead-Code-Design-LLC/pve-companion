@@ -47,6 +47,7 @@ void main() {
     WidgetTester tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(1366, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
@@ -80,12 +81,45 @@ void main() {
     expect(find.text('Overview'), findsOneWidget);
     expect(find.text('Tasks'), findsOneWidget);
   });
+
+  testWidgets('shows the current last-updated age', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final DateTime updatedAt = DateTime.now().subtract(
+      const Duration(minutes: 2),
+    );
+
+    await tester.pumpWidget(_NavigationHarness(lastUpdatedAt: updatedAt));
+    expect(find.text('Updated 2m ago'), findsOneWidget);
+  });
+
+  testWidgets('discloses a failed refresh in the connection footer', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(refreshErrorMessage: 'Refresh failed.'),
+    );
+
+    expect(find.text('Connected'), findsOneWidget);
+    expect(find.text('Refresh failed'), findsOneWidget);
+  });
 }
 
 class _NavigationHarness extends StatefulWidget {
-  const _NavigationHarness({this.textScaler = TextScaler.noScaling});
+  const _NavigationHarness({
+    this.textScaler = TextScaler.noScaling,
+    this.lastUpdatedAt,
+    this.refreshErrorMessage,
+  });
 
   final TextScaler textScaler;
+  final DateTime? lastUpdatedAt;
+  final String? refreshErrorMessage;
 
   @override
   State<_NavigationHarness> createState() => _NavigationHarnessState();
@@ -131,7 +165,8 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
           ),
           onRefresh: () async {},
           refreshing: false,
-          lastUpdatedAt: DateTime.now(),
+          lastUpdatedAt: widget.lastUpdatedAt ?? DateTime.now(),
+          refreshErrorMessage: widget.refreshErrorMessage,
         ),
       ),
     );

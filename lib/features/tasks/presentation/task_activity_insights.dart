@@ -51,7 +51,8 @@ class TaskActivityInsights extends StatelessWidget {
                   semanticLabel:
                       '${summary.successfulCount} successful, '
                       '${summary.runningCount} running, '
-                      '${summary.failedCount} failed',
+                      '${summary.failedCount} failed, '
+                      '${summary.unknownCount} with unknown status',
                 ),
                 const SizedBox(width: 20),
                 Expanded(
@@ -74,6 +75,12 @@ class TaskActivityInsights extends StatelessWidget {
                         label: 'Failed',
                         value: '${summary.failedCount}',
                         color: PveAppleColors.destructive(context),
+                      ),
+                      const SizedBox(height: 12),
+                      PveChartLegendItem(
+                        label: 'Unknown',
+                        value: '${summary.unknownCount}',
+                        color: PveAppleColors.secondaryLabel(context),
                       ),
                     ],
                   ),

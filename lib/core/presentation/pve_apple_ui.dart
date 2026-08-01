@@ -294,6 +294,7 @@ class _PveMetricStripCell extends StatelessWidget {
   Widget build(BuildContext context) {
     final Color color = item.color ?? PveAppleColors.primary(context);
     return Semantics(
+      excludeSemantics: true,
       label: '${item.label}: ${item.value}',
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
@@ -392,7 +393,7 @@ class PveSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Row(
         children: <Widget>[
-          Expanded(child: Text(title, style: PveAppleText.title2(context))),
+          Expanded(child: PveSectionTitle(title: title)),
           if (actionLabel != null && onAction != null)
             Semantics(
               button: true,
@@ -406,6 +407,20 @@ class PveSectionHeader extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class PveSectionTitle extends StatelessWidget {
+  const PveSectionTitle({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(title, style: PveAppleText.title2(context)),
     );
   }
 }
@@ -607,8 +622,14 @@ class PveProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double? normalizedValue =
+        value != null && value!.isFinite && value! >= 0
+        ? value!.clamp(0, 1).toDouble()
+        : null;
     return Semantics(
-      value: value == null ? 'Not reported' : '${(value! * 100).round()}%',
+      value: normalizedValue == null
+          ? 'Not reported'
+          : '${(normalizedValue * 100).round()}%',
       child: ClipRRect(
         borderRadius: BorderRadius.circular(3),
         child: SizedBox(
@@ -617,10 +638,10 @@ class PveProgressBar extends StatelessWidget {
             fit: StackFit.expand,
             children: <Widget>[
               ColoredBox(color: color.withValues(alpha: 0.16)),
-              if (value != null)
+              if (normalizedValue != null)
                 FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: value!.clamp(0, 1),
+                  widthFactor: normalizedValue,
                   child: ColoredBox(color: color),
                 ),
             ],
@@ -693,10 +714,13 @@ class PveEmptyState extends StatelessWidget {
             children: <Widget>[
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: PveAppleText.title2(context),
+              Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: PveAppleText.title2(context),
+                ),
               ),
               const SizedBox(height: 8),
               Text(

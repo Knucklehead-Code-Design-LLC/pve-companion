@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import '../../cluster_overview/presentation/cluster_load_state_view.dart';
 import 'storage_insights.dart';
 
 class StoragePage extends StatefulWidget {
@@ -42,9 +43,13 @@ class _StoragePageState extends State<StoragePage> {
       onRefresh: widget.onRefresh,
       slivers: <Widget>[
         if (snapshot == null)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
-            child: PveLoadingState(label: 'Loading storage'),
+            child: ClusterLoadStateView(
+              controller: widget.controller,
+              loadingLabel: 'Loading storage',
+              onRetry: widget.onRefresh,
+            ),
           )
         else
           PveCenteredSliver(
@@ -68,10 +73,10 @@ class _StoragePageState extends State<StoragePage> {
     final List<ClusterStorage> visibleStorages = storages
         .where(_matchesFilter)
         .toList(growable: false);
-    final int availableCount = storages
+    final int fullyAvailableCount = storages
         .where(
           (ClusterStorage storage) =>
-              storage.hasAvailabilityTelemetry && storage.isAvailable,
+              storage.hasAvailabilityTelemetry && storage.isFullyAvailable,
         )
         .length;
     final int availabilityReportedCount = storages
@@ -116,6 +121,13 @@ class _StoragePageState extends State<StoragePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (widget.controller.errorMessage != null) ...<Widget>[
+          ClusterRefreshFailureBanner(
+            message: widget.controller.errorMessage!,
+            onRetry: widget.onRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -127,11 +139,11 @@ class _StoragePageState extends State<StoragePage> {
               label: 'Available',
               value: availabilityReportedCount == 0
                   ? '—'
-                  : '$availableCount/$availabilityReportedCount',
+                  : '$fullyAvailableCount/$availabilityReportedCount',
               icon: CupertinoIcons.check_mark_circled_solid,
               color: availabilityReportedCount == 0
                   ? PveAppleColors.secondaryLabel(context)
-                  : availableCount == availabilityReportedCount
+                  : fullyAvailableCount == availabilityReportedCount
                   ? PveAppleColors.success(context)
                   : PveAppleColors.warning(context),
             ),
@@ -158,7 +170,7 @@ class _StoragePageState extends State<StoragePage> {
         ] else
           const SizedBox(height: 20),
         PveWideControlBar(
-          primary: Text('Storage pools', style: PveAppleText.title2(context)),
+          primary: const PveSectionTitle(title: 'Storage pools'),
           secondary: filter,
         ),
         const SizedBox(height: 16),
@@ -199,7 +211,7 @@ class _StoragePageState extends State<StoragePage> {
           ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
-          Text('Storage analysis', style: PveAppleText.title2(context)),
+          const PveSectionTitle(title: 'Storage analysis'),
           const SizedBox(height: 12),
           StorageInsights(storages: storages),
         ],
@@ -207,7 +219,7 @@ class _StoragePageState extends State<StoragePage> {
           (ClusterStorage storage) => storage.resources.isNotEmpty,
         )) ...<Widget>[
           const SizedBox(height: 24),
-          Text('Node coverage', style: PveAppleText.title2(context)),
+          const PveSectionTitle(title: 'Node coverage'),
           const SizedBox(height: 12),
           StorageNodeCoverage(storages: storages),
         ],
@@ -233,6 +245,8 @@ class _StorageCard extends StatelessWidget {
     final bool hasAvailability = storage.hasAvailabilityTelemetry;
     final Color accent = hasAvailability && !storage.isAvailable
         ? PveAppleColors.destructive(context)
+        : storage.isPartiallyAvailable
+        ? PveAppleColors.warning(context)
         : usageFraction != null && usageFraction >= 0.9
         ? PveAppleColors.destructive(context)
         : usageFraction != null && usageFraction >= 0.75
@@ -277,13 +291,17 @@ class _StorageCard extends StatelessWidget {
               PveStatusPill(
                 label: !hasAvailability
                     ? 'Not reported'
-                    : storage.isAvailable
+                    : storage.isFullyAvailable
                     ? 'Available'
+                    : storage.isPartiallyAvailable
+                    ? 'Partially available'
                     : 'Unavailable',
                 color: !hasAvailability
                     ? PveAppleColors.secondaryLabel(context)
-                    : storage.isAvailable
+                    : storage.isFullyAvailable
                     ? PveAppleColors.success(context)
+                    : storage.isPartiallyAvailable
+                    ? PveAppleColors.warning(context)
                     : PveAppleColors.destructive(context),
               ),
             ],

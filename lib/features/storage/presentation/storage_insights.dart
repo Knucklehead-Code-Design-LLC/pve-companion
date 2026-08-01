@@ -2,8 +2,8 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_data_visualization.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
 
 class StorageInsights extends StatelessWidget {
   const StorageInsights({super.key, required this.storages});
@@ -126,14 +126,14 @@ class StorageInsights extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       PveChartLegendItem(
-                        label: 'Available',
+                        label: 'Fully available',
                         value: summary.availabilityReportedPoolCount == 0
                             ? 'Not reported'
-                            : '${summary.availablePoolCount}/'
+                            : '${summary.fullyAvailablePoolCount}/'
                                   '${summary.availabilityReportedPoolCount}',
                         color: summary.availabilityReportedPoolCount == 0
                             ? PveAppleColors.secondaryLabel(context)
-                            : summary.availablePoolCount ==
+                            : summary.fullyAvailablePoolCount ==
                                   summary.availabilityReportedPoolCount
                             ? PveAppleColors.success(context)
                             : PveAppleColors.warning(context),
@@ -314,7 +314,7 @@ class _StorageSummary {
   const _StorageSummary({
     required this.localCount,
     required this.sharedCount,
-    required this.availablePoolCount,
+    required this.fullyAvailablePoolCount,
     required this.availabilityReportedPoolCount,
     required this.reportingPoolCount,
     required this.storageTypeCount,
@@ -342,10 +342,10 @@ class _StorageSummary {
     return _StorageSummary(
       localCount: storages.length - sharedCount,
       sharedCount: sharedCount,
-      availablePoolCount: storages
+      fullyAvailablePoolCount: storages
           .where(
             (ClusterStorage storage) =>
-                storage.hasAvailabilityTelemetry && storage.isAvailable,
+                storage.hasAvailabilityTelemetry && storage.isFullyAvailable,
           )
           .length,
       availabilityReportedPoolCount: storages
@@ -363,7 +363,7 @@ class _StorageSummary {
 
   final int localCount;
   final int sharedCount;
-  final int availablePoolCount;
+  final int fullyAvailablePoolCount;
   final int availabilityReportedPoolCount;
   final int reportingPoolCount;
   final int storageTypeCount;

@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
+import 'cluster_load_state_view.dart';
 import 'datacenter_activity_section.dart';
 import 'datacenter_health_banner.dart';
 import 'datacenter_nodes_section.dart';
@@ -21,6 +22,7 @@ class DatacenterDashboard extends StatelessWidget {
     required this.onViewNodes,
     required this.onViewStorage,
     required this.onViewTasks,
+    this.refreshErrorMessage,
   });
 
   final ClusterOverviewSnapshot snapshot;
@@ -33,6 +35,7 @@ class DatacenterDashboard extends StatelessWidget {
   final VoidCallback onViewNodes;
   final VoidCallback onViewStorage;
   final VoidCallback onViewTasks;
+  final String? refreshErrorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -67,6 +70,13 @@ class DatacenterDashboard extends StatelessWidget {
                             style: PveAppleText.caption(context),
                           ),
                         ),
+                        if (refreshErrorMessage != null) ...<Widget>[
+                          ClusterRefreshFailureBanner(
+                            message: refreshErrorMessage!,
+                            onRetry: onRefresh,
+                          ),
+                          const SizedBox(height: 12),
+                        ],
                         DatacenterHealthBanner(
                           health: health,
                           onViewNodes: onViewNodes,

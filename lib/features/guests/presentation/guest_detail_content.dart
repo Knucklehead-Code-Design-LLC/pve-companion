@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show SelectableText;
 
 import '../../../core/presentation/pve_apple_ui.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../application/guest_detail_controller.dart';
 import '../domain/pve_guest.dart';
 

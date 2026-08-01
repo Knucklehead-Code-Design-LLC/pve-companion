@@ -14,6 +14,18 @@ class PveChartSegment {
   final String label;
   final double value;
   final Color color;
+
+  @override
+  bool operator ==(Object other) {
+    return identical(this, other) ||
+        other is PveChartSegment &&
+            other.label == label &&
+            other.value == value &&
+            other.color == color;
+  }
+
+  @override
+  int get hashCode => Object.hash(label, value, color);
 }
 
 class PveRingChart extends StatelessWidget {
@@ -107,7 +119,10 @@ class _PveRingChartPainter extends CustomPainter {
     canvas.drawCircle(center, radius, paint..color = trackColor);
 
     final List<PveChartSegment> visibleSegments = segments
-        .where((PveChartSegment segment) => segment.value > 0)
+        .where(
+          (PveChartSegment segment) =>
+              segment.value.isFinite && segment.value > 0,
+        )
         .toList(growable: false);
     final double total = visibleSegments.fold<double>(
       0,
@@ -135,10 +150,22 @@ class _PveRingChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PveRingChartPainter oldDelegate) {
-    return oldDelegate.segments != segments ||
+    return !_segmentsMatch(oldDelegate.segments, segments) ||
         oldDelegate.trackColor != trackColor ||
         oldDelegate.strokeWidth != strokeWidth;
   }
+}
+
+bool _segmentsMatch(List<PveChartSegment> left, List<PveChartSegment> right) {
+  if (left.length != right.length) {
+    return false;
+  }
+  for (int index = 0; index < left.length; index++) {
+    if (left[index] != right[index]) {
+      return false;
+    }
+  }
+  return true;
 }
 
 class PveInsightCard extends StatelessWidget {
@@ -171,7 +198,10 @@ class PveInsightCard extends StatelessWidget {
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(title, style: PveAppleText.title3(context)),
+                    Semantics(
+                      header: true,
+                      child: Text(title, style: PveAppleText.title3(context)),
+                    ),
                     if (subtitle != null) ...<Widget>[
                       const SizedBox(height: 3),
                       Text(subtitle!, style: PveAppleText.caption(context)),
@@ -259,6 +289,7 @@ class PveResourceMeter extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Semantics(
+      excludeSemantics: true,
       label: '$label: $value${detail == null ? '' : ', $detail'}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,

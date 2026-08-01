@@ -2,7 +2,9 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../application/cluster_overview_controller.dart';
+import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health_evaluator.dart';
+import 'cluster_load_state_view.dart';
 import 'datacenter_dashboard.dart';
 
 class ClusterOverviewPage extends StatelessWidget {
@@ -31,21 +33,11 @@ class ClusterOverviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return switch (controller.state) {
-      ClusterOverviewLoadState.idle || ClusterOverviewLoadState.loading =>
-        _buildStatePage(const PveLoadingState(label: 'Loading datacenter')),
-      ClusterOverviewLoadState.failed => _buildStatePage(
-        _ClusterLoadFailure(
-          message:
-              controller.errorMessage ?? 'Cluster data could not be loaded.',
-          onRetry: onRefresh,
-        ),
-      ),
-      ClusterOverviewLoadState.ready => _buildDashboard(),
-    };
+    final ClusterOverviewSnapshot? snapshot = controller.snapshot;
+    return snapshot == null ? _buildStatePage() : _buildDashboard(snapshot);
   }
 
-  Widget _buildStatePage(Widget child) {
+  Widget _buildStatePage() {
     return PvePrimaryScrollView(
       title: 'Datacenter',
       showsSliverNavigationBar: showsSliverNavigationBar,
@@ -53,13 +45,19 @@ class ClusterOverviewPage extends StatelessWidget {
       navigationTrailing: navigationTrailing,
       onRefresh: onRefresh,
       slivers: <Widget>[
-        SliverFillRemaining(hasScrollBody: false, child: child),
+        SliverFillRemaining(
+          hasScrollBody: false,
+          child: ClusterLoadStateView(
+            controller: controller,
+            loadingLabel: 'Loading datacenter',
+            onRetry: onRefresh,
+          ),
+        ),
       ],
     );
   }
 
-  Widget _buildDashboard() {
-    final snapshot = controller.snapshot!;
+  Widget _buildDashboard(ClusterOverviewSnapshot snapshot) {
     return DatacenterDashboard(
       snapshot: snapshot,
       health: DatacenterHealthEvaluator.evaluate(snapshot),
@@ -71,25 +69,7 @@ class ClusterOverviewPage extends StatelessWidget {
       onViewNodes: onViewNodes,
       onViewStorage: onViewStorage,
       onViewTasks: onViewTasks,
-    );
-  }
-}
-
-class _ClusterLoadFailure extends StatelessWidget {
-  const _ClusterLoadFailure({required this.message, required this.onRetry});
-
-  final String message;
-  final Future<void> Function() onRetry;
-
-  @override
-  Widget build(BuildContext context) {
-    return PveEmptyState(
-      icon: CupertinoIcons.exclamationmark_triangle,
-      title: 'Datacenter unavailable',
-      message: message,
-      actionLabel: 'Try Again',
-      onAction: () => onRetry(),
-      destructive: true,
+      refreshErrorMessage: controller.errorMessage,
     );
   }
 }

@@ -19,6 +19,7 @@ void main() {
     );
 
     expect(storage.hasAvailabilityTelemetry, isFalse);
+    expect(storage.isAvailable, isFalse);
     expect(storage.availableNodeCount, 0);
     expect(storage.usedBytes, 0);
     expect(storage.availableBytes, 1024);
@@ -49,6 +50,9 @@ void main() {
     expect(storage.hasAvailabilityTelemetry, isTrue);
     expect(storage.reportedAvailabilityNodeCount, 2);
     expect(storage.availableNodeCount, 1);
+    expect(storage.isAvailable, isTrue);
+    expect(storage.isFullyAvailable, isFalse);
+    expect(storage.isPartiallyAvailable, isTrue);
     expect(storage.usedBytes, 384);
     expect(storage.capacityBytes, 1536);
   });

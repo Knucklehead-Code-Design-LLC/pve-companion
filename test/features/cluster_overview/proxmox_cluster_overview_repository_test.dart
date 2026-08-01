@@ -65,6 +65,33 @@ void main() {
     expect(snapshot.storages.single.capacityBytes, 1000);
     expect(snapshot.storages.single.usageFraction, 0.4);
   });
+
+  test('keeps configured storage when telemetry is not authorized', () async {
+    final ProxmoxClusterOverviewRepository repository =
+        ProxmoxClusterOverviewRepository();
+    final _FixtureSession session = _FixtureSession(<String, Object?>{
+      'version': <String, Object?>{'version': '9.2'},
+      'nodes': const <Object?>[],
+      'cluster/resources?type=vm': const <Object?>[],
+      'storage': <Object?>[
+        <String, Object?>{
+          'storage': 'local',
+          'type': 'dir',
+          'content': 'images',
+        },
+      ],
+      'cluster/resources?type=storage': const ProxmoxUnauthorizedException(
+        'Permission denied.',
+      ),
+      'cluster/tasks': const <Object?>[],
+    });
+
+    final snapshot = await repository.load(session);
+
+    expect(snapshot.storages.single.name, 'local');
+    expect(snapshot.storages.single.resources, isEmpty);
+    expect(snapshot.storages.single.capacityBytes, isNull);
+  });
 }
 
 class _FixtureSession implements ProxmoxSession {
@@ -82,7 +109,11 @@ class _FixtureSession implements ProxmoxSession {
   }) async {
     final String? type = query['type'];
     final String key = type == null ? resource : '$resource?type=$type';
-    return responses[key] ?? responses[resource];
+    final Object? response = responses[key] ?? responses[resource];
+    if (response is Exception) {
+      throw response;
+    }
+    return response;
   }
 
   @override

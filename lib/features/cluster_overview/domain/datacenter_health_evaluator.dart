@@ -96,7 +96,10 @@ DatacenterWorkload _deriveWorkload(List<PveGuest> guests) {
 }
 
 DatacenterPressureSummary _derivePressure(List<ClusterNode> nodes) {
-  final List<_ReportedNodeCpu> reportedCpu = nodes
+  final List<ClusterNode> onlineNodes = nodes
+      .where((ClusterNode node) => node.isOnline)
+      .toList(growable: false);
+  final List<_ReportedNodeCpu> reportedCpu = onlineNodes
       .map(
         (ClusterNode node) =>
             _ReportedNodeCpu(node: node, pressure: _cpuPressureForNode(node)),
@@ -122,12 +125,12 @@ DatacenterPressureSummary _derivePressure(List<ClusterNode> nodes) {
             representativeNodeName: highestCpu.node.name,
           ),
     memory: _aggregateBytePressure(
-      nodes,
+      onlineNodes,
       (ClusterNode node) => node.memoryBytes,
       (ClusterNode node) => node.memoryLimitBytes,
     ),
     rootDisk: _aggregateBytePressure(
-      nodes,
+      onlineNodes,
       (ClusterNode node) => node.diskBytes,
       (ClusterNode node) => node.diskLimitBytes,
     ),

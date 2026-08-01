@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_data_visualization.dart';
 import '../domain/datacenter_health.dart';
-import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_visuals.dart';
 
 class NodeInventoryInsights extends StatelessWidget {
@@ -141,31 +140,10 @@ class _PressureMeter extends StatelessWidget {
     final DatacenterDashboardTone tone = dashboardToneForPressure(pressure);
     return PveResourceMeter(
       label: label,
-      value: _pressureValue(pressure),
+      value: datacenterPressureValueLabel(pressure),
       progress: pressure?.progressFraction,
       color: dashboardToneColor(context, tone),
-      detail: detail == null
-          ? _reportingLabel(pressure)
-          : '$detail · ${_reportingLabel(pressure)}',
+      detail: datacenterPressureReportingLabel(pressure, detail: detail),
     );
   }
-}
-
-String _pressureValue(DatacenterPressureMetric? pressure) {
-  if (pressure == null) {
-    return 'Not reported';
-  }
-  if (pressure.hasByteTotals) {
-    return '${formatPveBytes(pressure.usedBytes)} / '
-        '${formatPveBytes(pressure.capacityBytes)}';
-  }
-  return formatPvePercent(pressure.fraction);
-}
-
-String _reportingLabel(DatacenterPressureMetric? pressure) {
-  if (pressure == null) {
-    return 'No nodes reporting';
-  }
-  return '${pressure.reportedNodeCount} '
-      '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
 }

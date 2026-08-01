@@ -21,10 +21,7 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
           query: const <String, String>{'type': 'vm'},
         ),
         session.getData('storage'),
-        session.getData(
-          'cluster/resources',
-          query: const <String, String>{'type': 'storage'},
-        ),
+        _loadStorageResources(session),
         session.getData(
           'cluster/tasks',
           query: const <String, String>{'limit': '25'},
@@ -39,6 +36,22 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
       storages: _decodeStorages(responses[3], responses[4]),
       tasks: _decodeTasks(responses[5]),
     );
+  }
+
+  Future<Object?> _loadStorageResources(ProxmoxSession session) async {
+    try {
+      return await session.getData(
+        'cluster/resources',
+        query: const <String, String>{'type': 'storage'},
+      );
+    } on ProxmoxUnauthorizedException {
+      return const <Object?>[];
+    } on ProxmoxResponseException catch (error) {
+      if (error.statusCode == 404 || error.statusCode == 501) {
+        return const <Object?>[];
+      }
+      rethrow;
+    }
   }
 
   PveVersion _decodeVersion(Object? value) {

@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_data_visualization.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../application/cluster_overview_controller.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
 import '../domain/datacenter_health_evaluator.dart';
-import 'cluster_overview_format.dart';
+import 'cluster_load_state_view.dart';
 import 'datacenter_dashboard_visuals.dart';
 import 'node_inventory_insights.dart';
 
@@ -50,9 +52,13 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       onRefresh: widget.onRefresh,
       slivers: <Widget>[
         if (snapshot == null)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
-            child: PveLoadingState(label: 'Loading nodes'),
+            child: ClusterLoadStateView(
+              controller: widget.controller,
+              loadingLabel: 'Loading nodes',
+              onRetry: widget.onRefresh,
+            ),
           )
         else
           PveCenteredSliver(
@@ -70,18 +76,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       snapshot,
     );
-    final List<DatacenterNodeHealth> nodes =
-        List<DatacenterNodeHealth>.of(health.nodes)..sort((
-          DatacenterNodeHealth left,
-          DatacenterNodeHealth right,
-        ) {
-          final int healthOrder = right.state.index.compareTo(left.state.index);
-          return healthOrder != 0
-              ? healthOrder
-              : left.node.name.toLowerCase().compareTo(
-                  right.node.name.toLowerCase(),
-                );
-        });
+    final List<DatacenterNodeHealth> nodes = health.nodes;
     final String searchQuery = _searchController.text.trim().toLowerCase();
     final List<DatacenterNodeHealth> visibleNodes = nodes
         .where(
@@ -138,6 +133,13 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (widget.controller.errorMessage != null) ...<Widget>[
+          ClusterRefreshFailureBanner(
+            message: widget.controller.errorMessage!,
+            onRetry: widget.onRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -172,7 +174,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           const SizedBox(height: 24),
         ] else
           const SizedBox(height: 20),
-        Text('Node inventory', style: PveAppleText.title2(context)),
+        const PveSectionTitle(title: 'Node inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
@@ -224,7 +226,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
-          Text('Cluster analysis', style: PveAppleText.title2(context)),
+          const PveSectionTitle(title: 'Cluster analysis'),
           const SizedBox(height: 12),
           NodeInventoryInsights(health: health),
         ],
@@ -245,6 +247,7 @@ class _NodeDetailCard extends StatelessWidget {
         : DatacenterDashboardTone.critical;
     final Color accent = dashboardToneColor(context, tone);
     return PveInsetGroup(
+      key: ValueKey<String>('node-inventory-${node.node.name}'),
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -314,21 +317,15 @@ class _PressureRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final DatacenterDashboardTone tone = dashboardToneForPressure(pressure);
     final Color accent = dashboardToneColor(context, tone);
-    final String value = _pressureValue(pressure, useBytes);
-    return Column(
-      children: <Widget>[
-        Row(
-          children: <Widget>[
-            Expanded(child: Text(label, style: PveAppleText.caption(context))),
-            Text(
-              value,
-              style: PveAppleText.caption(context).copyWith(color: accent),
-            ),
-          ],
-        ),
-        const SizedBox(height: 6),
-        PveProgressBar(value: pressure?.progressFraction, color: accent),
-      ],
+    final String value = datacenterPressureValueLabel(
+      pressure,
+      includeByteTotals: useBytes,
+    );
+    return PveResourceMeter(
+      label: label,
+      value: value,
+      progress: pressure?.progressFraction,
+      color: accent,
     );
   }
 }
@@ -344,15 +341,4 @@ String _statusLabel(DatacenterNodeHealth node) {
     DatacenterHealthState.warning => 'Attention',
     DatacenterHealthState.critical => 'Critical',
   };
-}
-
-String _pressureValue(DatacenterPressureMetric? pressure, bool useBytes) {
-  if (pressure == null) {
-    return 'Not reported';
-  }
-  if (useBytes && pressure.hasByteTotals) {
-    return '${formatPveBytes(pressure.usedBytes)} / '
-        '${formatPveBytes(pressure.capacityBytes)}';
-  }
-  return formatPvePercent(pressure.fraction);
 }

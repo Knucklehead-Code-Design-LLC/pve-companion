@@ -1,8 +1,8 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../domain/cluster_overview_snapshot.dart';
-import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_section_header.dart';
 import 'datacenter_dashboard_visuals.dart';
 
@@ -18,7 +18,9 @@ class DatacenterRecentActivitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<ClusterTask> visibleTasks = tasks
+    final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
+      ..sort(compareClusterTasksByRecency);
+    final List<ClusterTask> visibleTasks = orderedTasks
         .take(5)
         .toList(growable: false);
     return Column(

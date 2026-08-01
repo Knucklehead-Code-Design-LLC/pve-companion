@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_value_format.dart';
 
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
@@ -87,4 +88,29 @@ String dashboardPressureLabel(DatacenterPressureMetric? pressure) {
     DatacenterPressureLevel.warning => 'Elevated',
     DatacenterPressureLevel.critical => 'Critical',
   };
+}
+
+String datacenterPressureValueLabel(
+  DatacenterPressureMetric? pressure, {
+  bool includeByteTotals = true,
+}) {
+  if (pressure == null) {
+    return 'Not reported';
+  }
+  if (includeByteTotals && pressure.hasByteTotals) {
+    return '${formatPveBytes(pressure.usedBytes)} / '
+        '${formatPveBytes(pressure.capacityBytes)}';
+  }
+  return formatPvePercent(pressure.fraction);
+}
+
+String datacenterPressureReportingLabel(
+  DatacenterPressureMetric? pressure, {
+  String? detail,
+}) {
+  final String reportingLabel = pressure == null
+      ? 'No nodes reporting'
+      : '${pressure.reportedNodeCount} '
+            '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
+  return detail == null ? reportingLabel : '$detail · $reportingLabel';
 }

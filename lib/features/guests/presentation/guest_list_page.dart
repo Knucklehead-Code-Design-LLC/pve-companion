@@ -2,9 +2,10 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import '../../cluster_overview/presentation/cluster_load_state_view.dart';
 import '../domain/pve_guest.dart';
 import 'guest_detail_sheet.dart';
 import 'guest_inventory_insights.dart';
@@ -68,9 +69,13 @@ class _GuestListPageState extends State<GuestListPage> {
       onRefresh: widget.onRefresh,
       slivers: <Widget>[
         if (snapshot == null)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
-            child: PveLoadingState(label: 'Loading guests'),
+            child: ClusterLoadStateView(
+              controller: widget.overviewController,
+              loadingLabel: 'Loading guests',
+              onRetry: widget.onRefresh,
+            ),
           )
         else
           PveCenteredSliver(
@@ -135,6 +140,13 @@ class _GuestListPageState extends State<GuestListPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (widget.overviewController.errorMessage != null) ...<Widget>[
+          ClusterRefreshFailureBanner(
+            message: widget.overviewController.errorMessage!,
+            onRetry: widget.onRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -166,7 +178,7 @@ class _GuestListPageState extends State<GuestListPage> {
           const SizedBox(height: 24),
         ] else
           const SizedBox(height: 20),
-        Text('Guest inventory', style: PveAppleText.title2(context)),
+        const PveSectionTitle(title: 'Guest inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
@@ -228,7 +240,7 @@ class _GuestListPageState extends State<GuestListPage> {
           ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
-          Text('Workload analysis', style: PveAppleText.title2(context)),
+          const PveSectionTitle(title: 'Workload analysis'),
           const SizedBox(height: 12),
           GuestInventoryInsights(guests: guests),
         ],

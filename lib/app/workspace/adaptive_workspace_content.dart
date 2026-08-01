@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
@@ -15,7 +17,8 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     required this.onRefresh,
     required this.refreshing,
     this.lastUpdatedAt,
-  });
+    this.refreshErrorMessage,
+  }) : assert(pages.length == WorkspaceSection.values.length);
 
   final WorkspaceSection section;
   final ValueChanged<WorkspaceSection> onSectionChanged;
@@ -25,6 +28,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final bool refreshing;
   final DateTime? lastUpdatedAt;
+  final String? refreshErrorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -44,6 +48,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 onRefresh: onRefresh,
                 refreshing: refreshing,
                 lastUpdatedAt: lastUpdatedAt,
+                refreshErrorMessage: refreshErrorMessage,
               ),
               Container(
                 width: 0.5,
@@ -104,6 +109,7 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.onRefresh,
     required this.refreshing,
     required this.lastUpdatedAt,
+    required this.refreshErrorMessage,
   });
 
   final WorkspaceSection section;
@@ -113,6 +119,7 @@ class _WorkspaceSidebar extends StatelessWidget {
   final Future<void> Function() onRefresh;
   final bool refreshing;
   final DateTime? lastUpdatedAt;
+  final String? refreshErrorMessage;
 
   @override
   Widget build(BuildContext context) {
@@ -167,6 +174,7 @@ class _WorkspaceSidebar extends StatelessWidget {
                 _WorkspaceConnectionFooter(
                   refreshing: refreshing,
                   lastUpdatedAt: lastUpdatedAt,
+                  refreshErrorMessage: refreshErrorMessage,
                   onRefresh: onRefresh,
                 ),
               ],
@@ -182,11 +190,13 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
   const _WorkspaceConnectionFooter({
     required this.refreshing,
     required this.lastUpdatedAt,
+    required this.refreshErrorMessage,
     required this.onRefresh,
   });
 
   final bool refreshing;
   final DateTime? lastUpdatedAt;
+  final String? refreshErrorMessage;
   final Future<void> Function() onRefresh;
 
   @override
@@ -217,13 +227,16 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
                   Text('Connected', style: PveAppleText.caption(context)),
-                  if (lastUpdatedAt != null)
+                  if (refreshErrorMessage != null)
                     Text(
-                      _lastUpdatedLabel(lastUpdatedAt!),
-                      style: PveAppleText.caption(
-                        context,
-                      ).copyWith(fontSize: 11),
-                    ),
+                      'Refresh failed',
+                      style: PveAppleText.caption(context).copyWith(
+                        color: PveAppleColors.warning(context),
+                        fontSize: 11,
+                      ),
+                    )
+                  else if (lastUpdatedAt != null)
+                    _LastUpdatedText(updatedAt: lastUpdatedAt!),
                 ],
               ),
             ),
@@ -257,13 +270,73 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
   }
 }
 
+class _LastUpdatedText extends StatefulWidget {
+  const _LastUpdatedText({required this.updatedAt});
+
+  final DateTime updatedAt;
+
+  @override
+  State<_LastUpdatedText> createState() => _LastUpdatedTextState();
+}
+
+class _LastUpdatedTextState extends State<_LastUpdatedText> {
+  Timer? _timer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleNextUpdate();
+  }
+
+  @override
+  void didUpdateWidget(_LastUpdatedText oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.updatedAt != widget.updatedAt) {
+      _scheduleNextUpdate();
+    }
+  }
+
+  void _scheduleNextUpdate() {
+    _timer?.cancel();
+    final int elapsedSeconds = DateTime.now()
+        .difference(widget.updatedAt)
+        .inSeconds;
+    final int normalizedSeconds = elapsedSeconds < 0 ? 0 : elapsedSeconds;
+    final int secondsUntilNextMinute = 60 - normalizedSeconds.remainder(60);
+    _timer = Timer(Duration(seconds: secondsUntilNextMinute), () {
+      if (!mounted) {
+        return;
+      }
+      setState(() {});
+      _scheduleNextUpdate();
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Text(
+      _lastUpdatedLabel(widget.updatedAt),
+      style: PveAppleText.caption(context).copyWith(fontSize: 11),
+    );
+  }
+}
+
 String _lastUpdatedLabel(DateTime updatedAt) {
   final Duration elapsed = DateTime.now().difference(updatedAt);
-  if (elapsed.inMinutes < 1) {
+  if (elapsed.isNegative || elapsed.inMinutes < 1) {
     return 'Updated just now';
   }
   if (elapsed.inHours < 1) {
     return 'Updated ${elapsed.inMinutes}m ago';
+  }
+  if (elapsed.inDays >= 1) {
+    return 'Updated ${elapsed.inDays}d ago';
   }
   return 'Updated ${elapsed.inHours}h ago';
 }

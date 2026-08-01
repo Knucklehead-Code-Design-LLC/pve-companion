@@ -1,8 +1,16 @@
 String formatPveBytes(int? bytes) {
-  if (bytes == null) {
+  if (bytes == null || bytes < 0) {
     return '—';
   }
-  const List<String> units = <String>['B', 'KiB', 'MiB', 'GiB', 'TiB'];
+  const List<String> units = <String>[
+    'B',
+    'KiB',
+    'MiB',
+    'GiB',
+    'TiB',
+    'PiB',
+    'EiB',
+  ];
   double value = bytes.toDouble();
   int unitIndex = 0;
   while (value >= 1024 && unitIndex < units.length - 1) {
@@ -14,7 +22,7 @@ String formatPveBytes(int? bytes) {
 }
 
 String formatPvePercent(double? fraction) {
-  if (fraction == null) {
+  if (fraction == null || !fraction.isFinite || fraction < 0) {
     return '—';
   }
   return '${(fraction * 100).clamp(0, 100).toStringAsFixed(0)}%';
@@ -36,7 +44,7 @@ String formatPveUptime(int? seconds) {
 
 String formatPveDateTime(DateTime? value) {
   if (value == null) {
-    return 'In progress';
+    return '—';
   }
   final String twoDigitMonth = value.month.toString().padLeft(2, '0');
   final String twoDigitDay = value.day.toString().padLeft(2, '0');

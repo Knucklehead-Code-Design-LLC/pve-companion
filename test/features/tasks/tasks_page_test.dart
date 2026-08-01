@@ -41,6 +41,7 @@ void main() {
     WidgetTester tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(1366, 1024));
     addTearDown(() => tester.binding.setSurfaceSize(null));
     final controller = await readyDashboardController(
@@ -51,6 +52,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: PveCompanionTheme.light(),
+        builder: _largeTextBuilder,
         home: Scaffold(
           body: TasksPage(
             controller: controller,
@@ -74,6 +76,16 @@ void main() {
       find.byKey(const ValueKey<String>('ipad-task-card-UPID:complete')),
       findsOneWidget,
     );
+    expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
+}
+
+Widget _largeTextBuilder(BuildContext context, Widget? child) {
+  return MediaQuery(
+    data: MediaQuery.of(
+      context,
+    ).copyWith(textScaler: const TextScaler.linear(2)),
+    child: child!,
+  );
 }

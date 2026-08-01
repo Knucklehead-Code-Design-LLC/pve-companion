@@ -2,7 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_data_visualization.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../domain/pve_guest.dart';
 
 class GuestInventoryInsights extends StatelessWidget {

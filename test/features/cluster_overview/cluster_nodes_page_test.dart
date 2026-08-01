@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
+import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/cluster_nodes_page.dart';
 
 import 'datacenter_dashboard_fixture.dart';
@@ -53,4 +54,77 @@ void main() {
       findsOneWidget,
     );
   });
+
+  testWidgets('preserves offline-first domain ordering', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      criticalDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: ClusterNodesPage(
+            controller: controller,
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      tester
+          .getTopLeft(
+            find.byKey(const ValueKey<String>('node-inventory-edge-a')),
+          )
+          .dx,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.byKey(const ValueKey<String>('node-inventory-compute-a')),
+            )
+            .dx,
+      ),
+    );
+  });
+
+  testWidgets('supports large accessibility text without overflow', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(900, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        builder: _largeTextBuilder,
+        home: Scaffold(
+          body: ClusterNodesPage(
+            controller: controller,
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+  });
+}
+
+Widget _largeTextBuilder(BuildContext context, Widget? child) {
+  return MediaQuery(
+    data: MediaQuery.of(
+      context,
+    ).copyWith(textScaler: const TextScaler.linear(2)),
+    child: child!,
+  );
 }

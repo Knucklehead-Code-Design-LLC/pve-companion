@@ -80,6 +80,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
                   widget.controller.clusterOverview.state ==
                   ClusterOverviewLoadState.loading,
               lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
+              refreshErrorMessage:
+                  widget.controller.clusterOverview.errorMessage,
               pages: _buildPages(session, compact: compact),
             ),
     );

@@ -1,9 +1,10 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
-import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import '../../cluster_overview/presentation/cluster_load_state_view.dart';
 import '../../cluster_overview/presentation/datacenter_dashboard_visuals.dart';
 import 'task_activity_insights.dart';
 
@@ -43,9 +44,13 @@ class _TasksPageState extends State<TasksPage> {
       onRefresh: widget.onRefresh,
       slivers: <Widget>[
         if (snapshot == null)
-          const SliverFillRemaining(
+          SliverFillRemaining(
             hasScrollBody: false,
-            child: PveLoadingState(label: 'Loading recent activity'),
+            child: ClusterLoadStateView(
+              controller: widget.controller,
+              loadingLabel: 'Loading recent activity',
+              onRetry: widget.onRefresh,
+            ),
           )
         else
           PveCenteredSliver(
@@ -67,7 +72,7 @@ class _TasksPageState extends State<TasksPage> {
     required bool usesExpandedPresentation,
   }) {
     final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
-      ..sort(_compareTaskRecency);
+      ..sort(compareClusterTasksByRecency);
     final List<ClusterTask> visibleTasks = orderedTasks
         .where(_matchesFilter)
         .toList(growable: false);
@@ -107,6 +112,13 @@ class _TasksPageState extends State<TasksPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
+        if (widget.controller.errorMessage != null) ...<Widget>[
+          ClusterRefreshFailureBanner(
+            message: widget.controller.errorMessage!,
+            onRetry: widget.onRefresh,
+          ),
+          const SizedBox(height: 12),
+        ],
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -143,7 +155,7 @@ class _TasksPageState extends State<TasksPage> {
         ] else
           const SizedBox(height: 20),
         PveWideControlBar(
-          primary: Text('Recent activity', style: PveAppleText.title2(context)),
+          primary: const PveSectionTitle(title: 'Recent activity'),
           secondary: filter,
         ),
         const SizedBox(height: 16),
@@ -201,7 +213,7 @@ class _TasksPageState extends State<TasksPage> {
           ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
-          Text('Activity analysis', style: PveAppleText.title2(context)),
+          const PveSectionTitle(title: 'Activity analysis'),
           const SizedBox(height: 12),
           TaskActivityInsights(tasks: orderedTasks),
         ],
@@ -307,21 +319,6 @@ class _TaskRow extends StatelessWidget {
 }
 
 enum _TaskFilter { all, running, failed }
-
-int _compareTaskRecency(ClusterTask left, ClusterTask right) {
-  final DateTime? leftTime = left.startedAt;
-  final DateTime? rightTime = right.startedAt;
-  if (leftTime == null && rightTime == null) {
-    return 0;
-  }
-  if (leftTime == null) {
-    return 1;
-  }
-  if (rightTime == null) {
-    return -1;
-  }
-  return rightTime.compareTo(leftTime);
-}
 
 String _taskDurationLabel(ClusterTask task) {
   final DateTime? startedAt = task.startedAt;

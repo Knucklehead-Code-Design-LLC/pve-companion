@@ -17,7 +17,7 @@ domain, data, application, and presentation code.
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
-| `core/presentation` | Apple-first colors, typography, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
+| `core/presentation` | Apple-first colors, typography, value formatting, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
 
 Dependencies flow in one direction:
 
@@ -30,6 +30,12 @@ sequencing, duplicate-action guards, stale-response protection, and disposal
 behavior. Repositories map a feature's API data to its domain types. The HTTP
 service owns request encoding, authentication headers, TLS pinning, and strict
 envelope validation; UI code never assembles requests.
+
+Cluster refreshes return the exact snapshot accepted by the controller. A
+superseded request or failed refresh returns no publishable snapshot, so Apple
+system surfaces cannot receive stale data from an out-of-order response. After
+an initial load succeeds, a later refresh failure retains the last snapshot and
+surfaces a retryable, non-destructive error in the workspace.
 
 `ChangeNotifier`/`Listenable` from Flutter SDK provide the small amount of
 long-lived state required here. There is no provider/state-management package,
@@ -76,9 +82,11 @@ or network connection.
 - Missing or incomplete values stay unreported. Storage configuration from
   `/storage` is merged with per-node telemetry from
   `/cluster/resources?type=storage`. Shared capacity is de-duplicated across
-  nodes, while local capacity is summed; the UI keeps an explicit unavailable
-  state when the connected account cannot report telemetry; availability is
-  never inferred from configuration alone.
+  nodes, while local capacity is summed. Accounts that may read configuration
+  but lack resource-telemetry permission still receive the configured pool
+  inventory. The UI distinguishes fully available, partially available,
+  unavailable, and unreported pools; availability is never inferred from
+  configuration alone.
 - Presentation is split by dashboard responsibility (health, capacity and
   workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
   dashboard widgets receive callbacks rather than depending on app navigation.

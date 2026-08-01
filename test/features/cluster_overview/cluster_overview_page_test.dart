@@ -184,6 +184,21 @@ void main() {
     expect(storageDrillDownCount, 1);
     expect(taskDrillDownCount, 1);
   });
+
+  testWidgets('keeps stale data visible after a refresh failure', (
+    WidgetTester tester,
+  ) async {
+    final ClusterOverviewController controller = await staleDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_DashboardTestApp(controller: controller));
+
+    expect(find.text('All systems operational'), findsOneWidget);
+    expect(find.text('Refresh failed.'), findsOneWidget);
+    expect(find.text('Datacenter unavailable'), findsNothing);
+  });
 }
 
 class _DashboardTestApp extends StatelessWidget {

@@ -285,6 +285,38 @@ void main() {
     expect(health.pressure.rootDisk, isNull);
     expect(health.issues, isEmpty);
   });
+
+  test('excludes stale offline-node telemetry from cluster pressure', () {
+    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+      const ClusterOverviewSnapshot(
+        version: PveVersion(version: '9.2'),
+        nodes: <ClusterNode>[
+          ClusterNode(
+            name: 'offline',
+            status: 'offline',
+            cpuFraction: 0.99,
+            memoryBytes: 99,
+            memoryLimitBytes: 100,
+          ),
+          ClusterNode(
+            name: 'online',
+            status: 'online',
+            cpuFraction: 0.25,
+            memoryBytes: 25,
+            memoryLimitBytes: 100,
+          ),
+        ],
+        guests: <PveGuest>[],
+        storages: <ClusterStorage>[],
+        tasks: <ClusterTask>[],
+      ),
+    );
+
+    expect(health.pressure.cpu?.fraction, 0.25);
+    expect(health.pressure.cpu?.representativeNodeName, 'online');
+    expect(health.pressure.memory?.usedBytes, 25);
+    expect(health.pressure.memory?.capacityBytes, 100);
+  });
 }
 
 DatacenterHealth _healthWithCpu(double cpuFraction) {

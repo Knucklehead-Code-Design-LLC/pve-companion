@@ -133,8 +133,7 @@ class PveCompanionController extends ChangeNotifier {
     if (session == null) {
       return;
     }
-    await _clusterOverview.refresh(session);
-    final snapshot = _clusterOverview.snapshot;
+    final snapshot = await _clusterOverview.refresh(session);
     if (snapshot == null) {
       return;
     }
