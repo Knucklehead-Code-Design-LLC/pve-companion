@@ -17,6 +17,8 @@ claiming parity before it exists.
 ## Milestone 0.2 — trustworthy operations
 
 - [ ] Guest task tracking with completion/error state after control actions.
+- [ ] TOTP/2FA password-authentication challenge flow and clear unsupported
+  authentication feedback.
 - [ ] Filter, search, and sort across nodes and guests.
 - [ ] Read-only guest runtime details, logs, and richer node/storage metrics.
 - [ ] Named profile editing and certificate pin rotation with explicit

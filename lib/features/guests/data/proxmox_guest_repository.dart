@@ -71,8 +71,9 @@ class ProxmoxGuestRepository implements PveGuestRepository {
       );
     }
     await session.postForm(
-      'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/status',
-      fields: <String, String>{'command': action.apiCommand},
+      'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/status/'
+      '${action.apiPathSegment}',
+      fields: const <String, String>{},
     );
   }
 }

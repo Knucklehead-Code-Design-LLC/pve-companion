@@ -5,9 +5,9 @@ enum GuestPowerAction {
   shutdown('shutdown', 'Shut down'),
   reboot('reboot', 'Reboot');
 
-  const GuestPowerAction(this.apiCommand, this.label);
+  const GuestPowerAction(this.apiPathSegment, this.label);
 
-  final String apiCommand;
+  final String apiPathSegment;
   final String label;
 
   bool get isPotentiallyDisruptive => this != GuestPowerAction.start;

@@ -16,6 +16,9 @@ The `0.1` baseline is deliberately useful without claiming web-interface
 parity:
 
 - Multiple named server profiles, with password-realm or API-token sign-in.
+- Password sign-in does not yet implement TOTP/2FA challenge flows. Use an
+  appropriately scoped API token for a 2FA-protected account until that
+  workflow is implemented.
 - Optional credential retention in Apple Keychain; profile preferences never
   contain passwords, token secrets, tickets, or CSRF values.
 - Ephemeral password session tickets and per-server SHA-256 certificate
