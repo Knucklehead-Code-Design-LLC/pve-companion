@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoTheme;
 import 'package:flutter/material.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
@@ -37,6 +38,12 @@ class _DatacenterDashboardPreviewAppState
       debugShowCheckedModeBanner: false,
       theme: PveCompanionTheme.light(),
       darkTheme: PveCompanionTheme.dark(),
+      builder: (BuildContext context, Widget? child) => CupertinoTheme(
+        data: PveCompanionTheme.cupertino(
+          MediaQuery.platformBrightnessOf(context),
+        ),
+        child: child!,
+      ),
       scaffoldMessengerKey: _scaffoldMessengerKey,
       home: Scaffold(
         appBar: AppBar(
