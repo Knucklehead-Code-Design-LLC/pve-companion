@@ -77,9 +77,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
             )
           : _AdaptiveWorkspaceContent(
               section: _section,
-              onSectionChanged: (int index) {
-                setState(() => _section = _WorkspaceSection.values[index]);
-              },
+              onSectionChanged: (int index) =>
+                  _selectSection(_WorkspaceSection.values[index]),
               pages: _buildPages(session),
             ),
     );
@@ -90,6 +89,10 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       ClusterOverviewPage(
         controller: widget.controller.clusterOverview,
         onRefresh: widget.controller.refreshCluster,
+        onViewGuests: () => _selectSection(_WorkspaceSection.guests),
+        onViewNodes: () => _selectSection(_WorkspaceSection.nodes),
+        onViewStorage: () => _selectSection(_WorkspaceSection.storage),
+        onViewTasks: () => _selectSection(_WorkspaceSection.tasks),
       ),
       GuestListPage(
         overviewController: widget.controller.clusterOverview,
@@ -100,6 +103,13 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       StoragePage(controller: widget.controller.clusterOverview),
       TasksPage(controller: widget.controller.clusterOverview),
     ];
+  }
+
+  void _selectSection(_WorkspaceSection section) {
+    if (_section == section) {
+      return;
+    }
+    setState(() => _section = section);
   }
 
   Future<void> _connectToProfile(String profileId) async {

@@ -9,8 +9,9 @@ claiming parity before it exists.
 - [x] Multi-server profiles with password-realm and API-token authentication.
 - [x] Optional Apple Keychain credential storage and in-memory password tickets.
 - [x] Explicit per-server TLS fingerprint trust for untrusted certificates.
-- [x] Cluster overview, nodes, VM/LXC inventory, configured storage, and
-  recent-task visibility.
+- [x] Datacenter command center that prioritizes reported problems and
+  pressure, then capacity, VM/LXC workload, nodes, configured storage, and
+  recent reported activity.
 - [x] Guest details plus confirmed start, graceful shutdown, and reboot.
 - [x] Adaptive macOS, iPadOS, and iOS navigation.
 
@@ -20,7 +21,8 @@ claiming parity before it exists.
 - [ ] TOTP/2FA password-authentication challenge flow and clear unsupported
   authentication feedback.
 - [ ] Filter, search, and sort across nodes and guests.
-- [ ] Read-only guest runtime details, logs, and richer node/storage metrics.
+- [ ] Read-only guest runtime details, logs, and richer node/storage metrics,
+  including storage utilization only where a PVE API response reports it.
 - [ ] Named profile editing and certificate pin rotation with explicit
   re-verification.
 - [ ] API capability/version negotiation and a fixture suite for supported PVE

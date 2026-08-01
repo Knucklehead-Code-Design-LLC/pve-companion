@@ -10,7 +10,7 @@ domain, data, application, and presentation code.
 | Feature | Owns |
 | --- | --- |
 | `connection_profiles` | Server profile rules, secure credential boundary, profile persistence, sign-in state, and add/manage-server UI. |
-| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, snapshot refresh state, overview, and node views. |
+| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
 | `guests` | VM/LXC models, safe configuration projection, power command behavior, detail state, and guest UI. |
 | `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
@@ -31,6 +31,30 @@ envelope validation; UI code never assembles requests.
 `ChangeNotifier`/`Listenable` from Flutter SDK provide the small amount of
 long-lived state required here. There is no provider/state-management package,
 generic service locator, speculative shared `utils`, or code generation.
+
+## Dashboard derivation
+
+`cluster_overview/domain/datacenter_health.dart` turns a decoded snapshot into
+typed health, issue, workload, task-activity, per-node, and capacity values.
+This keeps rendering code free of policy decisions and lets pure unit tests
+cover threshold boundaries without a widget or network connection.
+
+- Offline nodes and critical per-node CPU, memory, or root-disk pressure are
+  critical. Failed reported tasks and warning pressure are warnings. A stopped
+  guest is inventory, not an incident.
+- Pressure thresholds are inclusive: 75% is warning and 90% is critical.
+  Health evaluates each reporting node; cluster capacity remains explicit
+  about its aggregation (CPU = highest reported node, byte metrics = complete
+  known-node totals).
+- Missing or incomplete values stay unreported. Configured storage is
+  inventory because the current endpoint does not provide utilization.
+- Presentation is split by dashboard responsibility (health, capacity and
+  workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
+  dashboard widgets receive callbacks rather than depending on app navigation.
+
+The deterministic preview data belongs under `tool/support`, not `lib`, and
+the preview target is local-only. It gives maintainers a repeatable healthy or
+critical visual state without mixing demonstration data into application code.
 
 ## Security boundaries
 

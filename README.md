@@ -23,8 +23,11 @@ parity:
   contain passwords, token secrets, tickets, or CSRF values.
 - Ephemeral password session tickets and per-server SHA-256 certificate
   fingerprint trust. The app never globally disables TLS validation.
-- Responsive Mac, iPad, and iPhone navigation for cluster overview, nodes,
-  guest inventory, configured storage, and recent tasks.
+- An adaptive Overview command center for Mac, iPad, and iPhone that puts
+  operational problems first, then capacity, workload, nodes, and recent
+  reported activity. Stopped guests remain workload inventory, not incidents.
+- Drill-down navigation for nodes, guest inventory, configured storage, and
+  recent tasks.
 - VM/LXC details plus confirmed, non-force start, shutdown, and reboot
   requests. Storage and tasks are read-only in this milestone.
 
@@ -55,10 +58,42 @@ before contributing authentication, network, or certificate changes.
 
 ```sh
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
 ```
+
+For a deterministic, local-only visual review of the Overview dashboard, run
+the preview target on a booted iPhone or iPad simulator. It uses fixture data
+only and never contacts a server:
+
+```sh
+flutter devices
+flutter run -d <ios-simulator-id> -t tool/datacenter_dashboard_preview.dart
+```
+
+Use the Healthy/Critical switch to review both states; use an iPhone simulator
+for compact layout and an iPad simulator for wide layout. The same target can
+run on macOS only in a development environment with a valid Apple signing
+identity, because the app's Keychain entitlement prevents an unsigned macOS
+debug launch.
+
+### Dashboard health semantics
+
+Overview derives its health banner from the latest reported snapshot. Offline
+nodes and critical per-node pressure are critical; failed recent reported
+tasks and warning pressure need attention. Peak CPU use is the highest
+reported node, while memory and root-disk capacity aggregate only nodes with
+complete values. Health checks every reporting node so a hot node cannot be
+masked by a low cluster average. Reported CPU, memory, or root-disk pressure
+is warning at **75% or above** and critical at **90% or above**.
+
+“No reported issues.” means the snapshot contains no derived issue; it does
+not claim that every possible metric was reported. Missing or incomplete
+telemetry remains explicitly unreported.
+
+Configured storage is shown as inventory only in this milestone. The existing
+API view does not report its utilization, so the dashboard does not invent it.
 
 Apple builds are intentionally verified locally, not on paid macOS GitHub
 Actions runners. An iOS simulator build does not require signing; the macOS
@@ -81,7 +116,8 @@ an Ubuntu runner only.
 The project uses feature-owned folders and an explicit dependency direction:
 widget → controller → repository → HTTP service. It uses three direct
 third-party packages only: vetted SHA-256 support, Keychain storage, and
-non-secret preference storage. The full rationale is in the
+non-secret preference storage. The dashboard update adds no runtime
+dependencies. The full rationale is in the
 [dependency audit](docs/architecture/architecture.md#dependency-audit).
 
 The [clean-room licensing decision](docs/architecture/0001-clean-room-proxmox-client.md)

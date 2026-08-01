@@ -67,6 +67,8 @@ class ClusterStorage {
   final bool shared;
 }
 
+enum ClusterTaskState { running, successful, failed, unknown }
+
 class ClusterTask {
   const ClusterTask({
     required this.upid,
@@ -86,5 +88,21 @@ class ClusterTask {
   final DateTime? startedAt;
   final DateTime? endedAt;
 
-  bool get isRunning => endedAt == null && (status == null || status == '');
+  ClusterTaskState get state {
+    if (endedAt == null) {
+      return ClusterTaskState.running;
+    }
+    final String normalisedStatus = status?.trim().toLowerCase() ?? '';
+    if (normalisedStatus.isEmpty) {
+      return ClusterTaskState.unknown;
+    }
+    if (normalisedStatus == 'ok' ||
+        normalisedStatus == 'success' ||
+        normalisedStatus == 'successful') {
+      return ClusterTaskState.successful;
+    }
+    return ClusterTaskState.failed;
+  }
+
+  bool get isRunning => state == ClusterTaskState.running;
 }

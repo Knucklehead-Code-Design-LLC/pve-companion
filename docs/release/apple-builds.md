@@ -10,7 +10,7 @@ Run these before preparing an Apple release:
 
 ```sh
 flutter pub get
-dart format --output=none --set-exit-if-changed lib test
+dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
 flutter build ios --simulator --no-codesign
@@ -30,11 +30,29 @@ Keep the application identifier as
 `com.knuckleheadcodedesign.pvecompanion` unless a deliberate migration is
 planned.
 
+## Deterministic dashboard preview
+
+Before a release, inspect both dashboard health states without entering a
+server address or credentials. Use a booted iPhone or iPad simulator:
+
+```sh
+flutter devices
+flutter run -d <ios-simulator-id> -t tool/datacenter_dashboard_preview.dart
+```
+
+The preview uses only fixture data from `tool/support`. Switch between Healthy
+and Critical. Use an iPhone simulator for compact layout and an iPad simulator
+for wide layout. The same target can run on macOS when a valid Apple signing
+identity is configured; the repository's unsigned macOS compile command is
+intentionally build-only because Keychain Sharing prevents an unsigned debug
+launch.
+
 ## Release checklist
 
 1. Verify the version in `pubspec.yaml`.
 2. Build and smoke-test an iPhone simulator, an iPad simulator, and a macOS
-   build at compact and wide window sizes.
+   build at compact and wide window sizes; include both dashboard preview
+   states.
 3. Test a valid HTTPS server and a self-signed server. Independently verify the
    shown fingerprint before trusting it.
 4. Confirm no profile export, diagnostics, screenshot, or log includes a
