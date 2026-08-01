@@ -26,6 +26,7 @@ flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
+tool/capture_macos_store_screenshots.sh
 flutter build ios --simulator --no-codesign
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
   -configuration Release -derivedDataPath /tmp/pve-companion-macos-release \

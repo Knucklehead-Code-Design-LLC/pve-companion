@@ -38,7 +38,8 @@ Core version 0.1 features:
 - VM and LXC inventory with focused details
 - Confirmed start, shutdown, and reboot requests
 - Read-only storage and task views
-- Adaptive layouts for iPhone, iPad, and Mac
+- Apple-native tabs, sidebar, sheets, and adaptive layouts for iPhone, iPad,
+  and Mac
 - No ads, analytics, tracking, or developer-operated cloud service
 
 PVE Companion connects directly to the Proxmox VE server you configure. Use a
@@ -56,9 +57,9 @@ owners.
 
 ## Version 0.1.0 release notes
 
-Initial TestFlight release with secure server profiles, a responsive
+Initial TestFlight release with secure server profiles, an Apple-first
 datacenter command center, guest inventory and power actions, node health,
-storage inventory, and recent task activity.
+storage inventory, and recent task activity across iPhone, iPad, and Mac.
 
 ## App privacy answer baseline
 

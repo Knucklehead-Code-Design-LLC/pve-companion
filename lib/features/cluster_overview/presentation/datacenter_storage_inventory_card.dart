@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_apple_ui.dart';
 import 'datacenter_dashboard_visuals.dart';
 import 'datacenter_metric_card.dart';
 
@@ -26,8 +27,8 @@ class DatacenterStorageInventoryCard extends StatelessWidget {
         primaryValue: primaryValue,
         detail: detail,
         tone: DatacenterDashboardTone.neutral,
-        icon: Icons.storage_outlined,
-        actionLabel: 'View storage',
+        icon: CupertinoIcons.tray_full,
+        actionLabel: 'View Storage',
         actionSemanticsLabel: 'View all storage',
         onAction: onViewStorage,
       );
@@ -36,49 +37,54 @@ class DatacenterStorageInventoryCard extends StatelessWidget {
     return Semantics(
       container: true,
       label: 'Storage inventory: $primaryValue. $detail',
-      child: Card(
+      child: PveInsetGroup(
         key: const ValueKey<String>('dashboard-storage-inventory-wide'),
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Row(
-            children: <Widget>[
-              Icon(
-                Icons.storage_outlined,
-                color: dashboardToneColor(
-                  context,
-                  DatacenterDashboardTone.neutral,
-                ),
+        padding: const EdgeInsets.all(18),
+        child: Row(
+          children: <Widget>[
+            Icon(
+              CupertinoIcons.tray_full,
+              color: dashboardToneColor(
+                context,
+                DatacenterDashboardTone.neutral,
               ),
-              const SizedBox(width: 14),
-              Expanded(
-                child: Column(
+            ),
+            const SizedBox(width: 14),
+            Expanded(
+              child: Column(
+                mainAxisSize: MainAxisSize.min,
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(
+                    'Storage inventory',
+                    style: PveAppleText.title3(context),
+                  ),
+                  const SizedBox(height: 4),
+                  Text(
+                    '$primaryValue · $detail',
+                    style: PveAppleText.secondary(context),
+                  ),
+                ],
+              ),
+            ),
+            const SizedBox(width: 12),
+            Semantics(
+              button: true,
+              label: 'View all storage',
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+                onPressed: onViewStorage,
+                child: const Row(
                   mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Text(
-                      'Storage inventory',
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
-                    const SizedBox(height: 4),
-                    Text(
-                      '$primaryValue · $detail',
-                      style: Theme.of(context).textTheme.bodyMedium,
-                    ),
+                    Text('View Storage'),
+                    SizedBox(width: 5),
+                    Icon(CupertinoIcons.chevron_forward, size: 14),
                   ],
                 ),
               ),
-              const SizedBox(width: 12),
-              Semantics(
-                button: true,
-                label: 'View all storage',
-                child: TextButton.icon(
-                  onPressed: onViewStorage,
-                  icon: const Icon(Icons.arrow_forward_outlined),
-                  label: const Text('View storage'),
-                ),
-              ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

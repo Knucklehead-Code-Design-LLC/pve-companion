@@ -1,0 +1,98 @@
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart';
+import 'package:flutter_test/flutter_test.dart';
+import 'package:pve_companion/app/pve_companion_theme.dart';
+import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
+import 'package:pve_companion/app/workspace/workspace_section.dart';
+
+void main() {
+  testWidgets('uses stable tabs in a compact window', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(find.byType(CupertinoTabBar), findsOneWidget);
+    expect(find.text('Page: Overview'), findsOneWidget);
+
+    await tester.tap(find.text('Guests'));
+    await tester.pump();
+
+    expect(find.text('Page: Guests'), findsOneWidget);
+    expect(find.bySemanticsLabel('Guests'), findsWidgets);
+  });
+
+  testWidgets('uses a persistent sidebar in a wide window', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(find.byType(CupertinoTabBar), findsNothing);
+    expect(find.text('DATACENTER'), findsOneWidget);
+
+    await tester.tap(find.text('Storage'));
+    await tester.pump();
+
+    expect(find.text('Page: Storage'), findsOneWidget);
+  });
+
+  testWidgets('keeps compact navigation readable with larger text', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(textScaler: TextScaler.linear(2)),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Overview'), findsOneWidget);
+    expect(find.text('Tasks'), findsOneWidget);
+  });
+}
+
+class _NavigationHarness extends StatefulWidget {
+  const _NavigationHarness({this.textScaler = TextScaler.noScaling});
+
+  final TextScaler textScaler;
+
+  @override
+  State<_NavigationHarness> createState() => _NavigationHarnessState();
+}
+
+class _NavigationHarnessState extends State<_NavigationHarness> {
+  WorkspaceSection _section = WorkspaceSection.overview;
+
+  @override
+  Widget build(BuildContext context) {
+    return MaterialApp(
+      theme: PveCompanionTheme.light(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: widget.textScaler),
+          child: child!,
+        );
+      },
+      home: Scaffold(
+        body: AdaptiveWorkspaceContent(
+          section: _section,
+          onSectionChanged: (WorkspaceSection section) {
+            setState(() => _section = section);
+          },
+          pages: WorkspaceSection.values
+              .map(
+                (WorkspaceSection section) =>
+                    Center(child: Text('Page: ${section.label}')),
+              )
+              .toList(growable: false),
+        ),
+      ),
+    );
+  }
+}

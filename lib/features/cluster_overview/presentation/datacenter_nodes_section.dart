@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/datacenter_health.dart';
 import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_section_header.dart';
@@ -73,11 +74,9 @@ class _NoNodeDataCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return const Card(
-      child: Padding(
-        padding: EdgeInsets.all(18),
-        child: Text('No nodes were reported by this server.'),
-      ),
+    return const PveInsetGroup(
+      padding: EdgeInsets.all(18),
+      child: Text('No nodes were reported by this server.'),
     );
   }
 }
@@ -97,50 +96,41 @@ class _DatacenterNodeCard extends StatelessWidget {
     return Semantics(
       button: true,
       label: 'View node ${node.node.name}. $statusLabel.',
-      child: Card(
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(16),
-          child: Padding(
-            padding: const EdgeInsets.all(18),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
+      child: PveInsetGroup(
+        onTap: onTap,
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
               children: <Widget>[
-                Row(
-                  children: <Widget>[
-                    Icon(
-                      Icons.dns_outlined,
-                      color: dashboardToneColor(context, tone),
-                    ),
-                    const SizedBox(width: 10),
-                    Expanded(
-                      child: Text(
-                        node.node.name,
-                        style: Theme.of(context).textTheme.titleMedium,
-                      ),
-                    ),
-                    Text(
-                      statusLabel,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: dashboardToneColor(context, tone),
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                  ],
+                Icon(
+                  CupertinoIcons.rectangle_stack,
+                  color: dashboardToneColor(context, tone),
                 ),
-                const SizedBox(height: 18),
-                _NodePressureRow(
-                  label: 'CPU',
-                  pressure: node.cpu,
-                  useBytes: false,
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    node.node.name,
+                    style: PveAppleText.title3(context),
+                  ),
                 ),
-                const SizedBox(height: 14),
-                _NodePressureRow(label: 'Memory', pressure: node.memory),
-                const SizedBox(height: 14),
-                _NodePressureRow(label: 'Root disk', pressure: node.rootDisk),
+                Text(
+                  statusLabel,
+                  style: PveAppleText.caption(context).copyWith(
+                    color: dashboardToneColor(context, tone),
+                    fontWeight: FontWeight.w700,
+                  ),
+                ),
               ],
             ),
-          ),
+            const SizedBox(height: 18),
+            _NodePressureRow(label: 'CPU', pressure: node.cpu, useBytes: false),
+            const SizedBox(height: 14),
+            _NodePressureRow(label: 'Memory', pressure: node.memory),
+            const SizedBox(height: 14),
+            _NodePressureRow(label: 'Root disk', pressure: node.rootDisk),
+          ],
         ),
       ),
     );
@@ -165,43 +155,45 @@ class _NodePressureRow extends StatelessWidget {
       reportedPressure,
     );
     final String value = _nodePressureValue(reportedPressure, useBytes);
+    final bool usesLargeText = MediaQuery.textScalerOf(context).scale(12) >= 20;
     return Semantics(
       label: '$label: $value, ${dashboardPressureLabel(reportedPressure)}',
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          Row(
-            children: <Widget>[
-              Expanded(
-                child: Text(
-                  label,
-                  style: Theme.of(context).textTheme.labelMedium,
+          if (usesLargeText)
+            Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(label, style: PveAppleText.caption(context)),
+                const SizedBox(height: 3),
+                Text(
+                  value,
+                  style: PveAppleText.caption(
+                    context,
+                  ).copyWith(color: dashboardToneColor(context, tone)),
                 ),
-              ),
-              Text(
-                value,
-                style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                  color: dashboardToneColor(context, tone),
-                ),
-              ),
-            ],
-          ),
-          const SizedBox(height: 6),
-          if (reportedPressure == null)
-            Container(
-              height: 5,
-              decoration: BoxDecoration(
-                color: Theme.of(context).colorScheme.outlineVariant,
-                borderRadius: BorderRadius.circular(3),
-              ),
+              ],
             )
           else
-            LinearProgressIndicator(
-              value: reportedPressure.progressFraction,
-              color: dashboardToneColor(context, tone),
-              minHeight: 5,
-              borderRadius: BorderRadius.circular(3),
+            Row(
+              children: <Widget>[
+                Expanded(
+                  child: Text(label, style: PveAppleText.caption(context)),
+                ),
+                Text(
+                  value,
+                  style: PveAppleText.caption(
+                    context,
+                  ).copyWith(color: dashboardToneColor(context, tone)),
+                ),
+              ],
             ),
+          const SizedBox(height: 6),
+          PveProgressBar(
+            value: reportedPressure?.progressFraction,
+            color: dashboardToneColor(context, tone),
+          ),
         ],
       ),
     );

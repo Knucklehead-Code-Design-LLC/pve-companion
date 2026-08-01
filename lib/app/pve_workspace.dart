@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../core/api/proxmox_session.dart';
+import '../core/presentation/pve_apple_ui.dart';
 import '../features/cluster_overview/presentation/cluster_nodes_page.dart';
 import '../features/cluster_overview/presentation/cluster_overview_page.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
@@ -13,9 +14,8 @@ import 'pve_companion_about.dart';
 import 'pve_companion_controller.dart';
 import 'workspace/adaptive_workspace_content.dart';
 import 'workspace/disconnected_workspace.dart';
-import 'workspace/server_menu.dart';
-import 'workspace/workspace_actions_menu.dart';
 import 'workspace/workspace_section.dart';
+import 'workspace/workspace_toolbar.dart';
 
 class PveWorkspace extends StatefulWidget {
   const PveWorkspace({super.key, required this.controller});
@@ -36,50 +36,46 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     final ConnectionProfile? selectedProfile = profiles.selectedProfile;
     final ProxmoxSession? session = profiles.activeSession;
 
-    return Scaffold(
-      appBar: AppBar(
-        titleSpacing: 20,
-        title: ServerMenu(
-          profiles: profiles.profiles,
-          selectedProfile: selectedProfile,
-          onSelected: _connectToProfile,
-        ),
-        actions: <Widget>[
-          if (session != null)
-            IconButton(
-              tooltip: 'Refresh cluster',
-              onPressed: widget.controller.refreshCluster,
-              icon: const Icon(Icons.refresh),
-            ),
-          WorkspaceActionsMenu(
-            connected: session != null,
-            onRefresh: widget.controller.refreshCluster,
-            onDisconnect: widget.controller.disconnect,
-            onManageServers: () => showConnectionProfilesSheet(
-              context,
-              controller: widget.controller,
-            ),
-            onAbout: () => showPveCompanionAboutDialog(context),
-          ),
-          const SizedBox(width: 4),
-        ],
-      ),
-      body: session == null
-          ? DisconnectedWorkspace(
-              profile: selectedProfile,
-              status: profiles.connectionStatus,
-              errorMessage: profiles.errorMessage,
-              onConnect: _connectSelectedProfile,
-              onAddServer: () => showAddConnectionProfileSheet(
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      child: SafeArea(
+        bottom: false,
+        child: Column(
+          children: <Widget>[
+            WorkspaceToolbar(
+              profiles: profiles.profiles,
+              selectedProfile: selectedProfile,
+              connected: session != null,
+              onConnectToProfile: _connectToProfile,
+              onRefresh: widget.controller.refreshCluster,
+              onDisconnect: widget.controller.disconnect,
+              onManageServers: () => showConnectionProfilesSheet(
                 context,
                 controller: widget.controller,
               ),
-            )
-          : AdaptiveWorkspaceContent(
-              section: _section,
-              onSectionChanged: _selectSection,
-              pages: _buildPages(session),
+              onAbout: () => showPveCompanionAboutDialog(context),
             ),
+            Expanded(
+              child: session == null
+                  ? DisconnectedWorkspace(
+                      profile: selectedProfile,
+                      status: profiles.connectionStatus,
+                      errorMessage: profiles.errorMessage,
+                      onConnect: _connectSelectedProfile,
+                      onAddServer: () => showAddConnectionProfileSheet(
+                        context,
+                        controller: widget.controller,
+                      ),
+                    )
+                  : AdaptiveWorkspaceContent(
+                      section: _section,
+                      onSectionChanged: _selectSection,
+                      pages: _buildPages(session),
+                    ),
+            ),
+          ],
+        ),
+      ),
     );
   }
 
@@ -122,9 +118,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         ? 'The server certificate changed. Remove and add this server again '
               'after verifying its new fingerprint.'
         : result.message ?? 'Connection was not completed.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    await _showConnectionError(message);
   }
 
   Future<void> _connectSelectedProfile() async {
@@ -138,8 +132,23 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         ? 'The server certificate changed. Remove and add this server again '
               'after verifying its new fingerprint.'
         : result.message ?? 'Connection was not completed.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+    await _showConnectionError(message);
+  }
+
+  Future<void> _showConnectionError(String message) {
+    return showCupertinoDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+        title: const Text('Couldn’t Connect'),
+        content: Text(message),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }

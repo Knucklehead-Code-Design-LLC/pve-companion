@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../core/api/proxmox_session.dart';
-import '../../../core/presentation/modal_sheet_grabber.dart';
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../application/guest_detail_controller.dart';
 import '../data/proxmox_guest_repository.dart';
 import '../domain/pve_guest.dart';
@@ -14,16 +14,18 @@ Future<void> showGuestDetailSheet(
   required ProxmoxSession session,
   required Future<void> Function() onGuestPowerAction,
 }) {
-  return showModalBottomSheet<void>(
+  return showCupertinoSheet<void>(
     context: context,
-    isScrollControlled: true,
-    builder: (BuildContext sheetContext) {
-      return _GuestDetailSheet(
-        guest: guest,
-        session: session,
-        onGuestPowerAction: onGuestPowerAction,
-      );
-    },
+    useNestedNavigation: true,
+    scrollableBuilder:
+        (BuildContext sheetContext, ScrollController scrollController) {
+          return _GuestDetailSheet(
+            guest: guest,
+            session: session,
+            scrollController: scrollController,
+            onGuestPowerAction: onGuestPowerAction,
+          );
+        },
   );
 }
 
@@ -31,11 +33,13 @@ class _GuestDetailSheet extends StatefulWidget {
   const _GuestDetailSheet({
     required this.guest,
     required this.session,
+    required this.scrollController,
     required this.onGuestPowerAction,
   });
 
   final PveGuest guest;
   final ProxmoxSession session;
+  final ScrollController scrollController;
   final Future<void> Function() onGuestPowerAction;
 
   @override
@@ -64,56 +68,60 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: _controller,
-        builder: (BuildContext context, Widget? child) {
-          return ConstrainedBox(
-            constraints: BoxConstraints(
-              maxHeight: MediaQuery.sizeOf(context).height * 0.88,
-              maxWidth: 720,
-            ),
-            child: Padding(
-              padding: const EdgeInsets.fromLTRB(20, 12, 20, 24),
-              child: Column(
-                children: <Widget>[
-                  const ModalSheetGrabber(),
-                  const SizedBox(height: 16),
-                  GuestTitleBar(guest: widget.guest),
-                  const SizedBox(height: 16),
-                  Expanded(child: _buildContent(context)),
-                ],
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      navigationBar: CupertinoNavigationBar(
+        middle: Text(widget.guest.title),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done'),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: AnimatedBuilder(
+          animation: _controller,
+          builder: (BuildContext context, Widget? child) {
+            return Center(
+              child: ConstrainedBox(
+                constraints: const BoxConstraints(maxWidth: 760),
+                child: Padding(
+                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
+                  child: Column(
+                    children: <Widget>[
+                      GuestTitleBar(guest: widget.guest),
+                      const SizedBox(height: 18),
+                      Expanded(child: _buildContent(context)),
+                    ],
+                  ),
+                ),
               ),
-            ),
-          );
-        },
+            );
+          },
+        ),
       ),
     );
   }
 
   Widget _buildContent(BuildContext context) {
     return switch (_controller.state) {
-      GuestDetailLoadState.loading => const Center(
-        child: CircularProgressIndicator(),
+      GuestDetailLoadState.loading => const PveLoadingState(
+        label: 'Loading guest details',
       ),
-      GuestDetailLoadState.failed => Center(
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              _controller.errorMessage ?? 'Guest details could not be loaded.',
-            ),
-            const SizedBox(height: 12),
-            OutlinedButton.icon(
-              onPressed: _controller.load,
-              icon: const Icon(Icons.refresh),
-              label: const Text('Retry'),
-            ),
-          ],
-        ),
+      GuestDetailLoadState.failed => PveEmptyState(
+        icon: CupertinoIcons.exclamationmark_triangle,
+        title: 'Guest details unavailable',
+        message:
+            _controller.errorMessage ??
+            'The guest details could not be loaded.',
+        actionLabel: 'Try Again',
+        onAction: _controller.load,
+        destructive: true,
       ),
       GuestDetailLoadState.ready => GuestDetailContent(
         controller: _controller,
+        scrollController: widget.scrollController,
         onPowerAction: _confirmAndRunPowerAction,
       ),
     };
@@ -137,9 +145,20 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       if (!mounted) {
         return;
       }
-      ScaffoldMessenger.of(
-        context,
-      ).showSnackBar(SnackBar(content: Text('${action.label} was requested.')));
+      await showCupertinoDialog<void>(
+        context: context,
+        builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+          title: const Text('Request Sent'),
+          content: Text('${action.label} was requested through Proxmox.'),
+          actions: <Widget>[
+            CupertinoDialogAction(
+              isDefaultAction: true,
+              onPressed: () => Navigator.of(dialogContext).pop(),
+              child: const Text('OK'),
+            ),
+          ],
+        ),
+      );
     }
   }
 }

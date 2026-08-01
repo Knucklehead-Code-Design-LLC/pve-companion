@@ -26,6 +26,9 @@ parity:
 - An adaptive Overview command center for Mac, iPad, and iPhone that puts
   operational problems first, then capacity, workload, nodes, and recent
   reported activity. Stopped guests remain workload inventory, not incidents.
+- Apple-native navigation and interaction patterns: stable tabs on iPhone,
+  a persistent sidebar on iPad and Mac, inset grouped data, Cupertino sheets,
+  clear confirmations, Dynamic Type support, and system light/dark appearance.
 - Drill-down navigation for nodes, guest inventory, configured storage, and
   recent tasks.
 - VM/LXC details plus confirmed, non-force start, shutdown, and reboot
@@ -94,6 +97,12 @@ flutter run -d <ios-simulator-id> \
 See [App Store screenshots](docs/app-store/screenshots/README.md) for the exact
 device canvases and repeatable multi-scene capture command.
 
+The Mac screenshots need no signing identity:
+
+```sh
+tool/capture_macos_store_screenshots.sh
+```
+
 ### Dashboard health semantics
 
 Overview derives its health banner from the latest reported snapshot. Offline
@@ -130,10 +139,10 @@ format, analysis, and tests on an Ubuntu runner only.
 ## Project design
 
 The project uses feature-owned folders and an explicit dependency direction:
-widget → controller → repository → HTTP service. It uses three direct
-third-party packages only: vetted SHA-256 support, Keychain storage, and
-non-secret preference storage. The dashboard update adds no runtime
-dependencies. The full rationale is in the
+widget → controller → repository → HTTP service. It uses four direct
+third-party packages only: Apple’s official Cupertino icon font, vetted
+SHA-256 support, Keychain storage, and non-secret preference storage. The
+full rationale is in the
 [dependency audit](docs/architecture/architecture.md#dependency-audit).
 
 The [clean-room licensing decision](docs/architecture/0001-clean-room-proxmox-client.md)

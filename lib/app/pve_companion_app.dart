@@ -1,7 +1,9 @@
 import 'dart:async';
 
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 
+import '../core/presentation/pve_apple_ui.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
 import 'pve_companion_about.dart';
@@ -39,6 +41,14 @@ class _PveCompanionAppState extends State<PveCompanionApp> {
       theme: PveCompanionTheme.light(),
       darkTheme: PveCompanionTheme.dark(),
       themeMode: ThemeMode.system,
+      builder: (BuildContext context, Widget? child) {
+        return CupertinoTheme(
+          data: PveCompanionTheme.cupertino(
+            MediaQuery.platformBrightnessOf(context),
+          ),
+          child: child!,
+        );
+      },
       home: AnimatedBuilder(
         animation: widget.controller,
         builder: (BuildContext context, Widget? child) {
@@ -46,8 +56,9 @@ class _PveCompanionAppState extends State<PveCompanionApp> {
               widget.controller.connectionProfiles;
           switch (profiles.loadState) {
             case ConnectionProfilesLoadState.loading:
-              return const Scaffold(
-                body: Center(child: CircularProgressIndicator()),
+              return CupertinoPageScaffold(
+                backgroundColor: PveAppleColors.page(context),
+                child: const PveLoadingState(label: 'Loading saved servers'),
               );
             case ConnectionProfilesLoadState.failed:
               return _ConnectionProfileLoadFailure(
@@ -82,37 +93,15 @@ class _ConnectionProfileLoadFailure extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      body: Center(
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 440),
-            child: Column(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(
-                  Icons.error_outline,
-                  size: 42,
-                  color: Theme.of(context).colorScheme.error,
-                ),
-                const SizedBox(height: 16),
-                Text(
-                  'Unable to open saved servers',
-                  style: Theme.of(context).textTheme.titleLarge,
-                ),
-                const SizedBox(height: 8),
-                Text(message, textAlign: TextAlign.center),
-                const SizedBox(height: 20),
-                FilledButton.icon(
-                  onPressed: () => onRetry(),
-                  icon: const Icon(Icons.refresh),
-                  label: const Text('Retry'),
-                ),
-              ],
-            ),
-          ),
-        ),
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      child: PveEmptyState(
+        icon: CupertinoIcons.exclamationmark_triangle,
+        title: 'Saved servers are unavailable',
+        message: message,
+        actionLabel: 'Try Again',
+        onAction: () => onRetry(),
+        destructive: true,
       ),
     );
   }

@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 enum WorkspaceSection { overview, guests, nodes, storage, tasks }
 
@@ -12,10 +12,18 @@ extension WorkspaceSectionPresentation on WorkspaceSection {
   };
 
   IconData get icon => switch (this) {
-    WorkspaceSection.overview => Icons.grid_view_outlined,
-    WorkspaceSection.guests => Icons.memory_outlined,
-    WorkspaceSection.nodes => Icons.dns_outlined,
-    WorkspaceSection.storage => Icons.storage_outlined,
-    WorkspaceSection.tasks => Icons.task_outlined,
+    WorkspaceSection.overview => CupertinoIcons.square_grid_2x2,
+    WorkspaceSection.guests => CupertinoIcons.cube_box,
+    WorkspaceSection.nodes => CupertinoIcons.rectangle_stack,
+    WorkspaceSection.storage => CupertinoIcons.tray_full,
+    WorkspaceSection.tasks => CupertinoIcons.check_mark_circled,
+  };
+
+  IconData get selectedIcon => switch (this) {
+    WorkspaceSection.overview => CupertinoIcons.square_grid_2x2_fill,
+    WorkspaceSection.guests => CupertinoIcons.cube_box_fill,
+    WorkspaceSection.nodes => CupertinoIcons.rectangle_stack_fill,
+    WorkspaceSection.storage => CupertinoIcons.tray_full_fill,
+    WorkspaceSection.tasks => CupertinoIcons.check_mark_circled_solid,
   };
 }

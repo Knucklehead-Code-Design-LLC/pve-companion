@@ -37,9 +37,12 @@ void main() {
       );
       expect(find.text('3 / 4 running'), findsOneWidget);
 
-      await tester.drag(find.byType(ListView), const Offset(0, -900));
+      await tester.drag(
+        find.byKey(const ValueKey<String>('datacenter-dashboard')),
+        const Offset(0, -900),
+      );
       await tester.pump();
-      await tester.tap(find.text('View guests'));
+      await tester.tap(find.text('View Guests'));
       expect(guestDrillDownCount, 1);
     },
   );
@@ -87,6 +90,52 @@ void main() {
     );
   });
 
+  testWidgets('keeps the compact command center usable with larger text', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _DashboardTestApp(
+        controller: controller,
+        textScaler: const TextScaler.linear(2),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Datacenter'), findsOneWidget);
+    expect(find.text('No reported issues.'), findsOneWidget);
+  });
+
+  testWidgets('keeps the wide command center usable with larger text', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1180, 860));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _DashboardTestApp(
+        controller: controller,
+        textScaler: const TextScaler.linear(2),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('View Storage'), findsOneWidget);
+    expect(find.text('Nodes'), findsOneWidget);
+  });
+
   testWidgets('forwards each dashboard drill-down callback', (
     WidgetTester tester,
   ) async {
@@ -112,10 +161,13 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('View nodes'));
-    await tester.tap(find.text('View guests'));
-    await tester.tap(find.text('View storage'));
-    await tester.drag(find.byType(ListView), const Offset(0, -900));
+    await tester.tap(find.text('View Nodes'));
+    await tester.tap(find.text('View Guests'));
+    await tester.tap(find.text('View Storage'));
+    await tester.drag(
+      find.byKey(const ValueKey<String>('datacenter-dashboard')),
+      const Offset(0, -900),
+    );
     await tester.pump();
     await tester.tap(find.bySemanticsLabel('View all tasks'));
 
@@ -133,6 +185,7 @@ class _DashboardTestApp extends StatelessWidget {
     this.onViewNodes,
     this.onViewStorage,
     this.onViewTasks,
+    this.textScaler = TextScaler.noScaling,
   });
 
   final ClusterOverviewController controller;
@@ -140,11 +193,18 @@ class _DashboardTestApp extends StatelessWidget {
   final VoidCallback? onViewNodes;
   final VoidCallback? onViewStorage;
   final VoidCallback? onViewTasks;
+  final TextScaler textScaler;
 
   @override
   Widget build(BuildContext context) {
     return MaterialApp(
       theme: PveCompanionTheme.light(),
+      builder: (BuildContext context, Widget? child) {
+        return MediaQuery(
+          data: MediaQuery.of(context).copyWith(textScaler: textScaler),
+          child: child!,
+        );
+      },
       home: Scaffold(
         body: ClusterOverviewPage(
           controller: controller,

@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/datacenter_health.dart';
 import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_visuals.dart';
@@ -34,7 +35,7 @@ class DatacenterPressureCard extends StatelessWidget {
       tone: isCpu
           ? dashboardToneForPressure(reportedPressure)
           : DatacenterDashboardTone.neutral,
-      icon: isCpu ? Icons.speed_outlined : Icons.pie_chart_outline,
+      icon: isCpu ? CupertinoIcons.speedometer : CupertinoIcons.chart_pie,
       progressValue: reportedPressure?.progressFraction,
       progressLabel: isCpu ? dashboardPressureLabel(reportedPressure) : null,
       semanticLabel: '$label: $primaryValue. $detail',
@@ -76,68 +77,63 @@ class DatacenterMetricCard extends StatelessWidget {
     return Semantics(
       container: true,
       label: semanticLabel,
-      child: Card(
-        child: Padding(
-          padding: const EdgeInsets.all(18),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Row(
-                children: <Widget>[
-                  Icon(icon, color: accent),
-                  const SizedBox(width: 10),
-                  Expanded(
-                    child: Text(
-                      label,
-                      style: Theme.of(context).textTheme.titleSmall,
-                    ),
+      child: PveInsetGroup(
+        padding: const EdgeInsets.all(18),
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Icon(icon, color: accent),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(label, style: PveAppleText.title3(context)),
+                ),
+                if (progressLabel != null)
+                  Text(
+                    progressLabel!,
+                    style: PveAppleText.caption(
+                      context,
+                    ).copyWith(color: accent, fontWeight: FontWeight.w700),
                   ),
-                  if (progressLabel != null)
-                    Text(
-                      progressLabel!,
-                      style: Theme.of(context).textTheme.labelLarge?.copyWith(
-                        color: accent,
-                        fontWeight: FontWeight.w700,
-                      ),
-                    ),
-                ],
-              ),
+              ],
+            ),
+            const SizedBox(height: 16),
+            Text(primaryValue, style: PveAppleText.title2(context)),
+            const SizedBox(height: 6),
+            Text(detail, style: PveAppleText.secondary(context)),
+            if (progressValue != null) ...<Widget>[
               const SizedBox(height: 16),
-              Text(
-                primaryValue,
-                style: Theme.of(
-                  context,
-                ).textTheme.titleLarge?.copyWith(fontWeight: FontWeight.w700),
-              ),
-              const SizedBox(height: 6),
-              Text(detail, style: Theme.of(context).textTheme.bodySmall),
-              if (progressValue != null) ...<Widget>[
-                const SizedBox(height: 16),
-                LinearProgressIndicator(
-                  value: progressValue,
-                  color: accent,
-                  minHeight: 6,
-                  borderRadius: BorderRadius.circular(3),
-                ),
-              ],
-              if (actionLabel != null && onAction != null) ...<Widget>[
-                const SizedBox(height: 8),
-                Align(
-                  alignment: Alignment.centerRight,
-                  child: Semantics(
-                    button: true,
-                    label: actionSemanticsLabel,
-                    child: TextButton.icon(
-                      onPressed: onAction,
-                      icon: const Icon(Icons.arrow_forward_outlined),
-                      label: Text(actionLabel!),
+              PveProgressBar(value: progressValue, color: accent),
+            ],
+            if (actionLabel != null && onAction != null) ...<Widget>[
+              const SizedBox(height: 8),
+              Align(
+                alignment: Alignment.centerRight,
+                child: Semantics(
+                  button: true,
+                  label: actionSemanticsLabel,
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 8,
+                      vertical: 6,
+                    ),
+                    onPressed: onAction,
+                    child: Row(
+                      children: <Widget>[
+                        Expanded(
+                          child: Text(actionLabel!, textAlign: TextAlign.end),
+                        ),
+                        const SizedBox(width: 5),
+                        const Icon(CupertinoIcons.chevron_forward, size: 14),
+                      ],
                     ),
                   ),
                 ),
-              ],
+              ),
             ],
-          ),
+          ],
         ),
       ),
     );
