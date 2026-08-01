@@ -7,13 +7,29 @@ export 'connection_profile_form_sheet.dart' show showAddConnectionProfileSheet;
 export 'connection_profiles_list_sheet.dart' show showConnectionProfilesSheet;
 
 class ConnectionProfilesWelcomeScreen extends StatelessWidget {
-  const ConnectionProfilesWelcomeScreen({super.key, required this.controller});
+  const ConnectionProfilesWelcomeScreen({
+    super.key,
+    required this.controller,
+    required this.onAbout,
+  });
 
   final PveCompanionController controller;
+  final VoidCallback onAbout;
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
+      appBar: AppBar(
+        title: const Text('PVE Companion'),
+        actions: <Widget>[
+          IconButton(
+            onPressed: onAbout,
+            tooltip: 'About and privacy',
+            icon: const Icon(Icons.info_outline),
+          ),
+          const SizedBox(width: 4),
+        ],
+      ),
       body: Center(
         child: ConstrainedBox(
           constraints: const BoxConstraints(maxWidth: 540),
@@ -26,10 +42,14 @@ class ConnectionProfilesWelcomeScreen extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
-                    Icon(
-                      Icons.hub_outlined,
-                      size: 42,
-                      color: Theme.of(context).colorScheme.primary,
+                    ClipRRect(
+                      borderRadius: BorderRadius.circular(16),
+                      child: Image.asset(
+                        'assets/brand/pve_companion_mark.png',
+                        width: 64,
+                        height: 64,
+                        semanticLabel: 'PVE Companion logo',
+                      ),
                     ),
                     const SizedBox(height: 20),
                     Text(

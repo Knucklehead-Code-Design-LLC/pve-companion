@@ -15,7 +15,7 @@ flutter analyze
 flutter test
 flutter build ios --simulator --no-codesign
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
-  -configuration Debug -derivedDataPath /tmp/pve-companion-macos-build \
+  -configuration Release -derivedDataPath /tmp/pve-companion-macos-build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 ```
 
@@ -29,6 +29,12 @@ you are ready to use a signing identity owned by the release organization.
 Keep the application identifier as
 `com.knuckleheadcodedesign.pvecompanion` unless a deliberate migration is
 planned.
+
+The targets include an app-level privacy manifest and declare
+`ITSAppUsesNonExemptEncryption = false`. That declaration reflects the current
+implementation, which uses platform TLS, Keychain, and SHA-256 certificate
+fingerprinting without shipping non-exempt encryption. Reassess it whenever
+cryptographic or transport behavior changes.
 
 ## Deterministic dashboard preview
 
@@ -59,6 +65,12 @@ launch.
    password, token secret, ticket, CSRF token, private hostname, or IP address.
 5. Configure App Store signing in Xcode or the approved release system; never
    commit it here.
+
+Use the focused [TestFlight checklist](testflight-checklist.md) for App Store
+Connect setup, archive validation, upload, and review information. Proposed
+store copy and URLs live in [app-store-metadata.md](app-store-metadata.md), and
+validated screenshot assets live under
+[`docs/app-store/screenshots`](../app-store/screenshots/README.md).
 
 GitHub Actions intentionally does not perform Apple builds by default: hosted
 macOS runners are more expensive, and unsigned simulator builds are practical

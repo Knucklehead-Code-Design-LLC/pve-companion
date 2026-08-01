@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../../../app/pve_companion_controller.dart';
+import '../../../core/presentation/modal_sheet_grabber.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_profile.dart';
 import 'connection_profile_form_sheet.dart';
@@ -40,7 +41,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  const _SheetGrabber(),
+                  const ModalSheetGrabber(),
                   const SizedBox(height: 20),
                   Row(
                     children: <Widget>[
@@ -145,24 +146,6 @@ class ConnectionProfilesListSheet extends StatelessWidget {
     if (approved == true) {
       await controller.removeProfile(profile.id);
     }
-  }
-}
-
-class _SheetGrabber extends StatelessWidget {
-  const _SheetGrabber();
-
-  @override
-  Widget build(BuildContext context) {
-    return Center(
-      child: Container(
-        width: 36,
-        height: 4,
-        decoration: BoxDecoration(
-          color: Theme.of(context).colorScheme.outlineVariant,
-          borderRadius: BorderRadius.circular(2),
-        ),
-      ),
-    );
   }
 }
 

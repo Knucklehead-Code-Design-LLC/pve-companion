@@ -30,6 +30,8 @@ parity:
   recent tasks.
 - VM/LXC details plus confirmed, non-force start, shutdown, and reboot
   requests. Storage and tasks are read-only in this milestone.
+- An original, trademark-distinct app icon and deterministic App Store capture
+  flows for iPhone, iPad, and Mac.
 
 It does **not** yet provide guest consoles, guest creation, destructive
 deletion, migration, backup/restore, cluster/network configuration, roles,
@@ -53,6 +55,8 @@ port `8006` directly to the public internet.
 
 Read the [architecture and dependency audit](docs/architecture/architecture.md)
 before contributing authentication, network, or certificate changes.
+Read the public [privacy policy](PRIVACY.md) for the developer's data-handling
+commitments.
 
 ## Local development
 
@@ -77,6 +81,18 @@ for compact layout and an iPad simulator for wide layout. The same target can
 run on macOS only in a development environment with a valid Apple signing
 identity, because the app's Keychain entitlement prevents an unsigned macOS
 debug launch.
+
+For App Store screenshots, use the production-widget capture target and the
+checked-in capture guide:
+
+```sh
+flutter run -d <ios-simulator-id> \
+  -t tool/store_screenshot_preview.dart \
+  --dart-define=SCREENSHOT_SCENE=overview
+```
+
+See [App Store screenshots](docs/app-store/screenshots/README.md) for the exact
+device canvases and repeatable multi-scene capture command.
 
 ### Dashboard health semantics
 
@@ -103,13 +119,13 @@ requires a real development certificate for an installable app:
 ```sh
 flutter build ios --simulator --no-codesign
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
-  -configuration Debug -derivedDataPath /tmp/pve-companion-macos-build \
+  -configuration Release -derivedDataPath /tmp/pve-companion-macos-build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 ```
 
 See [Apple build and release notes](docs/release/apple-builds.md) for signing,
-simulator, and distribution guidance. CI runs format, analysis, and tests on
-an Ubuntu runner only.
+simulator, distribution, App Store metadata, and TestFlight guidance. CI runs
+format, analysis, and tests on an Ubuntu runner only.
 
 ## Project design
 
