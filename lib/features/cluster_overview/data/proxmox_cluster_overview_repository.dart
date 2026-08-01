@@ -22,6 +22,10 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
         ),
         session.getData('storage'),
         session.getData(
+          'cluster/resources',
+          query: const <String, String>{'type': 'storage'},
+        ),
+        session.getData(
           'cluster/tasks',
           query: const <String, String>{'limit': '25'},
         ),
@@ -32,8 +36,8 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
       version: _decodeVersion(responses[0]),
       nodes: _decodeNodes(responses[1]),
       guests: _decodeGuests(responses[2]),
-      storages: _decodeStorages(responses[3]),
-      tasks: _decodeTasks(responses[4]),
+      storages: _decodeStorages(responses[3], responses[4]),
+      tasks: _decodeTasks(responses[5]),
     );
   }
 
@@ -93,14 +97,43 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
         .toList(growable: false);
   }
 
-  List<ClusterStorage> _decodeStorages(Object? value) {
-    return _objects(value, 'storage')
+  List<ClusterStorage> _decodeStorages(
+    Object? configurationValue,
+    Object? resourceValue,
+  ) {
+    final Map<String, List<ClusterStorageResource>> resourcesByStorage =
+        <String, List<ClusterStorageResource>>{};
+    for (final Map<String, Object?> resource in _objects(
+      resourceValue,
+      'storage resources',
+    )) {
+      final String? storageName = _optionalString(resource, 'storage');
+      final String? nodeName = _optionalString(resource, 'node');
+      if (storageName == null || nodeName == null) {
+        continue;
+      }
+      resourcesByStorage
+          .putIfAbsent(storageName, () => <ClusterStorageResource>[])
+          .add(
+            ClusterStorageResource(
+              node: nodeName,
+              status: _optionalString(resource, 'status') ?? '',
+              usedBytes: _optionalInt(resource, 'disk'),
+              capacityBytes: _optionalInt(resource, 'maxdisk'),
+            ),
+          );
+    }
+    return _objects(configurationValue, 'storage')
         .map((Map<String, Object?> storage) {
+          final String name = _requiredString(storage, 'storage', 'storage');
           return ClusterStorage(
-            name: _requiredString(storage, 'storage', 'storage'),
+            name: name,
             type: _requiredString(storage, 'type', 'storage'),
             content: _optionalString(storage, 'content') ?? 'Not reported',
             shared: storage['shared'] == 1 || storage['shared'] == true,
+            resources: List<ClusterStorageResource>.unmodifiable(
+              resourcesByStorage[name] ?? const <ClusterStorageResource>[],
+            ),
           );
         })
         .toList(growable: false);

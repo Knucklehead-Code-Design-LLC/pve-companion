@@ -16,7 +16,10 @@ capture_device() {
   rotation_degrees="$3"
 
   mkdir -p "$output_directory"
-  xcrun simctl boot "$device_udid" 2>/dev/null || true
+  # A clean boot resets stale simulator rotation so App Store canvases remain
+  # deterministic across repeated capture sessions.
+  xcrun simctl shutdown "$device_udid" 2>/dev/null || true
+  xcrun simctl boot "$device_udid"
   xcrun simctl bootstatus "$device_udid" -b
   xcrun simctl status_bar "$device_udid" override \
     --time '9:41' \
@@ -49,7 +52,7 @@ capture_scene() {
     --dart-define="SCREENSHOT_SCENE=$scene" \
     --no-resident \
     --no-pub
-  sleep 2
+  sleep 3
   xcrun simctl io "$device_udid" screenshot \
     --type=jpeg \
     "$output_directory/$filename"

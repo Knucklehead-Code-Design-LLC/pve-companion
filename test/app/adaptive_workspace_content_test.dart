@@ -54,6 +54,10 @@ void main() {
 
     expect(find.text('Connected'), findsOneWidget);
     expect(
+      find.byKey(const ValueKey<String>('workspace-footer-refresh')),
+      findsOneWidget,
+    );
+    expect(
       tester
           .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
           .width,
@@ -125,6 +129,9 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
             onManageServers: () {},
             onAbout: () {},
           ),
+          onRefresh: () async {},
+          refreshing: false,
+          lastUpdatedAt: DateTime.now(),
         ),
       ),
     );

@@ -5,6 +5,7 @@ import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_overview_format.dart';
 import '../../cluster_overview/presentation/datacenter_dashboard_visuals.dart';
+import 'task_activity_insights.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({
@@ -31,9 +32,8 @@ class _TasksPageState extends State<TasksPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
-      context,
-    );
+    final bool usesExpandedPresentation =
+        PveAppleLayout.usesExpandedPresentation(context);
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Tasks',
@@ -54,7 +54,7 @@ class _TasksPageState extends State<TasksPage> {
             child: _buildContent(
               context,
               snapshot.tasks,
-              usesIpadPresentation: usesIpadPresentation,
+              usesExpandedPresentation: usesExpandedPresentation,
             ),
           ),
       ],
@@ -64,9 +64,11 @@ class _TasksPageState extends State<TasksPage> {
   Widget _buildContent(
     BuildContext context,
     List<ClusterTask> tasks, {
-    required bool usesIpadPresentation,
+    required bool usesExpandedPresentation,
   }) {
-    final List<ClusterTask> visibleTasks = tasks
+    final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
+      ..sort(_compareTaskRecency);
+    final List<ClusterTask> visibleTasks = orderedTasks
         .where(_matchesFilter)
         .toList(growable: false);
     final int runningCount = tasks
@@ -79,6 +81,7 @@ class _TasksPageState extends State<TasksPage> {
         .where((ClusterTask task) => task.state == ClusterTaskState.successful)
         .length;
     final Widget filter = PveSlidingSegmentedControl<_TaskFilter>(
+      key: const ValueKey<String>('task-state-filter'),
       groupValue: _filter,
       children: const <_TaskFilter, Widget>{
         _TaskFilter.all: Padding(
@@ -104,56 +107,45 @@ class _TasksPageState extends State<TasksPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (usesIpadPresentation)
-          PveMetricStrip(
-            items: <PveMetricStripItem>[
-              PveMetricStripItem(
-                label: 'Recent',
-                value: '${tasks.length}',
-                icon: CupertinoIcons.clock_fill,
-              ),
-              PveMetricStripItem(
-                label: 'Running',
-                value: '$runningCount',
-                icon: CupertinoIcons.arrow_2_circlepath,
-                color: PveAppleColors.warning(context),
-              ),
-              PveMetricStripItem(
-                label: 'Successful',
-                value: '$successfulCount',
-                icon: CupertinoIcons.check_mark_circled_solid,
-                color: PveAppleColors.success(context),
-              ),
-              PveMetricStripItem(
-                label: 'Failed',
-                value: '$failedCount',
-                icon: CupertinoIcons.xmark_circle_fill,
-                color: failedCount == 0
-                    ? PveAppleColors.success(context)
-                    : PveAppleColors.destructive(context),
-              ),
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              '${tasks.length} recent · $runningCount running · '
-              '$failedCount failed',
-              style: PveAppleText.caption(context),
+        PveMetricStrip(
+          items: <PveMetricStripItem>[
+            PveMetricStripItem(
+              label: 'Recent',
+              value: '${tasks.length}',
+              icon: CupertinoIcons.clock_fill,
             ),
-          ),
-        const SizedBox(height: 12),
-        if (usesIpadPresentation)
-          PveWideControlBar(
-            primary: Text(
-              'Recent activity',
-              style: PveAppleText.title2(context),
+            PveMetricStripItem(
+              label: 'Running',
+              value: '$runningCount',
+              icon: CupertinoIcons.arrow_2_circlepath,
+              color: PveAppleColors.warning(context),
             ),
-            secondary: filter,
-          )
-        else
-          filter,
+            PveMetricStripItem(
+              label: 'Successful',
+              value: '$successfulCount',
+              icon: CupertinoIcons.check_mark_circled_solid,
+              color: PveAppleColors.success(context),
+            ),
+            PveMetricStripItem(
+              label: 'Failed',
+              value: '$failedCount',
+              icon: CupertinoIcons.xmark_circle_fill,
+              color: failedCount == 0
+                  ? PveAppleColors.success(context)
+                  : PveAppleColors.destructive(context),
+            ),
+          ],
+        ),
+        if (usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 16),
+          TaskActivityInsights(tasks: orderedTasks),
+          const SizedBox(height: 24),
+        ] else
+          const SizedBox(height: 20),
+        PveWideControlBar(
+          primary: Text('Recent activity', style: PveAppleText.title2(context)),
+          secondary: filter,
+        ),
         const SizedBox(height: 16),
         if (tasks.isEmpty)
           PveInsetGroup(
@@ -179,7 +171,7 @@ class _TasksPageState extends State<TasksPage> {
               style: PveAppleText.secondary(context),
             ),
           )
-        else if (usesIpadPresentation)
+        else if (usesExpandedPresentation)
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool twoColumns = constraints.maxWidth >= 700;
@@ -207,6 +199,12 @@ class _TasksPageState extends State<TasksPage> {
                 .map((ClusterTask task) => _TaskRow(task: task))
                 .toList(growable: false),
           ),
+        if (!usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 24),
+          Text('Activity analysis', style: PveAppleText.title2(context)),
+          const SizedBox(height: 12),
+          TaskActivityInsights(tasks: orderedTasks),
+        ],
       ],
     );
   }
@@ -255,7 +253,8 @@ class _TaskCard extends StatelessWidget {
                 Text(task.user, style: PveAppleText.caption(context)),
                 const SizedBox(height: 2),
                 Text(
-                  formatPveDateTime(task.startedAt),
+                  '${formatPveDateTime(task.startedAt)} · '
+                  '${_taskDurationLabel(task)}',
                   style: PveAppleText.caption(context),
                 ),
               ],
@@ -293,7 +292,10 @@ class _TaskRow extends StatelessWidget {
         ),
       ),
       title: Text('${task.type} on ${task.node}'),
-      subtitle: Text('${task.user} · ${formatPveDateTime(task.startedAt)}'),
+      subtitle: Text(
+        '${task.user} · ${formatPveDateTime(task.startedAt)} · '
+        '${_taskDurationLabel(task)}',
+      ),
       additionalInfo: Text(
         dashboardTaskStateLabel(task),
         style: PveAppleText.caption(
@@ -305,3 +307,37 @@ class _TaskRow extends StatelessWidget {
 }
 
 enum _TaskFilter { all, running, failed }
+
+int _compareTaskRecency(ClusterTask left, ClusterTask right) {
+  final DateTime? leftTime = left.startedAt;
+  final DateTime? rightTime = right.startedAt;
+  if (leftTime == null && rightTime == null) {
+    return 0;
+  }
+  if (leftTime == null) {
+    return 1;
+  }
+  if (rightTime == null) {
+    return -1;
+  }
+  return rightTime.compareTo(leftTime);
+}
+
+String _taskDurationLabel(ClusterTask task) {
+  final DateTime? startedAt = task.startedAt;
+  final DateTime? endedAt = task.endedAt;
+  if (endedAt == null) {
+    return task.isRunning ? 'In progress' : 'Duration unavailable';
+  }
+  if (startedAt == null || endedAt.isBefore(startedAt)) {
+    return 'Duration unavailable';
+  }
+  final Duration duration = endedAt.difference(startedAt);
+  if (duration.inHours > 0) {
+    return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
+  }
+  if (duration.inMinutes > 0) {
+    return '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
+  }
+  return '${duration.inSeconds}s';
+}

@@ -10,14 +10,14 @@ domain, data, application, and presentation code.
 | Feature | Owns |
 | --- | --- |
 | `connection_profiles` | Server profile rules, secure credential boundary, profile persistence, sign-in state, and add/manage-server UI. |
-| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
+| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, merged storage telemetry, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
 | `guests` | VM/LXC models, safe configuration projection, power command behavior, detail state, and guest UI. |
 | `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
 | `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
-| `core/presentation` | Apple-first colors, typography, inset groups, list rows, progress, status, section, and state primitives shared across features. |
+| `core/presentation` | Apple-first colors, typography, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
 
 Dependencies flow in one direction:
 
@@ -73,8 +73,12 @@ or network connection.
   Health evaluates each reporting node; cluster capacity remains explicit
   about its aggregation (CPU = highest reported node, byte metrics = complete
   known-node totals).
-- Missing or incomplete values stay unreported. Configured storage is
-  inventory because the current endpoint does not provide utilization.
+- Missing or incomplete values stay unreported. Storage configuration from
+  `/storage` is merged with per-node telemetry from
+  `/cluster/resources?type=storage`. Shared capacity is de-duplicated across
+  nodes, while local capacity is summed; the UI keeps an explicit unavailable
+  state when the connected account cannot report telemetry; availability is
+  never inferred from configuration alone.
 - Presentation is split by dashboard responsibility (health, capacity and
   workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
   dashboard widgets receive callbacks rather than depending on app navigation.
@@ -128,8 +132,11 @@ wide shell moves server identity into the sidebar and gives the detail pane one
 compact navigation bar, so iPad and Mac retain the same hierarchy without
 simulating an oversized iPhone layout.
 
-iPad presentation expands the server sidebar and adds glanceable metric strips,
-inline wide controls, and two-column inventory cards. These remain presentation
+iPad and Mac presentation use glanceable metric strips, paired insight cards,
+inline controls, and two-column inventory cards. iPhone preserves the same
+information but moves actionable inventories ahead of secondary analysis. The
+wide connected-status footer owns the labeled refresh action so the title bar
+stays focused on location and workspace commands. These remain presentation
 decisions: domain state, filters, and actions stay owned by their feature.
 
 Inventory pages use Flutter's Cupertino search fields, sliding segmented

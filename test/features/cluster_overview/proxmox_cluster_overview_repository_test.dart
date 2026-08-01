@@ -23,6 +23,48 @@ void main() {
       );
     },
   );
+
+  test('merges storage configuration with resource telemetry', () async {
+    final ProxmoxClusterOverviewRepository repository =
+        ProxmoxClusterOverviewRepository();
+    final _FixtureSession session = _FixtureSession(<String, Object?>{
+      'version': <String, Object?>{'version': '9.2'},
+      'nodes': const <Object?>[],
+      'cluster/resources?type=vm': const <Object?>[],
+      'storage': <Object?>[
+        <String, Object?>{
+          'storage': 'backup-nfs',
+          'type': 'nfs',
+          'content': 'backup',
+          'shared': 1,
+        },
+      ],
+      'cluster/resources?type=storage': <Object?>[
+        <String, Object?>{
+          'storage': 'backup-nfs',
+          'node': 'pve-01',
+          'status': 'available',
+          'disk': 400,
+          'maxdisk': 1000,
+        },
+        <String, Object?>{
+          'storage': 'backup-nfs',
+          'node': 'pve-02',
+          'status': 'available',
+          'disk': 400,
+          'maxdisk': 1000,
+        },
+      ],
+      'cluster/tasks': const <Object?>[],
+    });
+
+    final snapshot = await repository.load(session);
+
+    expect(snapshot.storages.single.reportedNodeCount, 2);
+    expect(snapshot.storages.single.usedBytes, 400);
+    expect(snapshot.storages.single.capacityBytes, 1000);
+    expect(snapshot.storages.single.usageFraction, 0.4);
+  });
 }
 
 class _FixtureSession implements ProxmoxSession {
@@ -38,7 +80,9 @@ class _FixtureSession implements ProxmoxSession {
     String resource, {
     Map<String, String> query = const <String, String>{},
   }) async {
-    return responses[resource];
+    final String? type = query['type'];
+    final String key = type == null ? resource : '$resource?type=$type';
+    return responses[key] ?? responses[resource];
   }
 
   @override

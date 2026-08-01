@@ -93,12 +93,40 @@ ClusterOverviewSnapshot datacenterDashboardHealthyPreviewSnapshot() {
         type: 'dir',
         content: 'images,iso',
         shared: false,
+        resources: <ClusterStorageResource>[
+          ClusterStorageResource(
+            node: 'pve-01',
+            status: 'available',
+            usedBytes: 210 * 1024 * 1024 * 1024,
+            capacityBytes: 600 * 1024 * 1024 * 1024,
+          ),
+          ClusterStorageResource(
+            node: 'pve-02',
+            status: 'available',
+            usedBytes: 280 * 1024 * 1024 * 1024,
+            capacityBytes: 800 * 1024 * 1024 * 1024,
+          ),
+        ],
       ),
       ClusterStorage(
         name: 'backup-nfs',
         type: 'nfs',
-        content: 'images',
+        content: 'backup,images',
         shared: true,
+        resources: <ClusterStorageResource>[
+          ClusterStorageResource(
+            node: 'pve-01',
+            status: 'available',
+            usedBytes: 2100 * 1024 * 1024 * 1024,
+            capacityBytes: 4096 * 1024 * 1024 * 1024,
+          ),
+          ClusterStorageResource(
+            node: 'pve-02',
+            status: 'available',
+            usedBytes: 2100 * 1024 * 1024 * 1024,
+            capacityBytes: 4096 * 1024 * 1024 * 1024,
+          ),
+        ],
       ),
     ],
     tasks: <ClusterTask>[
@@ -117,6 +145,33 @@ ClusterOverviewSnapshot datacenterDashboardHealthyPreviewSnapshot() {
         status: 'OK',
         startedAt: _previewTime,
         endedAt: DateTime.utc(2026, 8, 1, 12, 10),
+      ),
+      ClusterTask(
+        upid: 'UPID:migrate',
+        node: 'pve-01',
+        type: 'qmigrate',
+        user: 'operator',
+        status: 'OK',
+        startedAt: DateTime.utc(2026, 8, 1, 11, 42),
+        endedAt: DateTime.utc(2026, 8, 1, 11, 49),
+      ),
+      ClusterTask(
+        upid: 'UPID:snapshot',
+        node: 'pve-02',
+        type: 'snapshot',
+        user: 'automation',
+        status: 'OK',
+        startedAt: DateTime.utc(2026, 8, 1, 11, 30),
+        endedAt: DateTime.utc(2026, 8, 1, 11, 32),
+      ),
+      ClusterTask(
+        upid: 'UPID:clone',
+        node: 'pve-01',
+        type: 'clone',
+        user: 'operator',
+        status: 'OK',
+        startedAt: DateTime.utc(2026, 8, 1, 10, 54),
+        endedAt: DateTime.utc(2026, 8, 1, 11, 1),
       ),
     ],
   );
@@ -175,6 +230,14 @@ ClusterOverviewSnapshot datacenterDashboardCriticalPreviewSnapshot() {
         type: 'dir',
         content: 'images,iso',
         shared: false,
+        resources: <ClusterStorageResource>[
+          ClusterStorageResource(
+            node: 'compute-a',
+            status: 'available',
+            usedBytes: 470 * 1024 * 1024 * 1024,
+            capacityBytes: 500 * 1024 * 1024 * 1024,
+          ),
+        ],
       ),
     ],
     tasks: <ClusterTask>[

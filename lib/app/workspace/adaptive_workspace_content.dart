@@ -12,6 +12,9 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     required this.pages,
     required this.sidebarHeader,
     required this.wideNavigationBar,
+    required this.onRefresh,
+    required this.refreshing,
+    this.lastUpdatedAt,
   });
 
   final WorkspaceSection section;
@@ -19,6 +22,9 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
   final List<Widget> pages;
   final Widget sidebarHeader;
   final ObstructingPreferredSizeWidget wideNavigationBar;
+  final Future<void> Function() onRefresh;
+  final bool refreshing;
+  final DateTime? lastUpdatedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -35,6 +41,9 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 onSectionChanged: onSectionChanged,
                 header: sidebarHeader,
                 width: usesIpadSidebar ? 288 : 264,
+                onRefresh: onRefresh,
+                refreshing: refreshing,
+                lastUpdatedAt: lastUpdatedAt,
               ),
               Container(
                 width: 0.5,
@@ -92,12 +101,18 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.onSectionChanged,
     required this.header,
     required this.width,
+    required this.onRefresh,
+    required this.refreshing,
+    required this.lastUpdatedAt,
   });
 
   final WorkspaceSection section;
   final ValueChanged<WorkspaceSection> onSectionChanged;
   final Widget header;
   final double width;
+  final Future<void> Function() onRefresh;
+  final bool refreshing;
+  final DateTime? lastUpdatedAt;
 
   @override
   Widget build(BuildContext context) {
@@ -149,21 +164,10 @@ class _WorkspaceSidebar extends StatelessWidget {
                     onTap: () => onSectionChanged(item),
                   ),
                 const Spacer(),
-                Padding(
-                  padding: const EdgeInsets.symmetric(horizontal: 12),
-                  child: Row(
-                    children: <Widget>[
-                      DecoratedBox(
-                        decoration: BoxDecoration(
-                          color: PveAppleColors.success(context),
-                          shape: BoxShape.circle,
-                        ),
-                        child: const SizedBox.square(dimension: 8),
-                      ),
-                      const SizedBox(width: 8),
-                      Text('Connected', style: PveAppleText.caption(context)),
-                    ],
-                  ),
+                _WorkspaceConnectionFooter(
+                  refreshing: refreshing,
+                  lastUpdatedAt: lastUpdatedAt,
+                  onRefresh: onRefresh,
                 ),
               ],
             ),
@@ -172,6 +176,96 @@ class _WorkspaceSidebar extends StatelessWidget {
       ),
     );
   }
+}
+
+class _WorkspaceConnectionFooter extends StatelessWidget {
+  const _WorkspaceConnectionFooter({
+    required this.refreshing,
+    required this.lastUpdatedAt,
+    required this.onRefresh,
+  });
+
+  final bool refreshing;
+  final DateTime? lastUpdatedAt;
+  final Future<void> Function() onRefresh;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: PveAppleColors.page(context).withValues(alpha: 0.62),
+        borderRadius: BorderRadius.circular(12),
+        border: Border.all(
+          color: PveAppleColors.separator(context).withValues(alpha: 0.36),
+          width: 0.5,
+        ),
+      ),
+      child: Padding(
+        padding: const EdgeInsets.fromLTRB(12, 10, 8, 10),
+        child: Row(
+          children: <Widget>[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: PveAppleColors.success(context),
+                shape: BoxShape.circle,
+              ),
+              child: const SizedBox.square(dimension: 8),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Connected', style: PveAppleText.caption(context)),
+                  if (lastUpdatedAt != null)
+                    Text(
+                      _lastUpdatedLabel(lastUpdatedAt!),
+                      style: PveAppleText.caption(
+                        context,
+                      ).copyWith(fontSize: 11),
+                    ),
+                ],
+              ),
+            ),
+            Semantics(
+              button: true,
+              label: refreshing
+                  ? 'Refreshing datacenter'
+                  : 'Refresh datacenter',
+              child: CupertinoButton(
+                key: const ValueKey<String>('workspace-footer-refresh'),
+                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
+                minimumSize: const Size(44, 40),
+                onPressed: refreshing ? null : () => onRefresh(),
+                child: Row(
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    if (refreshing)
+                      const CupertinoActivityIndicator(radius: 8)
+                    else
+                      const Icon(CupertinoIcons.refresh, size: 16),
+                    const SizedBox(width: 5),
+                    Text(refreshing ? 'Updating' : 'Refresh'),
+                  ],
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _lastUpdatedLabel(DateTime updatedAt) {
+  final Duration elapsed = DateTime.now().difference(updatedAt);
+  if (elapsed.inMinutes < 1) {
+    return 'Updated just now';
+  }
+  if (elapsed.inHours < 1) {
+    return 'Updated ${elapsed.inMinutes}m ago';
+  }
+  return 'Updated ${elapsed.inHours}h ago';
 }
 
 class _SidebarDestination extends StatelessWidget {

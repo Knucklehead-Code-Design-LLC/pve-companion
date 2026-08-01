@@ -7,6 +7,7 @@ import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_overview_format.dart';
 import '../domain/pve_guest.dart';
 import 'guest_detail_sheet.dart';
+import 'guest_inventory_insights.dart';
 
 class GuestListPage extends StatefulWidget {
   const GuestListPage({
@@ -44,9 +45,8 @@ class _GuestListPageState extends State<GuestListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
-      context,
-    );
+    final bool usesExpandedPresentation =
+        PveAppleLayout.usesExpandedPresentation(context);
     final ClusterOverviewSnapshot? snapshot =
         widget.overviewController.snapshot;
     final List<PveGuest> guests =
@@ -79,7 +79,7 @@ class _GuestListPageState extends State<GuestListPage> {
             child: _buildGuestContent(
               context,
               guests,
-              usesIpadPresentation: usesIpadPresentation,
+              usesExpandedPresentation: usesExpandedPresentation,
             ),
           ),
       ],
@@ -89,7 +89,7 @@ class _GuestListPageState extends State<GuestListPage> {
   Widget _buildGuestContent(
     BuildContext context,
     List<PveGuest> guests, {
-    required bool usesIpadPresentation,
+    required bool usesExpandedPresentation,
   }) {
     final List<PveGuest> visibleGuests = guests
         .where(_matchesFilter)
@@ -103,6 +103,7 @@ class _GuestListPageState extends State<GuestListPage> {
         .length;
     final int containerCount = guests.length - virtualMachineCount;
     final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
+      key: const ValueKey<String>('guest-status-filter'),
       groupValue: _filter,
       children: const <_GuestFilter, Widget>{
         _GuestFilter.all: Padding(
@@ -134,42 +135,38 @@ class _GuestListPageState extends State<GuestListPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (usesIpadPresentation)
-          PveMetricStrip(
-            items: <PveMetricStripItem>[
-              PveMetricStripItem(
-                label: 'Workloads',
-                value: '${guests.length}',
-                icon: CupertinoIcons.cube_box,
-              ),
-              PveMetricStripItem(
-                label: 'Running',
-                value: '$runningCount',
-                icon: CupertinoIcons.play_fill,
-                color: PveAppleColors.success(context),
-              ),
-              PveMetricStripItem(
-                label: 'Virtual machines',
-                value: '$virtualMachineCount',
-                icon: CupertinoIcons.desktopcomputer,
-              ),
-              PveMetricStripItem(
-                label: 'Containers',
-                value: '$containerCount',
-                icon: CupertinoIcons.cube_box_fill,
-              ),
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              '${guests.length} '
-              '${guests.length == 1 ? 'workload' : 'workloads'} · '
-              '$runningCount running',
-              style: PveAppleText.caption(context),
+        PveMetricStrip(
+          items: <PveMetricStripItem>[
+            PveMetricStripItem(
+              label: 'Workloads',
+              value: '${guests.length}',
+              icon: CupertinoIcons.cube_box,
             ),
-          ),
+            PveMetricStripItem(
+              label: 'Running',
+              value: '$runningCount',
+              icon: CupertinoIcons.play_fill,
+              color: PveAppleColors.success(context),
+            ),
+            PveMetricStripItem(
+              label: 'Virtual machines',
+              value: '$virtualMachineCount',
+              icon: CupertinoIcons.desktopcomputer,
+            ),
+            PveMetricStripItem(
+              label: 'Containers',
+              value: '$containerCount',
+              icon: CupertinoIcons.cube_box_fill,
+            ),
+          ],
+        ),
+        if (usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 16),
+          GuestInventoryInsights(guests: guests),
+          const SizedBox(height: 24),
+        ] else
+          const SizedBox(height: 20),
+        Text('Guest inventory', style: PveAppleText.title2(context)),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
@@ -193,7 +190,7 @@ class _GuestListPageState extends State<GuestListPage> {
               ],
             ),
           )
-        else if (usesIpadPresentation)
+        else if (usesExpandedPresentation)
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool twoColumns = constraints.maxWidth >= 700;
@@ -229,6 +226,12 @@ class _GuestListPageState extends State<GuestListPage> {
                 )
                 .toList(growable: false),
           ),
+        if (!usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 24),
+          Text('Workload analysis', style: PveAppleText.title2(context)),
+          const SizedBox(height: 12),
+          GuestInventoryInsights(guests: guests),
+        ],
       ],
     );
   }
@@ -275,54 +278,51 @@ class _GuestCard extends StatelessWidget {
       key: ValueKey<String>('ipad-guest-card-${guest.vmid}'),
       onTap: onTap,
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: PveAppleColors.primary(context).withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: SizedBox.square(
-              dimension: 40,
-              child: Icon(
-                guest.kind == GuestKind.virtualMachine
-                    ? CupertinoIcons.desktopcomputer
-                    : CupertinoIcons.cube_box_fill,
-                size: 20,
-                color: PveAppleColors.primary(context),
-              ),
-            ),
-          ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(guest.title, style: PveAppleText.title3(context)),
-                const SizedBox(height: 3),
-                Text(
-                  '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node}',
-                  style: PveAppleText.caption(context),
-                ),
-                const SizedBox(height: 2),
-                Text(
-                  '${formatPveBytes(guest.memoryBytes)} memory',
-                  style: PveAppleText.caption(context),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(width: 10),
-          Column(
-            crossAxisAlignment: CrossAxisAlignment.end,
+          Row(
             children: <Widget>[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: PveAppleColors.primary(
+                    context,
+                  ).withValues(alpha: 0.11),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SizedBox.square(
+                  dimension: 40,
+                  child: Icon(
+                    guest.kind == GuestKind.virtualMachine
+                        ? CupertinoIcons.desktopcomputer
+                        : CupertinoIcons.cube_box_fill,
+                    size: 20,
+                    color: PveAppleColors.primary(context),
+                  ),
+                ),
+              ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(guest.title, style: PveAppleText.title3(context)),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node}',
+                      style: PveAppleText.caption(context),
+                    ),
+                  ],
+                ),
+              ),
+              const SizedBox(width: 10),
               Text(
                 guest.isTemplate ? 'Template' : _statusLabel(guest.status),
                 style: PveAppleText.caption(
                   context,
                 ).copyWith(color: statusColor, fontWeight: FontWeight.w600),
               ),
-              const SizedBox(height: 10),
+              const SizedBox(width: 8),
               Icon(
                 CupertinoIcons.chevron_forward,
                 size: 14,
@@ -330,8 +330,82 @@ class _GuestCard extends StatelessWidget {
               ),
             ],
           ),
+          const SizedBox(height: 17),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: _GuestCardMeter(
+                  label: 'CPU',
+                  value: formatPvePercent(guest.cpuFraction),
+                  progress: guest.cpuFraction,
+                  color: PveAppleColors.primary(context),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _GuestCardMeter(
+                  label: 'Memory',
+                  value: _resourcePercent(
+                    guest.memoryBytes,
+                    guest.memoryLimitBytes,
+                  ),
+                  progress: _resourceFraction(
+                    guest.memoryBytes,
+                    guest.memoryLimitBytes,
+                  ),
+                  color: PveAppleColors.primary(context),
+                ),
+              ),
+              const SizedBox(width: 14),
+              Expanded(
+                child: _GuestCardMeter(
+                  label: 'Disk',
+                  value: _resourcePercent(
+                    guest.diskBytes,
+                    guest.diskLimitBytes,
+                  ),
+                  progress: _resourceFraction(
+                    guest.diskBytes,
+                    guest.diskLimitBytes,
+                  ),
+                  color: PveAppleColors.primary(context),
+                ),
+              ),
+            ],
+          ),
         ],
       ),
+    );
+  }
+}
+
+class _GuestCardMeter extends StatelessWidget {
+  const _GuestCardMeter({
+    required this.label,
+    required this.value,
+    required this.progress,
+    required this.color,
+  });
+
+  final String label;
+  final String value;
+  final double? progress;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: Text(label, style: PveAppleText.caption(context))),
+            Text(value, style: PveAppleText.caption(context)),
+          ],
+        ),
+        const SizedBox(height: 6),
+        PveProgressBar(value: progress, color: color),
+      ],
     );
   }
 }
@@ -387,4 +461,15 @@ String _statusLabel(String status) {
     return 'Unknown';
   }
   return '${status[0].toUpperCase()}${status.substring(1)}';
+}
+
+double? _resourceFraction(int? used, int? capacity) {
+  if (used == null || capacity == null || capacity <= 0) {
+    return null;
+  }
+  return used / capacity;
+}
+
+String _resourcePercent(int? used, int? capacity) {
+  return formatPvePercent(_resourceFraction(used, capacity));
 }

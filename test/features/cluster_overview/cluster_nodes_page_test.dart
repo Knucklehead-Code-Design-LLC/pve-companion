@@ -39,9 +39,18 @@ void main() {
     );
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    await tester.tap(find.text('Attention'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('node-status-filter')),
+        matching: find.text('Attention'),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('No nodes need attention'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('node-cluster-pressure')),
+      findsOneWidget,
+    );
   });
 }

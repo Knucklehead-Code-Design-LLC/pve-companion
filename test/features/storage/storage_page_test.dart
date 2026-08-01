@@ -58,6 +58,10 @@ void main() {
 
     expect(find.text('Storage pools'), findsOneWidget);
     expect(
+      find.byKey(const ValueKey<String>('storage-effective-capacity')),
+      findsOneWidget,
+    );
+    expect(
       find.byKey(const ValueKey<String>('ipad-storage-card-local')),
       findsOneWidget,
     );

@@ -16,6 +16,10 @@ claiming parity before it exists.
 - [x] Adaptive macOS, iPadOS, and iOS navigation.
 - [x] Cupertino search, status filters, and operational sorting across guest
       and node inventories, plus focused storage and task filters.
+- [x] Current-state resource, workload, availability, storage, and task-outcome
+      visualizations without a charting dependency or implied historical data.
+- [x] Storage configuration merged with reported per-node capacity telemetry,
+      including shared-capacity de-duplication and node coverage.
 - [x] Home and Lock Screen status widgets using a privacy-safe last-known
       datacenter snapshot.
 - [x] Time-bounded Datacenter Watch Live Activity for Lock Screen and Dynamic
@@ -26,8 +30,8 @@ claiming parity before it exists.
 - [ ] Guest task tracking with completion/error state after control actions.
 - [ ] TOTP/2FA password-authentication challenge flow and clear unsupported
   authentication feedback.
-- [ ] Read-only guest runtime details, logs, and richer node/storage metrics,
-  including storage utilization only where a PVE API response reports it.
+- [ ] Read-only guest runtime details and logs, plus deeper node/storage detail
+  beyond the current cluster and per-node utilization summaries.
 - [ ] Named profile editing and certificate pin rotation with explicit
   re-verification.
 - [ ] API capability/version negotiation and a fixture suite for supported PVE

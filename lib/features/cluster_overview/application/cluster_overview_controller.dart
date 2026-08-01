@@ -15,6 +15,7 @@ class ClusterOverviewController extends ChangeNotifier {
   ClusterOverviewLoadState _state = ClusterOverviewLoadState.idle;
   ClusterOverviewSnapshot? _snapshot;
   String? _errorMessage;
+  DateTime? _lastUpdatedAt;
   int _requestEpoch = 0;
   bool _isDisposed = false;
 
@@ -23,6 +24,8 @@ class ClusterOverviewController extends ChangeNotifier {
   ClusterOverviewSnapshot? get snapshot => _snapshot;
 
   String? get errorMessage => _errorMessage;
+
+  DateTime? get lastUpdatedAt => _lastUpdatedAt;
 
   Future<void> refresh(ProxmoxSession session) async {
     final int requestEpoch = ++_requestEpoch;
@@ -36,6 +39,7 @@ class ClusterOverviewController extends ChangeNotifier {
         return;
       }
       _snapshot = snapshot;
+      _lastUpdatedAt = DateTime.now();
       _state = ClusterOverviewLoadState.ready;
       _notify();
     } on ProxmoxApiException catch (error) {
@@ -53,6 +57,7 @@ class ClusterOverviewController extends ChangeNotifier {
     _state = ClusterOverviewLoadState.idle;
     _snapshot = null;
     _errorMessage = null;
+    _lastUpdatedAt = null;
     _notify();
   }
 

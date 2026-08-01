@@ -97,6 +97,7 @@ class _DatacenterNodeCard extends StatelessWidget {
       button: true,
       label: 'View node ${node.node.name}. $statusLabel.',
       child: PveInsetGroup(
+        key: ValueKey<String>('dashboard-node-${node.node.name}'),
         onTap: onTap,
         padding: const EdgeInsets.all(18),
         child: Column(

@@ -28,23 +28,23 @@ void main() {
       expect(find.text('Datacenter'), findsOneWidget);
       expect(find.text('All systems operational'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey<String>('dashboard-capacity-stacked')),
+        find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey<String>('dashboard-capacity-two-columns')),
-        findsNothing,
+        find.byKey(const ValueKey<String>('dashboard-workload-composition')),
+        findsOneWidget,
       );
-      expect(find.text('3 / 4 running'), findsOneWidget);
+      expect(find.text('3/4'), findsOneWidget);
 
       await tester.scrollUntilVisible(
-        find.text('Workload'),
+        find.text('View Guests'),
         160,
         scrollable: find.byType(Scrollable).first,
       );
       await tester.pumpAndSettle();
-      await tester.ensureVisible(find.text('Workload'));
-      await tester.tap(find.text('Workload'));
+      await tester.ensureVisible(find.text('View Guests'));
+      await tester.tap(find.text('View Guests'));
       expect(guestDrillDownCount, 1);
     },
   );
@@ -65,48 +65,36 @@ void main() {
     expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
-    expect(find.text('Peak CPU use'), findsOneWidget);
-    expect(find.text('Cluster memory use'), findsOneWidget);
-    expect(find.text('Cluster root disk use'), findsOneWidget);
+    expect(find.text('Peak CPU'), findsOneWidget);
+    expect(find.text('Memory'), findsWidgets);
+    expect(find.text('Root disk'), findsWidgets);
     expect(
-      find.text('53% cluster total · 2/3 nodes reporting'),
+      find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey<String>('dashboard-capacity-two-columns')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('dashboard-storage-inventory-wide')),
+      find.byKey(const ValueKey<String>('dashboard-workload-composition')),
       findsOneWidget,
     );
     expect(
       find.byKey(const ValueKey<String>('dashboard-nodes-two-columns')),
       findsOneWidget,
     );
-    expect(
-      tester
-          .getSize(
-            find.byKey(
-              const ValueKey<String>('dashboard-metric-card-Workload'),
-            ),
-          )
-          .height,
-      tester
-          .getSize(
-            find.byKey(
-              const ValueKey<String>(
-                'dashboard-metric-card-Cluster root disk use',
-              ),
-            ),
-          )
-          .height,
-    );
     expect(find.text('Failed'), findsOneWidget);
     expect(find.text('Running'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('edge-a')).dx,
-      lessThan(tester.getTopLeft(find.text('compute-a')).dx),
+      tester
+          .getTopLeft(
+            find.byKey(const ValueKey<String>('dashboard-node-edge-a')),
+          )
+          .dx,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.byKey(const ValueKey<String>('dashboard-node-compute-a')),
+            )
+            .dx,
+      ),
     );
   });
 
@@ -152,7 +140,7 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Storage inventory'), findsOneWidget);
+    expect(find.text('Operational Summary'), findsOneWidget);
     expect(find.text('Nodes'), findsOneWidget);
   });
 
@@ -182,8 +170,8 @@ void main() {
     await tester.pump();
 
     await tester.tap(find.text('All systems operational'));
-    await tester.tap(find.text('Workload'));
-    await tester.tap(find.text('Storage inventory'));
+    await tester.tap(find.text('View Guests'));
+    await tester.tap(find.text('View Storage'));
     await tester.drag(
       find.byKey(const ValueKey<String>('datacenter-dashboard')),
       const Offset(0, -900),

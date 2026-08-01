@@ -4,9 +4,9 @@ import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
 import 'datacenter_activity_section.dart';
-import 'datacenter_capacity_section.dart';
 import 'datacenter_health_banner.dart';
 import 'datacenter_nodes_section.dart';
+import 'datacenter_operational_summary.dart';
 
 class DatacenterDashboard extends StatelessWidget {
   const DatacenterDashboard({
@@ -72,11 +72,10 @@ class DatacenterDashboard extends StatelessWidget {
                           onViewNodes: onViewNodes,
                         ),
                         const SizedBox(height: 28),
-                        const PveSectionHeader(title: 'Capacity & Workload'),
-                        DatacenterCapacityAndWorkloadSection(
+                        const PveSectionHeader(title: 'Operational Summary'),
+                        DatacenterOperationalSummary(
+                          snapshot: snapshot,
                           health: health,
-                          nodeCount: snapshot.nodes.length,
-                          storageCount: snapshot.storages.length,
                           onViewGuests: onViewGuests,
                           onViewStorage: onViewStorage,
                         ),

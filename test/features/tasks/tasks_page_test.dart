@@ -24,11 +24,17 @@ void main() {
 
     expect(find.text('backup on pve-01'), findsOneWidget);
 
-    await tester.tap(find.text('Failed'));
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('task-state-filter')),
+        matching: find.text('Failed'),
+      ),
+    );
     await tester.pump();
 
     expect(find.text('backup on pve-01'), findsNothing);
     expect(find.text('No tasks match this filter.'), findsOneWidget);
+    expect(find.byKey(const ValueKey<String>('task-outcomes')), findsOneWidget);
   });
 
   testWidgets('uses activity summary cards on iPad', (
@@ -56,6 +62,10 @@ void main() {
     );
 
     expect(find.text('Recent activity'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('task-activity-profile')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('ipad-task-card-UPID:running')),
       findsOneWidget,

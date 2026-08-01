@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../core/api/proxmox_session.dart';
 import '../core/presentation/pve_apple_ui.dart';
+import '../features/cluster_overview/application/cluster_overview_controller.dart';
 import '../features/cluster_overview/presentation/cluster_nodes_page.dart';
 import '../features/cluster_overview/presentation/cluster_overview_page.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
@@ -72,9 +73,13 @@ class _PveWorkspaceState extends State<PveWorkspace> {
                 title: _section.navigationTitle,
                 connected: true,
                 showServerMenu: false,
-                showRefreshButton: true,
                 includeRefreshMenuAction: false,
               ),
+              onRefresh: widget.controller.refreshCluster,
+              refreshing:
+                  widget.controller.clusterOverview.state ==
+                  ClusterOverviewLoadState.loading,
+              lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
               pages: _buildPages(session, compact: compact),
             ),
     );
@@ -162,7 +167,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     required String title,
     required bool connected,
     bool showServerMenu = true,
-    bool showRefreshButton = false,
     bool includeRefreshMenuAction = true,
   }) {
     final ConnectionProfilesController profiles =
@@ -179,7 +183,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
           showConnectionProfilesSheet(context, controller: widget.controller),
       onAbout: () => showPveCompanionAboutDialog(context),
       showServerMenu: showServerMenu,
-      showRefreshButton: showRefreshButton,
       includeRefreshMenuAction: includeRefreshMenuAction,
       liveActivitiesAvailable:
           widget.controller.systemSurfaces.liveActivitiesAvailable,

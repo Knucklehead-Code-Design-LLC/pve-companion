@@ -24,8 +24,9 @@ tool/capture_ios_store_screenshots.sh \
   <ipad-13-simulator-udid>
 ```
 
-The helper launches `tool/store_screenshot_preview.dart` once per scene and
-waits for the first stable frame before using `simctl` to capture JPEG output.
+The helper clean-boots each simulator to reset stale rotation, launches
+`tool/store_screenshot_preview.dart` once per scene, and waits for the first
+stable frame before using `simctl` to capture JPEG output.
 Use `sips` to verify pixel dimensions and the absence of alpha before upload.
 
 ## Mac capture

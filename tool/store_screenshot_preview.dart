@@ -116,7 +116,6 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
               title: _section.navigationTitle,
               connected: true,
               showServerMenu: false,
-              showRefreshButton: true,
               includeRefreshMenuAction: false,
               onConnectToProfile: (_) {},
               onRefresh: () {},
@@ -124,6 +123,9 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
               onManageServers: () {},
               onAbout: () {},
             ),
+            onRefresh: () async {},
+            refreshing: false,
+            lastUpdatedAt: DateTime.now(),
             pages: <Widget>[
               ClusterOverviewPage(
                 controller: widget.controller,

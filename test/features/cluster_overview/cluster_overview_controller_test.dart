@@ -26,6 +26,9 @@ void main() {
 
     expect(controller.snapshot?.version.version, 'new');
     expect(controller.state, ClusterOverviewLoadState.ready);
+    expect(controller.lastUpdatedAt, isNotNull);
+    controller.clear();
+    expect(controller.lastUpdatedAt, isNull);
     controller.dispose();
   });
 }

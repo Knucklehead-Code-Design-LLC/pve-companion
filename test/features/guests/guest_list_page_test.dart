@@ -74,7 +74,11 @@ void main() {
       ),
     );
 
-    expect(find.text('Virtual machines'), findsOneWidget);
+    expect(find.text('Virtual machines'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey<String>('guest-resource-footprint')),
+      findsOneWidget,
+    );
     expect(
       find.byKey(const ValueKey<String>('ipad-guest-card-101')),
       findsOneWidget,

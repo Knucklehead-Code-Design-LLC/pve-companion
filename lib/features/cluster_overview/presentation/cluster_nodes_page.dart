@@ -7,6 +7,7 @@ import '../domain/datacenter_health.dart';
 import '../domain/datacenter_health_evaluator.dart';
 import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_visuals.dart';
+import 'node_inventory_insights.dart';
 
 class ClusterNodesPage extends StatefulWidget {
   const ClusterNodesPage({
@@ -40,9 +41,6 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
-      context,
-    );
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Nodes',
@@ -60,25 +58,23 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           PveCenteredSliver(
             maxWidth: 1100,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-            child: _buildContent(
-              context,
-              snapshot,
-              usesIpadPresentation: usesIpadPresentation,
-            ),
+            child: _buildContent(context, snapshot),
           ),
       ],
     );
   }
 
-  Widget _buildContent(
-    BuildContext context,
-    ClusterOverviewSnapshot snapshot, {
-    required bool usesIpadPresentation,
-  }) {
+  Widget _buildContent(BuildContext context, ClusterOverviewSnapshot snapshot) {
+    final bool usesExpandedPresentation =
+        PveAppleLayout.usesExpandedPresentation(context);
+    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+      snapshot,
+    );
     final List<DatacenterNodeHealth> nodes =
-        List<DatacenterNodeHealth>.of(
-          DatacenterHealthEvaluator.evaluate(snapshot).nodes,
-        )..sort((DatacenterNodeHealth left, DatacenterNodeHealth right) {
+        List<DatacenterNodeHealth>.of(health.nodes)..sort((
+          DatacenterNodeHealth left,
+          DatacenterNodeHealth right,
+        ) {
           final int healthOrder = right.state.index.compareTo(left.state.index);
           return healthOrder != 0
               ? healthOrder
@@ -120,6 +116,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       onSubmitted: (_) => setState(() {}),
     );
     final Widget filter = PveSlidingSegmentedControl<_NodeFilter>(
+      key: const ValueKey<String>('node-status-filter'),
       groupValue: _filter,
       children: const <_NodeFilter, Widget>{
         _NodeFilter.all: Padding(
@@ -141,45 +138,41 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (usesIpadPresentation)
-          PveMetricStrip(
-            items: <PveMetricStripItem>[
-              PveMetricStripItem(
-                label: 'Nodes',
-                value: '${nodes.length}',
-                icon: CupertinoIcons.rectangle_stack,
-              ),
-              PveMetricStripItem(
-                label: 'Online',
-                value: '$onlineCount',
-                icon: CupertinoIcons.check_mark_circled_solid,
-                color: PveAppleColors.success(context),
-              ),
-              PveMetricStripItem(
-                label: 'Attention',
-                value: '$attentionCount',
-                icon: CupertinoIcons.exclamationmark_triangle_fill,
-                color: attentionCount == 0
-                    ? PveAppleColors.success(context)
-                    : PveAppleColors.warning(context),
-              ),
-              PveMetricStripItem(
-                label: 'CPU cores',
-                value: '$totalCores',
-                icon: CupertinoIcons.speedometer,
-              ),
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              '$onlineCount/${nodes.length} online · '
-              '$attentionCount '
-              '${attentionCount == 1 ? 'needs' : 'need'} attention',
-              style: PveAppleText.caption(context),
+        PveMetricStrip(
+          items: <PveMetricStripItem>[
+            PveMetricStripItem(
+              label: 'Nodes',
+              value: '${nodes.length}',
+              icon: CupertinoIcons.rectangle_stack,
             ),
-          ),
+            PveMetricStripItem(
+              label: 'Online',
+              value: '$onlineCount',
+              icon: CupertinoIcons.check_mark_circled_solid,
+              color: PveAppleColors.success(context),
+            ),
+            PveMetricStripItem(
+              label: 'Attention',
+              value: '$attentionCount',
+              icon: CupertinoIcons.exclamationmark_triangle_fill,
+              color: attentionCount == 0
+                  ? PveAppleColors.success(context)
+                  : PveAppleColors.warning(context),
+            ),
+            PveMetricStripItem(
+              label: 'CPU cores',
+              value: '$totalCores',
+              icon: CupertinoIcons.speedometer,
+            ),
+          ],
+        ),
+        if (usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 16),
+          NodeInventoryInsights(health: health),
+          const SizedBox(height: 24),
+        ] else
+          const SizedBox(height: 20),
+        Text('Node inventory', style: PveAppleText.title2(context)),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
@@ -229,6 +222,12 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               );
             },
           ),
+        if (!usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 24),
+          Text('Cluster analysis', style: PveAppleText.title2(context)),
+          const SizedBox(height: 12),
+          NodeInventoryInsights(health: health),
+        ],
       ],
     );
   }

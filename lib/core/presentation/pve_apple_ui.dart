@@ -1,11 +1,9 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider;
 
 abstract final class PveAppleLayout {
-  static bool usesIpadPresentation(BuildContext context) {
-    return defaultTargetPlatform == TargetPlatform.iOS &&
-        MediaQuery.sizeOf(context).shortestSide >= 600;
+  static bool usesExpandedPresentation(BuildContext context) {
+    return MediaQuery.sizeOf(context).width >= 760;
   }
 }
 

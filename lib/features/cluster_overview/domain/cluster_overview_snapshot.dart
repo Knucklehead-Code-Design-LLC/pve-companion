@@ -59,12 +59,111 @@ class ClusterStorage {
     required this.type,
     required this.content,
     required this.shared,
+    this.resources = const <ClusterStorageResource>[],
   });
 
   final String name;
   final String type;
   final String content;
   final bool shared;
+  final List<ClusterStorageResource> resources;
+
+  Iterable<ClusterStorageResource> get resourcesWithCapacity => resources.where(
+    (ClusterStorageResource resource) => resource.hasCapacity,
+  );
+
+  int get reportedNodeCount => resources.length;
+
+  int get reportedAvailabilityNodeCount => resources
+      .where(
+        (ClusterStorageResource resource) => resource.hasAvailabilityStatus,
+      )
+      .length;
+
+  int get availableNodeCount => resources
+      .where(
+        (ClusterStorageResource resource) =>
+            resource.hasAvailabilityStatus && resource.isAvailable,
+      )
+      .length;
+
+  int? get usedBytes => _aggregateResourceBytes(
+    (ClusterStorageResource resource) => resource.usedBytes,
+  );
+
+  int? get capacityBytes => _aggregateResourceBytes(
+    (ClusterStorageResource resource) => resource.capacityBytes,
+  );
+
+  int? get availableBytes {
+    final int? capacity = capacityBytes;
+    final int? used = usedBytes;
+    if (capacity == null || used == null) {
+      return null;
+    }
+    return (capacity - used).clamp(0, capacity);
+  }
+
+  double? get usageFraction {
+    final int? capacity = capacityBytes;
+    final int? used = usedBytes;
+    if (capacity == null || capacity <= 0 || used == null) {
+      return null;
+    }
+    return used / capacity;
+  }
+
+  bool get hasAvailabilityTelemetry => reportedAvailabilityNodeCount > 0;
+
+  bool get isAvailable =>
+      resources.any((ClusterStorageResource resource) => resource.isAvailable);
+
+  int? _aggregateResourceBytes(
+    int? Function(ClusterStorageResource resource) selector,
+  ) {
+    final List<int> values = resourcesWithCapacity
+        .map(selector)
+        .whereType<int>()
+        .toList(growable: false);
+    if (values.isEmpty) {
+      return null;
+    }
+    if (shared) {
+      return values.reduce(
+        (int left, int right) => left > right ? left : right,
+      );
+    }
+    return values.fold<int>(0, (int total, int value) => total + value);
+  }
+}
+
+class ClusterStorageResource {
+  const ClusterStorageResource({
+    required this.node,
+    required this.status,
+    this.usedBytes,
+    this.capacityBytes,
+  });
+
+  final String node;
+  final String status;
+  final int? usedBytes;
+  final int? capacityBytes;
+
+  bool get hasAvailabilityStatus => status.trim().isNotEmpty;
+
+  bool get isAvailable {
+    final String normalizedStatus = status.trim().toLowerCase();
+    return normalizedStatus.isEmpty ||
+        normalizedStatus == 'available' ||
+        normalizedStatus == 'active';
+  }
+
+  bool get hasCapacity =>
+      usedBytes != null &&
+      usedBytes! >= 0 &&
+      capacityBytes != null &&
+      capacityBytes! > 0;
 }
 
 enum ClusterTaskState { running, successful, failed, unknown }

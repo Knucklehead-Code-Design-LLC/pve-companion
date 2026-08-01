@@ -3,6 +3,8 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
+import '../../cluster_overview/presentation/cluster_overview_format.dart';
+import 'storage_insights.dart';
 
 class StoragePage extends StatefulWidget {
   const StoragePage({
@@ -29,9 +31,8 @@ class _StoragePageState extends State<StoragePage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
-      context,
-    );
+    final bool usesExpandedPresentation =
+        PveAppleLayout.usesExpandedPresentation(context);
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Storage',
@@ -47,12 +48,12 @@ class _StoragePageState extends State<StoragePage> {
           )
         else
           PveCenteredSliver(
-            maxWidth: 900,
+            maxWidth: 1100,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: _buildContent(
               context,
               snapshot.storages,
-              usesIpadPresentation: usesIpadPresentation,
+              usesExpandedPresentation: usesExpandedPresentation,
             ),
           ),
       ],
@@ -62,20 +63,35 @@ class _StoragePageState extends State<StoragePage> {
   Widget _buildContent(
     BuildContext context,
     List<ClusterStorage> storages, {
-    required bool usesIpadPresentation,
+    required bool usesExpandedPresentation,
   }) {
     final List<ClusterStorage> visibleStorages = storages
         .where(_matchesFilter)
         .toList(growable: false);
-    final int sharedCount = storages
-        .where((ClusterStorage storage) => storage.shared)
+    final int availableCount = storages
+        .where(
+          (ClusterStorage storage) =>
+              storage.hasAvailabilityTelemetry && storage.isAvailable,
+        )
         .length;
-    final int localCount = storages.length - sharedCount;
-    final int typeCount = storages
-        .map((ClusterStorage storage) => storage.type)
-        .toSet()
+    final int availabilityReportedCount = storages
+        .where((ClusterStorage storage) => storage.hasAvailabilityTelemetry)
         .length;
+    final bool hasCapacityTelemetry = storages.any(
+      (ClusterStorage storage) =>
+          storage.usedBytes != null && storage.capacityBytes != null,
+    );
+    final int aggregateUsedBytes = storages.fold<int>(
+      0,
+      (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
+    );
+    final int aggregateAvailableBytes = storages.fold<int>(
+      0,
+      (int total, ClusterStorage storage) =>
+          total + (storage.availableBytes ?? 0),
+    );
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
+      key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
       children: const <_StorageFilter, Widget>{
         _StorageFilter.all: Padding(
@@ -100,47 +116,51 @@ class _StoragePageState extends State<StoragePage> {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        if (usesIpadPresentation)
-          PveMetricStrip(
-            items: <PveMetricStripItem>[
-              PveMetricStripItem(
-                label: 'Configured',
-                value: '${storages.length}',
-                icon: CupertinoIcons.tray_full_fill,
-              ),
-              PveMetricStripItem(
-                label: 'Shared',
-                value: '$sharedCount',
-                icon: CupertinoIcons.arrow_2_circlepath,
-              ),
-              PveMetricStripItem(
-                label: 'Local',
-                value: '$localCount',
-                icon: CupertinoIcons.device_desktop,
-              ),
-              PveMetricStripItem(
-                label: 'Storage types',
-                value: '$typeCount',
-                icon: CupertinoIcons.square_stack_3d_up_fill,
-              ),
-            ],
-          )
-        else
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 4),
-            child: Text(
-              '${storages.length} configured · $sharedCount shared',
-              style: PveAppleText.caption(context),
+        PveMetricStrip(
+          items: <PveMetricStripItem>[
+            PveMetricStripItem(
+              label: 'Configured',
+              value: '${storages.length}',
+              icon: CupertinoIcons.tray_full_fill,
             ),
-          ),
-        const SizedBox(height: 12),
-        if (usesIpadPresentation)
-          PveWideControlBar(
-            primary: Text('Storage pools', style: PveAppleText.title2(context)),
-            secondary: filter,
-          )
-        else
-          filter,
+            PveMetricStripItem(
+              label: 'Available',
+              value: availabilityReportedCount == 0
+                  ? '—'
+                  : '$availableCount/$availabilityReportedCount',
+              icon: CupertinoIcons.check_mark_circled_solid,
+              color: availabilityReportedCount == 0
+                  ? PveAppleColors.secondaryLabel(context)
+                  : availableCount == availabilityReportedCount
+                  ? PveAppleColors.success(context)
+                  : PveAppleColors.warning(context),
+            ),
+            PveMetricStripItem(
+              label: 'Used',
+              value: hasCapacityTelemetry
+                  ? formatPveBytes(aggregateUsedBytes)
+                  : '—',
+              icon: CupertinoIcons.chart_pie_fill,
+            ),
+            PveMetricStripItem(
+              label: 'Free',
+              value: hasCapacityTelemetry
+                  ? formatPveBytes(aggregateAvailableBytes)
+                  : '—',
+              icon: CupertinoIcons.tray,
+            ),
+          ],
+        ),
+        if (usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 16),
+          StorageInsights(storages: storages),
+          const SizedBox(height: 24),
+        ] else
+          const SizedBox(height: 20),
+        PveWideControlBar(
+          primary: Text('Storage pools', style: PveAppleText.title2(context)),
+          secondary: filter,
+        ),
         const SizedBox(height: 16),
         if (storages.isEmpty)
           const PveInsetGroup(
@@ -156,7 +176,7 @@ class _StoragePageState extends State<StoragePage> {
               style: PveAppleText.secondary(context),
             ),
           )
-        else if (usesIpadPresentation)
+        else
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
               final bool twoColumns = constraints.maxWidth >= 700;
@@ -176,23 +196,21 @@ class _StoragePageState extends State<StoragePage> {
                     .toList(growable: false),
               );
             },
-          )
-        else
-          CupertinoListSection.insetGrouped(
-            margin: EdgeInsets.zero,
-            children: visibleStorages
-                .map((ClusterStorage storage) => _StorageRow(storage: storage))
-                .toList(growable: false),
           ),
-        const SizedBox(height: 12),
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            'Capacity and utilization appear only when the connected Proxmox '
-            'API account is allowed to report them.',
-            style: PveAppleText.caption(context),
-          ),
-        ),
+        if (!usesExpandedPresentation) ...<Widget>[
+          const SizedBox(height: 24),
+          Text('Storage analysis', style: PveAppleText.title2(context)),
+          const SizedBox(height: 12),
+          StorageInsights(storages: storages),
+        ],
+        if (storages.any(
+          (ClusterStorage storage) => storage.resources.isNotEmpty,
+        )) ...<Widget>[
+          const SizedBox(height: 24),
+          Text('Node coverage', style: PveAppleText.title2(context)),
+          const SizedBox(height: 12),
+          StorageNodeCoverage(storages: storages),
+        ],
       ],
     );
   }
@@ -211,85 +229,96 @@ class _StorageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = PveAppleColors.primary(context);
+    final double? usageFraction = storage.usageFraction;
+    final bool hasAvailability = storage.hasAvailabilityTelemetry;
+    final Color accent = hasAvailability && !storage.isAvailable
+        ? PveAppleColors.destructive(context)
+        : usageFraction != null && usageFraction >= 0.9
+        ? PveAppleColors.destructive(context)
+        : usageFraction != null && usageFraction >= 0.75
+        ? PveAppleColors.warning(context)
+        : PveAppleColors.primary(context);
     return PveInsetGroup(
       key: ValueKey<String>('ipad-storage-card-${storage.name}'),
       padding: const EdgeInsets.all(16),
-      child: Row(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[
-          DecoratedBox(
-            decoration: BoxDecoration(
-              color: accent.withValues(alpha: 0.11),
-              borderRadius: BorderRadius.circular(10),
-            ),
-            child: SizedBox.square(
-              dimension: 40,
-              child: Icon(
-                CupertinoIcons.tray_full_fill,
-                size: 20,
-                color: accent,
+          Row(
+            children: <Widget>[
+              DecoratedBox(
+                decoration: BoxDecoration(
+                  color: accent.withValues(alpha: 0.11),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: SizedBox.square(
+                  dimension: 40,
+                  child: Icon(
+                    CupertinoIcons.tray_full_fill,
+                    size: 20,
+                    color: accent,
+                  ),
+                ),
               ),
-            ),
+              const SizedBox(width: 12),
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text(storage.name, style: PveAppleText.title3(context)),
+                    const SizedBox(height: 3),
+                    Text(
+                      '${storage.type} · ${storage.shared ? 'Shared' : 'Local'}',
+                      style: PveAppleText.caption(context),
+                    ),
+                  ],
+                ),
+              ),
+              PveStatusPill(
+                label: !hasAvailability
+                    ? 'Not reported'
+                    : storage.isAvailable
+                    ? 'Available'
+                    : 'Unavailable',
+                color: !hasAvailability
+                    ? PveAppleColors.secondaryLabel(context)
+                    : storage.isAvailable
+                    ? PveAppleColors.success(context)
+                    : PveAppleColors.destructive(context),
+              ),
+            ],
           ),
-          const SizedBox(width: 12),
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: <Widget>[
-                Text(storage.name, style: PveAppleText.title3(context)),
-                const SizedBox(height: 3),
-                Text(storage.type, style: PveAppleText.caption(context)),
-                const SizedBox(height: 2),
-                Text(storage.content, style: PveAppleText.caption(context)),
-              ],
-            ),
+          const SizedBox(height: 17),
+          Row(
+            children: <Widget>[
+              Expanded(
+                child: Text(
+                  'Capacity used',
+                  style: PveAppleText.caption(context),
+                ),
+              ),
+              Text(
+                usageFraction == null
+                    ? 'Not reported'
+                    : '${formatPveBytes(storage.usedBytes)} / '
+                          '${formatPveBytes(storage.capacityBytes)}',
+                style: PveAppleText.caption(
+                  context,
+                ).copyWith(color: accent, fontWeight: FontWeight.w700),
+              ),
+            ],
           ),
+          const SizedBox(height: 7),
+          PveProgressBar(value: usageFraction, color: accent),
+          const SizedBox(height: 12),
           Text(
-            storage.shared ? 'Shared' : 'Local',
-            style: PveAppleText.caption(context).copyWith(
-              color: storage.shared
-                  ? accent
-                  : PveAppleColors.secondaryLabel(context),
-              fontWeight: FontWeight.w600,
-            ),
+            '${storage.content} · ${storage.reportedNodeCount} '
+            '${storage.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting',
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
+            style: PveAppleText.caption(context),
           ),
         ],
-      ),
-    );
-  }
-}
-
-class _StorageRow extends StatelessWidget {
-  const _StorageRow({required this.storage});
-
-  final ClusterStorage storage;
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoListTile(
-      leading: DecoratedBox(
-        decoration: BoxDecoration(
-          color: PveAppleColors.primary(context).withValues(alpha: 0.12),
-          borderRadius: BorderRadius.circular(8),
-        ),
-        child: Center(
-          child: Icon(
-            CupertinoIcons.tray_full_fill,
-            size: 19,
-            color: PveAppleColors.primary(context),
-          ),
-        ),
-      ),
-      title: Text(storage.name),
-      subtitle: Text('${storage.type} · ${storage.content}'),
-      additionalInfo: Text(
-        storage.shared ? 'Shared' : 'Local',
-        style: PveAppleText.caption(context).copyWith(
-          color: storage.shared
-              ? PveAppleColors.primary(context)
-              : PveAppleColors.secondaryLabel(context),
-          fontWeight: FontWeight.w600,
-        ),
       ),
     );
   }

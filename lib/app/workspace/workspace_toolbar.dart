@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 
-import '../../core/presentation/pve_apple_ui.dart';
 import '../../features/connection_profiles/domain/connection_profile.dart';
 import 'server_menu.dart';
 import 'workspace_actions_menu.dart';
@@ -19,7 +18,6 @@ class WorkspaceToolbar extends StatelessWidget
     required this.onManageServers,
     required this.onAbout,
     this.showServerMenu = true,
-    this.showRefreshButton = true,
     this.includeRefreshMenuAction = true,
     this.liveActivitiesAvailable = false,
     this.datacenterWatchActive = false,
@@ -37,7 +35,6 @@ class WorkspaceToolbar extends StatelessWidget
   final VoidCallback onManageServers;
   final VoidCallback onAbout;
   final bool showServerMenu;
-  final bool showRefreshButton;
   final bool includeRefreshMenuAction;
   final bool liveActivitiesAvailable;
   final bool datacenterWatchActive;
@@ -58,37 +55,17 @@ class WorkspaceToolbar extends StatelessWidget
             )
           : null,
       middle: Text(title),
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          if (connected && showRefreshButton)
-            Semantics(
-              button: true,
-              label: 'Refresh datacenter',
-              child: CupertinoButton(
-                padding: const EdgeInsets.all(8),
-                minimumSize: const Size(40, 40),
-                onPressed: onRefresh,
-                child: Icon(
-                  CupertinoIcons.refresh,
-                  size: 19,
-                  color: PveAppleColors.primary(context),
-                ),
-              ),
-            ),
-          WorkspaceActionsMenu(
-            connected: connected,
-            onRefresh: onRefresh,
-            onDisconnect: onDisconnect,
-            onManageServers: onManageServers,
-            onAbout: onAbout,
-            includeRefreshAction: includeRefreshMenuAction,
-            liveActivitiesAvailable: liveActivitiesAvailable,
-            datacenterWatchActive: datacenterWatchActive,
-            onStartDatacenterWatch: onStartDatacenterWatch,
-            onEndDatacenterWatch: onEndDatacenterWatch,
-          ),
-        ],
+      trailing: WorkspaceActionsMenu(
+        connected: connected,
+        onRefresh: onRefresh,
+        onDisconnect: onDisconnect,
+        onManageServers: onManageServers,
+        onAbout: onAbout,
+        includeRefreshAction: includeRefreshMenuAction,
+        liveActivitiesAvailable: liveActivitiesAvailable,
+        datacenterWatchActive: datacenterWatchActive,
+        onStartDatacenterWatch: onStartDatacenterWatch,
+        onEndDatacenterWatch: onEndDatacenterWatch,
       ),
     );
   }
