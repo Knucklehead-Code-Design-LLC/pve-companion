@@ -9,36 +9,41 @@ abstract final class PveCompanionTheme {
   static ThemeData dark() => _materialTheme(Brightness.dark);
 
   static CupertinoThemeData cupertino(Brightness brightness) {
+    final bool dark = brightness == Brightness.dark;
+    final Color primary = dark
+        ? PveAppleColors.accentDark
+        : PveAppleColors.accent;
+    final CupertinoTextThemeData defaults = CupertinoTextThemeData(
+      primaryColor: primary,
+    );
     return CupertinoThemeData(
       brightness: brightness,
-      primaryColor: brightness == Brightness.dark
-          ? PveAppleColors.accentDark
-          : PveAppleColors.accent,
+      primaryColor: primary,
       primaryContrastingColor: CupertinoColors.white,
-      scaffoldBackgroundColor: brightness == Brightness.dark
+      scaffoldBackgroundColor: dark
           ? const Color(0xFF000000)
           : const Color(0xFFF2F2F7),
-      barBackgroundColor: brightness == Brightness.dark
+      barBackgroundColor: dark
           ? const Color(0xE61C1C1E)
           : const Color(0xE6F9F9FB),
-      textTheme: const CupertinoTextThemeData(
-        textStyle: TextStyle(
+      textTheme: defaults.copyWith(
+        textStyle: defaults.textStyle.copyWith(
           fontFamily: '.SF Pro Text',
           fontSize: 15,
           letterSpacing: -0.08,
         ),
-        actionTextStyle: TextStyle(
+        actionTextStyle: defaults.actionTextStyle.copyWith(
           fontFamily: '.SF Pro Text',
           fontSize: 17,
           letterSpacing: -0.3,
         ),
-        navTitleTextStyle: TextStyle(
+        navTitleTextStyle: defaults.navTitleTextStyle.copyWith(
           fontFamily: '.SF Pro Text',
           fontSize: 17,
           fontWeight: FontWeight.w600,
           letterSpacing: -0.3,
         ),
-        navLargeTitleTextStyle: TextStyle(
+        navLargeTitleTextStyle: defaults.navLargeTitleTextStyle.copyWith(
           fontFamily: '.SF Pro Display',
           fontSize: 34,
           fontWeight: FontWeight.w700,

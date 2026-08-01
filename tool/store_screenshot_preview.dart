@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart' show CupertinoTheme;
 import 'package:flutter/material.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
@@ -88,6 +89,10 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
         title: 'PVE Companion',
         debugShowCheckedModeBanner: false,
         theme: PveCompanionTheme.light(),
+        builder: (BuildContext context, Widget? child) => CupertinoTheme(
+          data: PveCompanionTheme.cupertino(Brightness.light),
+          child: child!,
+        ),
         home: Scaffold(
           body: SafeArea(
             bottom: false,
