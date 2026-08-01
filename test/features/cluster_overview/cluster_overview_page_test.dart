@@ -84,6 +84,24 @@ void main() {
       find.byKey(const ValueKey<String>('dashboard-nodes-two-columns')),
       findsOneWidget,
     );
+    expect(
+      tester
+          .getSize(
+            find.byKey(
+              const ValueKey<String>('dashboard-metric-card-Workload'),
+            ),
+          )
+          .height,
+      tester
+          .getSize(
+            find.byKey(
+              const ValueKey<String>(
+                'dashboard-metric-card-Cluster root disk use',
+              ),
+            ),
+          )
+          .height,
+    );
     expect(find.text('Failed'), findsOneWidget);
     expect(find.text('Running'), findsOneWidget);
     expect(

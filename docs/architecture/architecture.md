@@ -128,6 +128,10 @@ wide shell moves server identity into the sidebar and gives the detail pane one
 compact navigation bar, so iPad and Mac retain the same hierarchy without
 simulating an oversized iPhone layout.
 
+iPad presentation expands the server sidebar and adds glanceable metric strips,
+inline wide controls, and two-column inventory cards. These remain presentation
+decisions: domain state, filters, and actions stay owned by their feature.
+
 Inventory pages use Flutter's Cupertino search fields, sliding segmented
 controls, list sections, list tiles, form sections, sheets, alerts, and dynamic
 system colors. Revealed commands use an anchored menu; action sheets remain

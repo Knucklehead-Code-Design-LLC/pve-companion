@@ -62,4 +62,4 @@ capture_scene() {
 capture_device "$iphone_udid" \
   docs/app-store/screenshots/en-US/iphone-6.9 0
 capture_device "$ipad_udid" \
-  docs/app-store/screenshots/en-US/ipad-13 90
+  docs/app-store/screenshots/en-US/ipad-13 0

@@ -29,6 +29,9 @@ class _StoragePageState extends State<StoragePage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
+      context,
+    );
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Storage',
@@ -46,52 +49,98 @@ class _StoragePageState extends State<StoragePage> {
           PveCenteredSliver(
             maxWidth: 900,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-            child: _buildContent(context, snapshot.storages),
+            child: _buildContent(
+              context,
+              snapshot.storages,
+              usesIpadPresentation: usesIpadPresentation,
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildContent(BuildContext context, List<ClusterStorage> storages) {
+  Widget _buildContent(
+    BuildContext context,
+    List<ClusterStorage> storages, {
+    required bool usesIpadPresentation,
+  }) {
     final List<ClusterStorage> visibleStorages = storages
         .where(_matchesFilter)
         .toList(growable: false);
     final int sharedCount = storages
         .where((ClusterStorage storage) => storage.shared)
         .length;
+    final int localCount = storages.length - sharedCount;
+    final int typeCount = storages
+        .map((ClusterStorage storage) => storage.type)
+        .toSet()
+        .length;
+    final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
+      groupValue: _filter,
+      children: const <_StorageFilter, Widget>{
+        _StorageFilter.all: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('All'),
+        ),
+        _StorageFilter.shared: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('Shared'),
+        ),
+        _StorageFilter.local: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('Local'),
+        ),
+      },
+      onValueChanged: (_StorageFilter? value) {
+        if (value != null) {
+          setState(() => _filter = value);
+        }
+      },
+    );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            '${storages.length} configured · $sharedCount shared',
-            style: PveAppleText.caption(context),
+        if (usesIpadPresentation)
+          PveMetricStrip(
+            items: <PveMetricStripItem>[
+              PveMetricStripItem(
+                label: 'Configured',
+                value: '${storages.length}',
+                icon: CupertinoIcons.tray_full_fill,
+              ),
+              PveMetricStripItem(
+                label: 'Shared',
+                value: '$sharedCount',
+                icon: CupertinoIcons.arrow_2_circlepath,
+              ),
+              PveMetricStripItem(
+                label: 'Local',
+                value: '$localCount',
+                icon: CupertinoIcons.device_desktop,
+              ),
+              PveMetricStripItem(
+                label: 'Storage types',
+                value: '$typeCount',
+                icon: CupertinoIcons.square_stack_3d_up_fill,
+              ),
+            ],
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '${storages.length} configured · $sharedCount shared',
+              style: PveAppleText.caption(context),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
-        PveSlidingSegmentedControl<_StorageFilter>(
-          groupValue: _filter,
-          children: const <_StorageFilter, Widget>{
-            _StorageFilter.all: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('All'),
-            ),
-            _StorageFilter.shared: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Shared'),
-            ),
-            _StorageFilter.local: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Local'),
-            ),
-          },
-          onValueChanged: (_StorageFilter? value) {
-            if (value != null) {
-              setState(() => _filter = value);
-            }
-          },
-        ),
+        if (usesIpadPresentation)
+          PveWideControlBar(
+            primary: Text('Storage pools', style: PveAppleText.title2(context)),
+            secondary: filter,
+          )
+        else
+          filter,
         const SizedBox(height: 16),
         if (storages.isEmpty)
           const PveInsetGroup(
@@ -106,6 +155,27 @@ class _StoragePageState extends State<StoragePage> {
               textAlign: TextAlign.center,
               style: PveAppleText.secondary(context),
             ),
+          )
+        else if (usesIpadPresentation)
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool twoColumns = constraints.maxWidth >= 700;
+              final double cardWidth = twoColumns
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: visibleStorages
+                    .map(
+                      (ClusterStorage storage) => SizedBox(
+                        width: cardWidth,
+                        child: _StorageCard(storage: storage),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
           )
         else
           CupertinoListSection.insetGrouped(
@@ -132,6 +202,61 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.shared => storage.shared,
     _StorageFilter.local => !storage.shared,
   };
+}
+
+class _StorageCard extends StatelessWidget {
+  const _StorageCard({required this.storage});
+
+  final ClusterStorage storage;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = PveAppleColors.primary(context);
+    return PveInsetGroup(
+      key: ValueKey<String>('ipad-storage-card-${storage.name}'),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: <Widget>[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: accent.withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: SizedBox.square(
+              dimension: 40,
+              child: Icon(
+                CupertinoIcons.tray_full_fill,
+                size: 20,
+                color: accent,
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(storage.name, style: PveAppleText.title3(context)),
+                const SizedBox(height: 3),
+                Text(storage.type, style: PveAppleText.caption(context)),
+                const SizedBox(height: 2),
+                Text(storage.content, style: PveAppleText.caption(context)),
+              ],
+            ),
+          ),
+          Text(
+            storage.shared ? 'Shared' : 'Local',
+            style: PveAppleText.caption(context).copyWith(
+              color: storage.shared
+                  ? accent
+                  : PveAppleColors.secondaryLabel(context),
+              fontWeight: FontWeight.w600,
+            ),
+          ),
+        ],
+      ),
+    );
+  }
 }
 
 class _StorageRow extends StatelessWidget {

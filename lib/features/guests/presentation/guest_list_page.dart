@@ -44,6 +44,9 @@ class _GuestListPageState extends State<GuestListPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
+      context,
+    );
     final ClusterOverviewSnapshot? snapshot =
         widget.overviewController.snapshot;
     final List<PveGuest> guests =
@@ -73,13 +76,21 @@ class _GuestListPageState extends State<GuestListPage> {
           PveCenteredSliver(
             maxWidth: 980,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-            child: _buildGuestContent(context, guests),
+            child: _buildGuestContent(
+              context,
+              guests,
+              usesIpadPresentation: usesIpadPresentation,
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildGuestContent(BuildContext context, List<PveGuest> guests) {
+  Widget _buildGuestContent(
+    BuildContext context,
+    List<PveGuest> guests, {
+    required bool usesIpadPresentation,
+  }) {
     final List<PveGuest> visibleGuests = guests
         .where(_matchesFilter)
         .where(_matchesSearch)
@@ -87,48 +98,80 @@ class _GuestListPageState extends State<GuestListPage> {
     final int runningCount = guests
         .where((PveGuest guest) => guest.isRunning)
         .length;
+    final int virtualMachineCount = guests
+        .where((PveGuest guest) => guest.kind == GuestKind.virtualMachine)
+        .length;
+    final int containerCount = guests.length - virtualMachineCount;
+    final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
+      groupValue: _filter,
+      children: const <_GuestFilter, Widget>{
+        _GuestFilter.all: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('All'),
+        ),
+        _GuestFilter.running: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('Running'),
+        ),
+        _GuestFilter.stopped: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('Stopped'),
+        ),
+      },
+      onValueChanged: (_GuestFilter? value) {
+        if (value != null) {
+          setState(() => _filter = value);
+        }
+      },
+    );
+    final Widget search = CupertinoSearchTextField(
+      controller: _searchController,
+      placeholder: 'Search guests',
+      onChanged: (_) => setState(() {}),
+      onSubmitted: (_) => setState(() {}),
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            '${guests.length} ${guests.length == 1 ? 'workload' : 'workloads'} · '
-            '$runningCount running',
-            style: PveAppleText.caption(context),
+        if (usesIpadPresentation)
+          PveMetricStrip(
+            items: <PveMetricStripItem>[
+              PveMetricStripItem(
+                label: 'Workloads',
+                value: '${guests.length}',
+                icon: CupertinoIcons.cube_box,
+              ),
+              PveMetricStripItem(
+                label: 'Running',
+                value: '$runningCount',
+                icon: CupertinoIcons.play_fill,
+                color: PveAppleColors.success(context),
+              ),
+              PveMetricStripItem(
+                label: 'Virtual machines',
+                value: '$virtualMachineCount',
+                icon: CupertinoIcons.desktopcomputer,
+              ),
+              PveMetricStripItem(
+                label: 'Containers',
+                value: '$containerCount',
+                icon: CupertinoIcons.cube_box_fill,
+              ),
+            ],
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '${guests.length} '
+              '${guests.length == 1 ? 'workload' : 'workloads'} · '
+              '$runningCount running',
+              style: PveAppleText.caption(context),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
-        CupertinoSearchTextField(
-          controller: _searchController,
-          placeholder: 'Search guests',
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 12),
-        PveSlidingSegmentedControl<_GuestFilter>(
-          groupValue: _filter,
-          children: const <_GuestFilter, Widget>{
-            _GuestFilter.all: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('All'),
-            ),
-            _GuestFilter.running: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Running'),
-            ),
-            _GuestFilter.stopped: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Stopped'),
-            ),
-          },
-          onValueChanged: (_GuestFilter? value) {
-            if (value != null) {
-              setState(() => _filter = value);
-            }
-          },
-        ),
+        PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
         if (visibleGuests.isEmpty)
           PveInsetGroup(
@@ -150,6 +193,30 @@ class _GuestListPageState extends State<GuestListPage> {
               ],
             ),
           )
+        else if (usesIpadPresentation)
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool twoColumns = constraints.maxWidth >= 700;
+              final double cardWidth = twoColumns
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: visibleGuests
+                    .map(
+                      (PveGuest guest) => SizedBox(
+                        width: cardWidth,
+                        child: _GuestCard(
+                          guest: guest,
+                          onTap: () => _showGuest(guest),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
+          )
         else
           CupertinoListSection.insetGrouped(
             margin: EdgeInsets.zero,
@@ -157,17 +224,21 @@ class _GuestListPageState extends State<GuestListPage> {
                 .map(
                   (PveGuest guest) => _GuestListItem(
                     guest: guest,
-                    onTap: () => showGuestDetailSheet(
-                      context,
-                      guest: guest,
-                      session: widget.session,
-                      onGuestPowerAction: widget.onGuestPowerAction,
-                    ),
+                    onTap: () => _showGuest(guest),
                   ),
                 )
                 .toList(growable: false),
           ),
       ],
+    );
+  }
+
+  void _showGuest(PveGuest guest) {
+    showGuestDetailSheet(
+      context,
+      guest: guest,
+      session: widget.session,
+      onGuestPowerAction: widget.onGuestPowerAction,
     );
   }
 
@@ -186,6 +257,82 @@ class _GuestListPageState extends State<GuestListPage> {
         guest.node.toLowerCase().contains(query) ||
         guest.vmid.toString().contains(query) ||
         guest.kind.label.toLowerCase().contains(query);
+  }
+}
+
+class _GuestCard extends StatelessWidget {
+  const _GuestCard({required this.guest, required this.onTap});
+
+  final PveGuest guest;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color statusColor = guest.isRunning
+        ? PveAppleColors.success(context)
+        : PveAppleColors.secondaryLabel(context);
+    return PveInsetGroup(
+      key: ValueKey<String>('ipad-guest-card-${guest.vmid}'),
+      onTap: onTap,
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        children: <Widget>[
+          DecoratedBox(
+            decoration: BoxDecoration(
+              color: PveAppleColors.primary(context).withValues(alpha: 0.11),
+              borderRadius: BorderRadius.circular(10),
+            ),
+            child: SizedBox.square(
+              dimension: 40,
+              child: Icon(
+                guest.kind == GuestKind.virtualMachine
+                    ? CupertinoIcons.desktopcomputer
+                    : CupertinoIcons.cube_box_fill,
+                size: 20,
+                color: PveAppleColors.primary(context),
+              ),
+            ),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(guest.title, style: PveAppleText.title3(context)),
+                const SizedBox(height: 3),
+                Text(
+                  '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node}',
+                  style: PveAppleText.caption(context),
+                ),
+                const SizedBox(height: 2),
+                Text(
+                  '${formatPveBytes(guest.memoryBytes)} memory',
+                  style: PveAppleText.caption(context),
+                ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 10),
+          Column(
+            crossAxisAlignment: CrossAxisAlignment.end,
+            children: <Widget>[
+              Text(
+                guest.isTemplate ? 'Template' : _statusLabel(guest.status),
+                style: PveAppleText.caption(
+                  context,
+                ).copyWith(color: statusColor, fontWeight: FontWeight.w600),
+              ),
+              const SizedBox(height: 10),
+              Icon(
+                CupertinoIcons.chevron_forward,
+                size: 14,
+                color: PveAppleColors.secondaryLabel(context),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
   }
 }
 

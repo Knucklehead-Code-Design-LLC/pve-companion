@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../core/presentation/pve_apple_ui.dart';
 import 'workspace_section.dart';
@@ -25,12 +26,15 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
       builder: (BuildContext context, BoxConstraints constraints) {
         final int selectedIndex = section.index;
         if (constraints.maxWidth >= 760) {
+          final bool usesIpadSidebar =
+              defaultTargetPlatform == TargetPlatform.iOS;
           return Row(
             children: <Widget>[
               _WorkspaceSidebar(
                 section: section,
                 onSectionChanged: onSectionChanged,
                 header: sidebarHeader,
+                width: usesIpadSidebar ? 288 : 264,
               ),
               Container(
                 width: 0.5,
@@ -87,29 +91,48 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.section,
     required this.onSectionChanged,
     required this.header,
+    required this.width,
   });
 
   final WorkspaceSection section;
   final ValueChanged<WorkspaceSection> onSectionChanged;
   final Widget header;
+  final double width;
 
   @override
   Widget build(BuildContext context) {
     return ColoredBox(
-      color: PveAppleColors.surface(context).withValues(alpha: 0.72),
+      color: PveAppleColors.surface(context).withValues(alpha: 0.9),
       child: SafeArea(
         right: false,
         child: SizedBox(
-          width: 264,
+          key: const ValueKey<String>('workspace-sidebar'),
+          width: width,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+            padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
-                Padding(
-                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 16),
-                  child: header,
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: PveAppleColors.page(context).withValues(alpha: 0.72),
+                    borderRadius: BorderRadius.circular(14),
+                    border: Border.all(
+                      color: PveAppleColors.separator(
+                        context,
+                      ).withValues(alpha: 0.4),
+                      width: 0.5,
+                    ),
+                  ),
+                  child: Padding(
+                    padding: const EdgeInsets.symmetric(
+                      horizontal: 5,
+                      vertical: 4,
+                    ),
+                    child: header,
+                  ),
                 ),
+                const SizedBox(height: 18),
                 Padding(
                   padding: const EdgeInsets.fromLTRB(12, 0, 12, 7),
                   child: Text(
@@ -125,6 +148,23 @@ class _WorkspaceSidebar extends StatelessWidget {
                     selected: item == section,
                     onTap: () => onSectionChanged(item),
                   ),
+                const Spacer(),
+                Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 12),
+                  child: Row(
+                    children: <Widget>[
+                      DecoratedBox(
+                        decoration: BoxDecoration(
+                          color: PveAppleColors.success(context),
+                          shape: BoxShape.circle,
+                        ),
+                        child: const SizedBox.square(dimension: 8),
+                      ),
+                      const SizedBox(width: 8),
+                      Text('Connected', style: PveAppleText.caption(context)),
+                    ],
+                  ),
+                ),
               ],
             ),
           ),
@@ -160,25 +200,15 @@ class _SidebarDestination extends StatelessWidget {
                 : const Color(0x00000000),
             backgroundColorActivated: accent.withValues(alpha: 0.1),
             padding: const EdgeInsets.symmetric(horizontal: 10),
-            leadingSize: 28,
+            leadingSize: 26,
             leadingToTitle: 10,
-            leading: DecoratedBox(
-              decoration: BoxDecoration(
+            leading: Center(
+              child: Icon(
+                selected ? item.selectedIcon : item.icon,
+                size: 20,
                 color: selected
                     ? accent
-                    : PveAppleColors.secondaryLabel(
-                        context,
-                      ).withValues(alpha: 0.12),
-                borderRadius: BorderRadius.circular(7),
-              ),
-              child: Center(
-                child: Icon(
-                  selected ? item.selectedIcon : item.icon,
-                  size: 17,
-                  color: selected
-                      ? CupertinoColors.white
-                      : PveAppleColors.label(context),
-                ),
+                    : PveAppleColors.secondaryLabel(context),
               ),
             ),
             title: Text(

@@ -1,5 +1,13 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider;
+
+abstract final class PveAppleLayout {
+  static bool usesIpadPresentation(BuildContext context) {
+    return defaultTargetPlatform == TargetPlatform.iOS &&
+        MediaQuery.sizeOf(context).shortestSide >= 600;
+  }
+}
 
 abstract final class PveAppleColors {
   static const Color accent = Color(0xFF087E8B);
@@ -185,6 +193,142 @@ class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
   }
 }
 
+class PveWideControlBar extends StatelessWidget {
+  const PveWideControlBar({
+    super.key,
+    required this.primary,
+    required this.secondary,
+    this.secondaryWidth = 360,
+  });
+
+  final Widget primary;
+  final Widget secondary;
+  final double secondaryWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (constraints.maxWidth < 700) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[primary, const SizedBox(height: 12), secondary],
+          );
+        }
+        return Row(
+          children: <Widget>[
+            Expanded(child: primary),
+            const SizedBox(width: 12),
+            SizedBox(width: secondaryWidth, child: secondary),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class PveMetricStripItem {
+  const PveMetricStripItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color? color;
+}
+
+class PveMetricStrip extends StatelessWidget {
+  const PveMetricStrip({super.key, required this.items});
+
+  final List<PveMetricStripItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          if (constraints.maxWidth < 700) {
+            final double cellWidth = constraints.maxWidth / 2;
+            return Wrap(
+              runSpacing: 14,
+              children: items
+                  .map(
+                    (PveMetricStripItem item) => SizedBox(
+                      width: cellWidth,
+                      child: _PveMetricStripCell(item: item),
+                    ),
+                  )
+                  .toList(growable: false),
+            );
+          }
+          return Row(
+            children: <Widget>[
+              for (int index = 0; index < items.length; index++) ...<Widget>[
+                if (index > 0)
+                  Container(
+                    width: 0.5,
+                    height: 38,
+                    color: PveAppleColors.separator(
+                      context,
+                    ).withValues(alpha: 0.65),
+                  ),
+                Expanded(child: _PveMetricStripCell(item: items[index])),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PveMetricStripCell extends StatelessWidget {
+  const _PveMetricStripCell({required this.item});
+
+  final PveMetricStripItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = item.color ?? PveAppleColors.primary(context);
+    return Semantics(
+      label: '${item.label}: ${item.value}',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: <Widget>[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.11),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: SizedBox.square(
+                dimension: 34,
+                child: Icon(item.icon, size: 18, color: color),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(item.value, style: PveAppleText.title3(context)),
+                  const SizedBox(height: 1),
+                  Text(item.label, style: PveAppleText.caption(context)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class PvePageHeader extends StatelessWidget {
   const PvePageHeader({
     super.key,
@@ -287,27 +431,38 @@ class PveInsetGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final BorderRadius borderRadius = BorderRadius.circular(14);
-    Widget content = DecoratedBox(
-      decoration: BoxDecoration(
-        color: color ?? PveAppleColors.surface(context),
-        borderRadius: borderRadius,
-        border: Border.all(
-          color: PveAppleColors.separator(context).withValues(alpha: 0.35),
-          width: 0.5,
-        ),
+    final Color backgroundColor = color ?? PveAppleColors.surface(context);
+    final BoxDecoration decoration = BoxDecoration(
+      color: onTap == null ? backgroundColor : null,
+      borderRadius: borderRadius,
+      border: Border.all(
+        color: PveAppleColors.separator(context).withValues(alpha: 0.35),
+        width: 0.5,
       ),
-      child: padding == null ? child : Padding(padding: padding!, child: child),
     );
+    Widget content;
     if (onTap != null) {
-      content = CupertinoButton(
-        padding: EdgeInsets.zero,
-        borderRadius: borderRadius,
-        pressedOpacity: 0.72,
-        onPressed: onTap,
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: PveAppleColors.label(context)),
-          child: content,
+      content = DecoratedBox(
+        decoration: decoration,
+        child: CupertinoButton(
+          color: backgroundColor,
+          padding: padding ?? EdgeInsets.zero,
+          alignment: Alignment.centerLeft,
+          borderRadius: borderRadius,
+          pressedOpacity: 0.72,
+          onPressed: onTap,
+          child: DefaultTextStyle.merge(
+            style: TextStyle(color: PveAppleColors.label(context)),
+            child: child,
+          ),
         ),
+      );
+    } else {
+      content = DecoratedBox(
+        decoration: decoration,
+        child: padding == null
+            ? child
+            : Padding(padding: padding!, child: child),
       );
     }
     return Semantics(

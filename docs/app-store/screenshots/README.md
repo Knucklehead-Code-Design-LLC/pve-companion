@@ -7,7 +7,7 @@ server and contain no real hostnames, IP addresses, users, or credentials.
 | Folder | Required canvas | Current files |
 | --- | --- | --- |
 | `en-US/iphone-6.9` | 1320 × 2868 | Overview, guests, nodes, storage, tasks |
-| `en-US/ipad-13` | 2752 × 2064 | Overview, guests, nodes, storage, tasks |
+| `en-US/ipad-13` | 2064 × 2752 | Overview, guests, nodes, storage, tasks |
 | `en-US/mac` | 1280 × 800 | Overview, guests, nodes, storage, tasks |
 
 All submitted files are JPEGs without alpha. The preview fixture must reflect

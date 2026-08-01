@@ -75,6 +75,7 @@ class DatacenterMetricCard extends StatelessWidget {
       button: onAction != null,
       label: semanticLabel,
       child: PveInsetGroup(
+        key: ValueKey<String>('dashboard-metric-card-$label'),
         onTap: onAction,
         padding: const EdgeInsets.all(18),
         child: Column(

@@ -40,6 +40,9 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
 
   @override
   Widget build(BuildContext context) {
+    final bool usesIpadPresentation = PveAppleLayout.usesIpadPresentation(
+      context,
+    );
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Nodes',
@@ -57,13 +60,21 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           PveCenteredSliver(
             maxWidth: 1100,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
-            child: _buildContent(context, snapshot),
+            child: _buildContent(
+              context,
+              snapshot,
+              usesIpadPresentation: usesIpadPresentation,
+            ),
           ),
       ],
     );
   }
 
-  Widget _buildContent(BuildContext context, ClusterOverviewSnapshot snapshot) {
+  Widget _buildContent(
+    BuildContext context,
+    ClusterOverviewSnapshot snapshot, {
+    required bool usesIpadPresentation,
+  }) {
     final List<DatacenterNodeHealth> nodes =
         List<DatacenterNodeHealth>.of(
           DatacenterHealthEvaluator.evaluate(snapshot).nodes,
@@ -97,44 +108,80 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               node.state != DatacenterHealthState.healthy,
         )
         .length;
+    final int totalCores = nodes.fold<int>(
+      0,
+      (int total, DatacenterNodeHealth node) =>
+          total + (node.node.cpuCores ?? 0),
+    );
+    final Widget search = CupertinoSearchTextField(
+      controller: _searchController,
+      placeholder: 'Search nodes',
+      onChanged: (_) => setState(() {}),
+      onSubmitted: (_) => setState(() {}),
+    );
+    final Widget filter = PveSlidingSegmentedControl<_NodeFilter>(
+      groupValue: _filter,
+      children: const <_NodeFilter, Widget>{
+        _NodeFilter.all: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('All'),
+        ),
+        _NodeFilter.attention: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 12),
+          child: Text('Attention'),
+        ),
+      },
+      onValueChanged: (_NodeFilter? value) {
+        if (value != null) {
+          setState(() => _filter = value);
+        }
+      },
+    );
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Padding(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          child: Text(
-            '$onlineCount/${nodes.length} online · '
-            '$attentionCount ${attentionCount == 1 ? 'needs' : 'need'} attention',
-            style: PveAppleText.caption(context),
+        if (usesIpadPresentation)
+          PveMetricStrip(
+            items: <PveMetricStripItem>[
+              PveMetricStripItem(
+                label: 'Nodes',
+                value: '${nodes.length}',
+                icon: CupertinoIcons.rectangle_stack,
+              ),
+              PveMetricStripItem(
+                label: 'Online',
+                value: '$onlineCount',
+                icon: CupertinoIcons.check_mark_circled_solid,
+                color: PveAppleColors.success(context),
+              ),
+              PveMetricStripItem(
+                label: 'Attention',
+                value: '$attentionCount',
+                icon: CupertinoIcons.exclamationmark_triangle_fill,
+                color: attentionCount == 0
+                    ? PveAppleColors.success(context)
+                    : PveAppleColors.warning(context),
+              ),
+              PveMetricStripItem(
+                label: 'CPU cores',
+                value: '$totalCores',
+                icon: CupertinoIcons.speedometer,
+              ),
+            ],
+          )
+        else
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 4),
+            child: Text(
+              '$onlineCount/${nodes.length} online · '
+              '$attentionCount '
+              '${attentionCount == 1 ? 'needs' : 'need'} attention',
+              style: PveAppleText.caption(context),
+            ),
           ),
-        ),
         const SizedBox(height: 12),
-        CupertinoSearchTextField(
-          controller: _searchController,
-          placeholder: 'Search nodes',
-          onChanged: (_) => setState(() {}),
-          onSubmitted: (_) => setState(() {}),
-        ),
-        const SizedBox(height: 12),
-        PveSlidingSegmentedControl<_NodeFilter>(
-          groupValue: _filter,
-          children: const <_NodeFilter, Widget>{
-            _NodeFilter.all: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text('All'),
-            ),
-            _NodeFilter.attention: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 12),
-              child: Text('Attention'),
-            ),
-          },
-          onValueChanged: (_NodeFilter? value) {
-            if (value != null) {
-              setState(() => _filter = value);
-            }
-          },
-        ),
+        PveWideControlBar(primary: search, secondary: filter),
         const SizedBox(height: 16),
         if (nodes.isEmpty)
           const PveInsetGroup(
