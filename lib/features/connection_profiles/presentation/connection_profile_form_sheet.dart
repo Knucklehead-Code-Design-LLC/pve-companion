@@ -15,16 +15,25 @@ Future<void> showAddConnectionProfileSheet(
   return showCupertinoSheet<void>(
     context: context,
     useNestedNavigation: true,
-    builder: (BuildContext sheetContext) {
-      return AddConnectionProfileSheet(controller: controller);
-    },
+    scrollableBuilder:
+        (BuildContext sheetContext, ScrollController scrollController) {
+          return AddConnectionProfileSheet(
+            controller: controller,
+            scrollController: scrollController,
+          );
+        },
   );
 }
 
 class AddConnectionProfileSheet extends StatefulWidget {
-  const AddConnectionProfileSheet({super.key, required this.controller});
+  const AddConnectionProfileSheet({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+  });
 
   final PveCompanionController controller;
+  final ScrollController scrollController;
 
   @override
   State<AddConnectionProfileSheet> createState() =>
@@ -75,6 +84,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
       child: SafeArea(
         top: false,
         child: SingleChildScrollView(
+          controller: widget.scrollController,
           padding: EdgeInsets.only(
             top: 14,
             bottom: 28 + MediaQuery.viewInsetsOf(context).bottom,

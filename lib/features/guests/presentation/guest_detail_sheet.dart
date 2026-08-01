@@ -17,13 +17,15 @@ Future<void> showGuestDetailSheet(
   return showCupertinoSheet<void>(
     context: context,
     useNestedNavigation: true,
-    builder: (BuildContext sheetContext) {
-      return _GuestDetailSheet(
-        guest: guest,
-        session: session,
-        onGuestPowerAction: onGuestPowerAction,
-      );
-    },
+    scrollableBuilder:
+        (BuildContext sheetContext, ScrollController scrollController) {
+          return _GuestDetailSheet(
+            guest: guest,
+            session: session,
+            scrollController: scrollController,
+            onGuestPowerAction: onGuestPowerAction,
+          );
+        },
   );
 }
 
@@ -31,11 +33,13 @@ class _GuestDetailSheet extends StatefulWidget {
   const _GuestDetailSheet({
     required this.guest,
     required this.session,
+    required this.scrollController,
     required this.onGuestPowerAction,
   });
 
   final PveGuest guest;
   final ProxmoxSession session;
+  final ScrollController scrollController;
   final Future<void> Function() onGuestPowerAction;
 
   @override
@@ -117,6 +121,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       ),
       GuestDetailLoadState.ready => GuestDetailContent(
         controller: _controller,
+        scrollController: widget.scrollController,
         onPowerAction: _confirmAndRunPowerAction,
       ),
     };

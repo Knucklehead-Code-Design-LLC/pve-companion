@@ -13,16 +13,25 @@ Future<void> showConnectionProfilesSheet(
   return showCupertinoSheet<void>(
     context: context,
     useNestedNavigation: true,
-    builder: (BuildContext sheetContext) {
-      return ConnectionProfilesListSheet(controller: controller);
-    },
+    scrollableBuilder:
+        (BuildContext sheetContext, ScrollController scrollController) {
+          return ConnectionProfilesListSheet(
+            controller: controller,
+            scrollController: scrollController,
+          );
+        },
   );
 }
 
 class ConnectionProfilesListSheet extends StatelessWidget {
-  const ConnectionProfilesListSheet({super.key, required this.controller});
+  const ConnectionProfilesListSheet({
+    super.key,
+    required this.controller,
+    required this.scrollController,
+  });
 
   final PveCompanionController controller;
+  final ScrollController scrollController;
 
   @override
   Widget build(BuildContext context) {
@@ -63,6 +72,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
               );
             }
             return ListView(
+              controller: scrollController,
               padding: const EdgeInsets.only(top: 14, bottom: 32),
               children: <Widget>[
                 CupertinoListSection.insetGrouped(

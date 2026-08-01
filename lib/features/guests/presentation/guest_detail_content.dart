@@ -44,10 +44,12 @@ class GuestDetailContent extends StatelessWidget {
   const GuestDetailContent({
     super.key,
     required this.controller,
+    required this.scrollController,
     required this.onPowerAction,
   });
 
   final GuestDetailController controller;
+  final ScrollController scrollController;
   final Future<void> Function(GuestPowerAction action) onPowerAction;
 
   @override
@@ -56,6 +58,7 @@ class GuestDetailContent extends StatelessWidget {
     final PveGuestDetails details = controller.details!;
     final GuestPowerAction? runningAction = controller.runningAction;
     return ListView(
+      controller: scrollController,
       children: <Widget>[
         _GuestStatusCard(guest: guest),
         const SizedBox(height: 14),
