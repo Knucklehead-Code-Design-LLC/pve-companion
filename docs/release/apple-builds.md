@@ -13,13 +13,13 @@ flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
-flutter build ios --simulator --no-codesign
+flutter build ios --simulator
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
   -configuration Release -derivedDataPath /tmp/pve-companion-macos-build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
 ```
 
-The compile-only macOS command validates the app and CocoaPods integration
+The compile-only macOS command validates the app and Swift Package Manager integration
 without leaving a certificate or team identifier in the repository. An
 installable macOS build with Keychain Sharing must use an authorized Apple
 development signing identity.
@@ -35,6 +35,14 @@ The targets include an app-level privacy manifest and declare
 implementation, which uses platform TLS, Keychain, and SHA-256 certificate
 fingerprinting without shipping non-exempt encryption. Reassess it whenever
 cryptographic or transport behavior changes.
+
+The iOS workspace also contains the `PVECompanionWidgets` extension with
+bundle ID `com.knuckleheadcodedesign.pvecompanion.widgets`. The main app and
+extension require the registered App Group
+`group.com.knuckleheadcodedesign.pvecompanion`; the main App ID also requires
+the Live Activities capability. Both targets must use the publishing team and
+matching version/build numbers. The checked-in privacy manifests declare the
+App Group UserDefaults reason `1C8F.1`.
 
 ## Deterministic dashboard preview
 
@@ -65,6 +73,10 @@ launch.
    password, token secret, ticket, CSRF token, private hostname, or IP address.
 5. Configure App Store signing in Xcode or the approved release system; never
    commit it here.
+6. On a physical iPhone, qualify every widget family and the complete
+   Datacenter Watch lifecycle. Simulator builds prove compilation and basic
+   rendering, but do not replace Dynamic Island, Lock Screen, Always-On, and
+   signing-capability testing on hardware.
 
 Use the focused [TestFlight checklist](testflight-checklist.md) for App Store
 Connect setup, archive validation, upload, and review information. Proposed

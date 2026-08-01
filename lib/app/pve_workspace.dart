@@ -9,11 +9,14 @@ import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
 import '../features/guests/presentation/guest_list_page.dart';
 import '../features/storage/presentation/storage_page.dart';
+import '../features/system_surfaces/presentation/datacenter_watch_sheet.dart';
 import '../features/tasks/presentation/tasks_page.dart';
 import 'pve_companion_about.dart';
 import 'pve_companion_controller.dart';
 import 'workspace/adaptive_workspace_content.dart';
 import 'workspace/disconnected_workspace.dart';
+import 'workspace/server_menu.dart';
+import 'workspace/workspace_actions_menu.dart';
 import 'workspace/workspace_section.dart';
 import 'workspace/workspace_toolbar.dart';
 
@@ -35,54 +38,55 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         widget.controller.connectionProfiles;
     final ConnectionProfile? selectedProfile = profiles.selectedProfile;
     final ProxmoxSession? session = profiles.activeSession;
+    final bool compact = MediaQuery.sizeOf(context).width < 760;
 
+    final WorkspaceToolbar disconnectedToolbar = _buildToolbar(
+      context,
+      title: 'PVE Companion',
+      connected: false,
+    );
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
-      child: SafeArea(
-        bottom: false,
-        child: Column(
-          children: <Widget>[
-            WorkspaceToolbar(
-              profiles: profiles.profiles,
-              selectedProfile: selectedProfile,
-              connected: session != null,
-              onConnectToProfile: _connectToProfile,
-              onRefresh: widget.controller.refreshCluster,
-              onDisconnect: widget.controller.disconnect,
-              onManageServers: () => showConnectionProfilesSheet(
+      navigationBar: session == null ? disconnectedToolbar : null,
+      child: session == null
+          ? DisconnectedWorkspace(
+              profile: selectedProfile,
+              status: profiles.connectionStatus,
+              errorMessage: profiles.errorMessage,
+              onConnect: _connectSelectedProfile,
+              onAddServer: () => showAddConnectionProfileSheet(
                 context,
                 controller: widget.controller,
               ),
-              onAbout: () => showPveCompanionAboutDialog(context),
+            )
+          : AdaptiveWorkspaceContent(
+              section: _section,
+              onSectionChanged: _selectSection,
+              sidebarHeader: ServerMenu(
+                profiles: profiles.profiles,
+                selectedProfile: selectedProfile,
+                onSelected: _connectToProfile,
+              ),
+              wideNavigationBar: _buildToolbar(
+                context,
+                title: _section.navigationTitle,
+                connected: true,
+                showServerMenu: false,
+                showRefreshButton: true,
+                includeRefreshMenuAction: false,
+              ),
+              pages: _buildPages(session, compact: compact),
             ),
-            Expanded(
-              child: session == null
-                  ? DisconnectedWorkspace(
-                      profile: selectedProfile,
-                      status: profiles.connectionStatus,
-                      errorMessage: profiles.errorMessage,
-                      onConnect: _connectSelectedProfile,
-                      onAddServer: () => showAddConnectionProfileSheet(
-                        context,
-                        controller: widget.controller,
-                      ),
-                    )
-                  : AdaptiveWorkspaceContent(
-                      section: _section,
-                      onSectionChanged: _selectSection,
-                      pages: _buildPages(session),
-                    ),
-            ),
-          ],
-        ),
-      ),
     );
   }
 
-  List<Widget> _buildPages(ProxmoxSession session) {
+  List<Widget> _buildPages(ProxmoxSession session, {required bool compact}) {
     return <Widget>[
       ClusterOverviewPage(
         controller: widget.controller.clusterOverview,
+        showsSliverNavigationBar: compact,
+        navigationLeading: compact ? _buildCompactLeading() : null,
+        navigationTrailing: compact ? _buildCompactTrailing() : null,
         onRefresh: widget.controller.refreshCluster,
         onViewGuests: () => _selectSection(WorkspaceSection.guests),
         onViewNodes: () => _selectSection(WorkspaceSection.nodes),
@@ -92,12 +96,101 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       GuestListPage(
         overviewController: widget.controller.clusterOverview,
         session: session,
+        showsSliverNavigationBar: compact,
+        navigationLeading: compact ? _buildCompactLeading() : null,
+        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        onRefresh: widget.controller.refreshCluster,
         onGuestPowerAction: widget.controller.refreshCluster,
       ),
-      ClusterNodesPage(controller: widget.controller.clusterOverview),
-      StoragePage(controller: widget.controller.clusterOverview),
-      TasksPage(controller: widget.controller.clusterOverview),
+      ClusterNodesPage(
+        controller: widget.controller.clusterOverview,
+        showsSliverNavigationBar: compact,
+        navigationLeading: compact ? _buildCompactLeading() : null,
+        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        onRefresh: widget.controller.refreshCluster,
+      ),
+      StoragePage(
+        controller: widget.controller.clusterOverview,
+        showsSliverNavigationBar: compact,
+        navigationLeading: compact ? _buildCompactLeading() : null,
+        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        onRefresh: widget.controller.refreshCluster,
+      ),
+      TasksPage(
+        controller: widget.controller.clusterOverview,
+        showsSliverNavigationBar: compact,
+        navigationLeading: compact ? _buildCompactLeading() : null,
+        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        onRefresh: widget.controller.refreshCluster,
+      ),
     ];
+  }
+
+  Widget _buildCompactLeading() {
+    final ConnectionProfilesController profiles =
+        widget.controller.connectionProfiles;
+    return ServerMenu(
+      profiles: profiles.profiles,
+      selectedProfile: profiles.selectedProfile,
+      onSelected: _connectToProfile,
+      compact: true,
+    );
+  }
+
+  Widget _buildCompactTrailing() {
+    return WorkspaceActionsMenu(
+      connected: true,
+      onRefresh: widget.controller.refreshCluster,
+      onDisconnect: widget.controller.disconnect,
+      onManageServers: () =>
+          showConnectionProfilesSheet(context, controller: widget.controller),
+      onAbout: () => showPveCompanionAboutDialog(context),
+      liveActivitiesAvailable:
+          widget.controller.systemSurfaces.liveActivitiesAvailable,
+      datacenterWatchActive:
+          widget.controller.systemSurfaces.datacenterWatchActive,
+      onStartDatacenterWatch: () => showDatacenterWatchSheet(
+        context,
+        controller: widget.controller.systemSurfaces,
+      ),
+      onEndDatacenterWatch: widget.controller.systemSurfaces.endDatacenterWatch,
+    );
+  }
+
+  WorkspaceToolbar _buildToolbar(
+    BuildContext context, {
+    required String title,
+    required bool connected,
+    bool showServerMenu = true,
+    bool showRefreshButton = false,
+    bool includeRefreshMenuAction = true,
+  }) {
+    final ConnectionProfilesController profiles =
+        widget.controller.connectionProfiles;
+    return WorkspaceToolbar(
+      profiles: profiles.profiles,
+      selectedProfile: profiles.selectedProfile,
+      title: title,
+      connected: connected,
+      onConnectToProfile: _connectToProfile,
+      onRefresh: widget.controller.refreshCluster,
+      onDisconnect: widget.controller.disconnect,
+      onManageServers: () =>
+          showConnectionProfilesSheet(context, controller: widget.controller),
+      onAbout: () => showPveCompanionAboutDialog(context),
+      showServerMenu: showServerMenu,
+      showRefreshButton: showRefreshButton,
+      includeRefreshMenuAction: includeRefreshMenuAction,
+      liveActivitiesAvailable:
+          widget.controller.systemSurfaces.liveActivitiesAvailable,
+      datacenterWatchActive:
+          widget.controller.systemSurfaces.datacenterWatchActive,
+      onStartDatacenterWatch: () => showDatacenterWatchSheet(
+        context,
+        controller: widget.controller.systemSurfaces,
+      ),
+      onEndDatacenterWatch: widget.controller.systemSurfaces.endDatacenterWatch,
+    );
   }
 
   void _selectSection(WorkspaceSection section) {

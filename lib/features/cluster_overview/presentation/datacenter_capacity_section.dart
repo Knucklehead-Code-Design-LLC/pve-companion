@@ -25,7 +25,10 @@ class DatacenterCapacityAndWorkloadSection extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool useTwoColumns = constraints.maxWidth >= 720;
+        final bool supportsGridAtTextSize =
+            MediaQuery.textScalerOf(context).scale(17) < 24;
+        final bool useTwoColumns =
+            constraints.maxWidth >= 620 && supportsGridAtTextSize;
         final double cardWidth = useTwoColumns
             ? (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
@@ -58,8 +61,6 @@ class DatacenterCapacityAndWorkloadSection extends StatelessWidget {
                 '${health.workload.totalContainers}',
             tone: DatacenterDashboardTone.healthy,
             icon: CupertinoIcons.cube_box_fill,
-            actionLabel: 'View Guests',
-            actionSemanticsLabel: 'View all guests',
             onAction: onViewGuests,
           ),
         ];
@@ -77,8 +78,11 @@ class DatacenterCapacityAndWorkloadSection extends StatelessWidget {
                       runSpacing: 12,
                       children: capacityCards
                           .map(
-                            (Widget card) =>
-                                SizedBox(width: cardWidth, child: card),
+                            (Widget card) => SizedBox(
+                              width: cardWidth,
+                              height: 176,
+                              child: card,
+                            ),
                           )
                           .toList(growable: false),
                     ),

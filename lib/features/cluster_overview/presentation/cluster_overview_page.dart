@@ -9,6 +9,9 @@ class ClusterOverviewPage extends StatelessWidget {
   const ClusterOverviewPage({
     super.key,
     required this.controller,
+    this.showsSliverNavigationBar = true,
+    this.navigationLeading,
+    this.navigationTrailing,
     required this.onRefresh,
     required this.onViewGuests,
     required this.onViewNodes,
@@ -17,6 +20,9 @@ class ClusterOverviewPage extends StatelessWidget {
   });
 
   final ClusterOverviewController controller;
+  final bool showsSliverNavigationBar;
+  final Widget? navigationLeading;
+  final Widget? navigationTrailing;
   final Future<void> Function() onRefresh;
   final VoidCallback onViewGuests;
   final VoidCallback onViewNodes;
@@ -27,13 +33,29 @@ class ClusterOverviewPage extends StatelessWidget {
   Widget build(BuildContext context) {
     return switch (controller.state) {
       ClusterOverviewLoadState.idle || ClusterOverviewLoadState.loading =>
-        const PveLoadingState(label: 'Loading datacenter'),
-      ClusterOverviewLoadState.failed => _ClusterLoadFailure(
-        message: controller.errorMessage ?? 'Cluster data could not be loaded.',
-        onRetry: onRefresh,
+        _buildStatePage(const PveLoadingState(label: 'Loading datacenter')),
+      ClusterOverviewLoadState.failed => _buildStatePage(
+        _ClusterLoadFailure(
+          message:
+              controller.errorMessage ?? 'Cluster data could not be loaded.',
+          onRetry: onRefresh,
+        ),
       ),
       ClusterOverviewLoadState.ready => _buildDashboard(),
     };
+  }
+
+  Widget _buildStatePage(Widget child) {
+    return PvePrimaryScrollView(
+      title: 'Datacenter',
+      showsSliverNavigationBar: showsSliverNavigationBar,
+      navigationLeading: navigationLeading,
+      navigationTrailing: navigationTrailing,
+      onRefresh: onRefresh,
+      slivers: <Widget>[
+        SliverFillRemaining(hasScrollBody: false, child: child),
+      ],
+    );
   }
 
   Widget _buildDashboard() {
@@ -41,6 +63,9 @@ class ClusterOverviewPage extends StatelessWidget {
     return DatacenterDashboard(
       snapshot: snapshot,
       health: DatacenterHealthEvaluator.evaluate(snapshot),
+      showsSliverNavigationBar: showsSliverNavigationBar,
+      navigationLeading: navigationLeading,
+      navigationTrailing: navigationTrailing,
       onRefresh: onRefresh,
       onViewGuests: onViewGuests,
       onViewNodes: onViewNodes,

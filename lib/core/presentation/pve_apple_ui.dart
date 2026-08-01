@@ -86,6 +86,105 @@ abstract final class PveAppleText {
   );
 }
 
+class PvePrimaryScrollView extends StatelessWidget {
+  const PvePrimaryScrollView({
+    super.key,
+    required this.title,
+    required this.slivers,
+    this.navigationLeading,
+    this.navigationTrailing,
+    this.onRefresh,
+    this.showsSliverNavigationBar = true,
+    this.scrollViewKey,
+  });
+
+  final String title;
+  final List<Widget> slivers;
+  final Widget? navigationLeading;
+  final Widget? navigationTrailing;
+  final Future<void> Function()? onRefresh;
+  final bool showsSliverNavigationBar;
+  final Key? scrollViewKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      key: scrollViewKey,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: <Widget>[
+        if (showsSliverNavigationBar)
+          CupertinoSliverNavigationBar(
+            transitionBetweenRoutes: false,
+            stretch: true,
+            largeTitle: Text(title),
+            leading: navigationLeading,
+            trailing: navigationTrailing,
+          ),
+        if (onRefresh != null)
+          CupertinoSliverRefreshControl(onRefresh: onRefresh),
+        ...slivers,
+      ],
+    );
+  }
+}
+
+class PveCenteredSliver extends StatelessWidget {
+  const PveCenteredSliver({
+    super.key,
+    required this.child,
+    this.maxWidth = 1360,
+    this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 28),
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: padding,
+      sliver: SliverToBoxAdapter(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
+  const PveSlidingSegmentedControl({
+    super.key,
+    required this.groupValue,
+    required this.children,
+    required this.onValueChanged,
+  });
+
+  final T groupValue;
+  final Map<T, Widget> children;
+  final ValueChanged<T?> onValueChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+        color: PveAppleColors.label(context),
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      child: CupertinoSlidingSegmentedControl<T>(
+        groupValue: groupValue,
+        children: children,
+        onValueChanged: onValueChanged,
+      ),
+    );
+  }
+}
+
 class PvePageHeader extends StatelessWidget {
   const PvePageHeader({
     super.key,

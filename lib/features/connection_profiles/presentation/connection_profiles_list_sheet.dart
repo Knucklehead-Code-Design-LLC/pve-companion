@@ -39,17 +39,10 @@ class ConnectionProfilesListSheet extends StatelessWidget {
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Servers'),
-        leading: CupertinoButton(
+        trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Done'),
-        ),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: controller.connectionProfiles.isBusy
-              ? null
-              : () => _openAddServer(context),
-          child: const Icon(CupertinoIcons.add),
         ),
       ),
       child: SafeArea(
@@ -75,6 +68,21 @@ class ConnectionProfilesListSheet extends StatelessWidget {
               controller: scrollController,
               padding: const EdgeInsets.only(top: 14, bottom: 32),
               children: <Widget>[
+                CupertinoListSection.insetGrouped(
+                  children: <Widget>[
+                    CupertinoListTile(
+                      leading: const Icon(
+                        CupertinoIcons.add_circled_solid,
+                        size: 20,
+                      ),
+                      title: const Text('Add Server'),
+                      trailing: const CupertinoListTileChevron(),
+                      onTap: controller.connectionProfiles.isBusy
+                          ? null
+                          : () => _openAddServer(context),
+                    ),
+                  ],
+                ),
                 CupertinoListSection.insetGrouped(
                   header: const Text('SAVED SERVERS'),
                   footer: const Text(
@@ -190,34 +198,39 @@ class _ConnectionProfileListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PveListRow(
+    return CupertinoListTile(
       leading: Icon(
         profile.authenticationKind == ConnectionAuthenticationKind.apiToken
             ? CupertinoIcons.lock_shield_fill
             : CupertinoIcons.person_crop_circle_fill,
       ),
-      title: Row(
+      title: Text(profile.displayName),
+      subtitle: Text(profile.endpoint.toString()),
+      onTap: disabled ? null : onConnect,
+      trailing: Row(
+        mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          Expanded(child: Text(profile.displayName)),
           if (selected)
             Icon(
               CupertinoIcons.check_mark,
               size: 18,
               color: PveAppleColors.primary(context),
             ),
+          Semantics(
+            button: true,
+            label: 'Remove ${profile.displayName}',
+            child: CupertinoButton(
+              padding: const EdgeInsets.all(8),
+              minimumSize: const Size(44, 44),
+              onPressed: disabled ? null : onRemove,
+              child: Icon(
+                CupertinoIcons.delete,
+                size: 18,
+                color: PveAppleColors.destructive(context),
+              ),
+            ),
+          ),
         ],
-      ),
-      subtitle: Text(profile.endpoint.toString()),
-      onTap: disabled ? null : onConnect,
-      trailing: CupertinoButton(
-        padding: const EdgeInsets.all(6),
-        minimumSize: const Size(36, 36),
-        onPressed: disabled ? null : onRemove,
-        child: Icon(
-          CupertinoIcons.delete,
-          size: 20,
-          color: PveAppleColors.destructive(context),
-        ),
       ),
     );
   }

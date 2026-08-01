@@ -9,11 +9,15 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     required this.section,
     required this.onSectionChanged,
     required this.pages,
+    required this.sidebarHeader,
+    required this.wideNavigationBar,
   });
 
   final WorkspaceSection section;
   final ValueChanged<WorkspaceSection> onSectionChanged;
   final List<Widget> pages;
+  final Widget sidebarHeader;
+  final ObstructingPreferredSizeWidget wideNavigationBar;
 
   @override
   Widget build(BuildContext context) {
@@ -26,6 +30,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
               _WorkspaceSidebar(
                 section: section,
                 onSectionChanged: onSectionChanged,
+                header: sidebarHeader,
               ),
               Container(
                 width: 0.5,
@@ -34,7 +39,11 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 ).withValues(alpha: 0.55),
               ),
               Expanded(
-                child: IndexedStack(index: selectedIndex, children: pages),
+                child: CupertinoPageScaffold(
+                  backgroundColor: PveAppleColors.page(context),
+                  navigationBar: wideNavigationBar,
+                  child: IndexedStack(index: selectedIndex, children: pages),
+                ),
               ),
             ],
           );
@@ -49,19 +58,9 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
               child: CupertinoTabBar(
                 currentIndex: selectedIndex,
                 onTap: _selectIndex,
+                iconSize: 23,
                 activeColor: PveAppleColors.primary(context),
                 inactiveColor: PveAppleColors.secondaryLabel(context),
-                backgroundColor: PveAppleColors.surface(
-                  context,
-                ).withValues(alpha: 0.94),
-                border: Border(
-                  top: BorderSide(
-                    color: PveAppleColors.separator(
-                      context,
-                    ).withValues(alpha: 0.45),
-                    width: 0.5,
-                  ),
-                ),
                 items: WorkspaceSection.values
                     .map(
                       (WorkspaceSection item) => BottomNavigationBarItem(
@@ -87,38 +86,49 @@ class _WorkspaceSidebar extends StatelessWidget {
   const _WorkspaceSidebar({
     required this.section,
     required this.onSectionChanged,
+    required this.header,
   });
 
   final WorkspaceSection section;
   final ValueChanged<WorkspaceSection> onSectionChanged;
+  final Widget header;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      width: 220,
-      color: PveAppleColors.surface(context).withValues(alpha: 0.68),
-      padding: const EdgeInsets.fromLTRB(12, 18, 12, 18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Padding(
-            padding: const EdgeInsets.fromLTRB(10, 0, 10, 8),
-            child: Text(
-              'DATACENTER',
-              style: PveAppleText.caption(context).copyWith(
-                fontSize: 11,
-                fontWeight: FontWeight.w700,
-                letterSpacing: 0.3,
-              ),
+    return ColoredBox(
+      color: PveAppleColors.surface(context).withValues(alpha: 0.72),
+      child: SafeArea(
+        right: false,
+        child: SizedBox(
+          width: 264,
+          child: Padding(
+            padding: const EdgeInsets.fromLTRB(12, 12, 12, 16),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(4, 2, 4, 16),
+                  child: header,
+                ),
+                Padding(
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 7),
+                  child: Text(
+                    'Datacenter',
+                    style: PveAppleText.caption(
+                      context,
+                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                  ),
+                ),
+                for (final WorkspaceSection item in WorkspaceSection.values)
+                  _SidebarDestination(
+                    item: item,
+                    selected: item == section,
+                    onTap: () => onSectionChanged(item),
+                  ),
+              ],
             ),
           ),
-          for (final WorkspaceSection item in WorkspaceSection.values)
-            _SidebarDestination(
-              item: item,
-              selected: item == section,
-              onTap: () => onSectionChanged(item),
-            ),
-        ],
+        ),
       ),
     );
   }
@@ -138,35 +148,47 @@ class _SidebarDestination extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color accent = PveAppleColors.primary(context);
-    return Semantics(
-      selected: selected,
-      button: true,
-      label: item.label,
-      child: Padding(
-        padding: const EdgeInsets.only(bottom: 4),
-        child: CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 9),
-          minimumSize: const Size(44, 42),
-          borderRadius: BorderRadius.circular(8),
-          color: selected ? accent.withValues(alpha: 0.14) : null,
-          pressedOpacity: 0.62,
-          onPressed: onTap,
-          child: Row(
-            children: <Widget>[
-              Icon(
-                selected ? item.selectedIcon : item.icon,
-                size: 20,
-                color: selected ? accent : PveAppleColors.label(context),
+    return Padding(
+      padding: const EdgeInsets.only(bottom: 3),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(10),
+        child: Semantics(
+          selected: selected,
+          child: CupertinoListTile(
+            backgroundColor: selected
+                ? accent.withValues(alpha: 0.14)
+                : const Color(0x00000000),
+            backgroundColorActivated: accent.withValues(alpha: 0.1),
+            padding: const EdgeInsets.symmetric(horizontal: 10),
+            leadingSize: 28,
+            leadingToTitle: 10,
+            leading: DecoratedBox(
+              decoration: BoxDecoration(
+                color: selected
+                    ? accent
+                    : PveAppleColors.secondaryLabel(
+                        context,
+                      ).withValues(alpha: 0.12),
+                borderRadius: BorderRadius.circular(7),
               ),
-              const SizedBox(width: 10),
-              Text(
-                item.label,
-                style: PveAppleText.body(context).copyWith(
-                  color: PveAppleColors.label(context),
-                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              child: Center(
+                child: Icon(
+                  selected ? item.selectedIcon : item.icon,
+                  size: 17,
+                  color: selected
+                      ? CupertinoColors.white
+                      : PveAppleColors.label(context),
                 ),
               ),
-            ],
+            ),
+            title: Text(
+              item.label,
+              style: PveAppleText.body(context).copyWith(
+                fontSize: 15,
+                fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+              ),
+            ),
+            onTap: onTap,
           ),
         ),
       ),

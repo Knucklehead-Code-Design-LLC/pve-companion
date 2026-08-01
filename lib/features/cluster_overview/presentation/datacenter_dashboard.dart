@@ -13,6 +13,9 @@ class DatacenterDashboard extends StatelessWidget {
     super.key,
     required this.snapshot,
     required this.health,
+    this.showsSliverNavigationBar = true,
+    this.navigationLeading,
+    this.navigationTrailing,
     required this.onRefresh,
     required this.onViewGuests,
     required this.onViewNodes,
@@ -22,6 +25,9 @@ class DatacenterDashboard extends StatelessWidget {
 
   final ClusterOverviewSnapshot snapshot;
   final DatacenterHealth health;
+  final bool showsSliverNavigationBar;
+  final Widget? navigationLeading;
+  final Widget? navigationTrailing;
   final Future<void> Function() onRefresh;
   final VoidCallback onViewGuests;
   final VoidCallback onViewNodes;
@@ -37,11 +43,14 @@ class DatacenterDashboard extends StatelessWidget {
           horizontal: wideLayout ? 28 : 16,
           vertical: wideLayout ? 24 : 16,
         );
-        return CustomScrollView(
-          key: const ValueKey<String>('datacenter-dashboard'),
-          physics: const AlwaysScrollableScrollPhysics(),
+        return PvePrimaryScrollView(
+          title: 'Datacenter',
+          scrollViewKey: const ValueKey<String>('datacenter-dashboard'),
+          showsSliverNavigationBar: showsSliverNavigationBar,
+          navigationLeading: navigationLeading,
+          navigationTrailing: navigationTrailing,
+          onRefresh: onRefresh,
           slivers: <Widget>[
-            CupertinoSliverRefreshControl(onRefresh: onRefresh),
             SliverPadding(
               padding: padding,
               sliver: SliverToBoxAdapter(
@@ -51,11 +60,13 @@ class DatacenterDashboard extends StatelessWidget {
                     child: Column(
                       crossAxisAlignment: CrossAxisAlignment.start,
                       children: <Widget>[
-                        _DatacenterHeader(
-                          version: snapshot.version,
-                          onRefresh: onRefresh,
+                        Padding(
+                          padding: const EdgeInsets.fromLTRB(4, 0, 4, 12),
+                          child: Text(
+                            _versionContext(snapshot.version),
+                            style: PveAppleText.caption(context),
+                          ),
                         ),
-                        const SizedBox(height: 20),
                         DatacenterHealthBanner(
                           health: health,
                           onViewNodes: onViewNodes,
@@ -93,56 +104,8 @@ class DatacenterDashboard extends StatelessWidget {
   }
 }
 
-class _DatacenterHeader extends StatelessWidget {
-  const _DatacenterHeader({required this.version, required this.onRefresh});
-
-  final PveVersion version;
-  final Future<void> Function() onRefresh;
-
-  @override
-  Widget build(BuildContext context) {
-    return LayoutBuilder(
-      builder: (BuildContext context, BoxConstraints constraints) {
-        final Widget refreshButton = CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
-          onPressed: () => onRefresh(),
-          child: const Row(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(CupertinoIcons.refresh, size: 18),
-              SizedBox(width: 6),
-              Text('Refresh'),
-            ],
-          ),
-        );
-        final Widget heading = PvePageHeader(
-          title: 'Datacenter',
-          subtitle: _versionContext(version),
-        );
-        if (constraints.maxWidth >= 520) {
-          return Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Expanded(child: heading),
-              refreshButton,
-            ],
-          );
-        }
-        return Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            heading,
-            const SizedBox(height: 12),
-            refreshButton,
-          ],
-        );
-      },
-    );
-  }
-}
-
 String _versionContext(PveVersion version) {
   final String release = version.release?.trim() ?? '';
   final String releaseSuffix = release.isEmpty ? '' : ' · $release';
-  return 'Proxmox VE ${version.version}$releaseSuffix · Pull down to refresh';
+  return 'Proxmox VE ${version.version}$releaseSuffix';
 }

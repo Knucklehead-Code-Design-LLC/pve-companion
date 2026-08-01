@@ -4,59 +4,134 @@ import '../../../core/presentation/pve_apple_ui.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 
-class StoragePage extends StatelessWidget {
-  const StoragePage({super.key, required this.controller});
+class StoragePage extends StatefulWidget {
+  const StoragePage({
+    super.key,
+    required this.controller,
+    required this.onRefresh,
+    this.showsSliverNavigationBar = true,
+    this.navigationLeading,
+    this.navigationTrailing,
+  });
 
   final ClusterOverviewController controller;
+  final Future<void> Function() onRefresh;
+  final bool showsSliverNavigationBar;
+  final Widget? navigationLeading;
+  final Widget? navigationTrailing;
+
+  @override
+  State<StoragePage> createState() => _StoragePageState();
+}
+
+class _StoragePageState extends State<StoragePage> {
+  _StorageFilter _filter = _StorageFilter.all;
 
   @override
   Widget build(BuildContext context) {
-    final ClusterOverviewSnapshot? snapshot = controller.snapshot;
-    if (snapshot == null) {
-      return const PveLoadingState(label: 'Loading storage');
-    }
-    if (snapshot.storages.isEmpty) {
-      return const PveEmptyState(
-        icon: CupertinoIcons.tray,
-        title: 'No storage reported',
-        message: 'This server did not report configured storage.',
-      );
-    }
-    return ListView(
-      padding: const EdgeInsets.all(20),
+    final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
+    return PvePrimaryScrollView(
+      title: 'Storage',
+      showsSliverNavigationBar: widget.showsSliverNavigationBar,
+      navigationLeading: widget.navigationLeading,
+      navigationTrailing: widget.navigationTrailing,
+      onRefresh: widget.onRefresh,
+      slivers: <Widget>[
+        if (snapshot == null)
+          const SliverFillRemaining(
+            hasScrollBody: false,
+            child: PveLoadingState(label: 'Loading storage'),
+          )
+        else
+          PveCenteredSliver(
+            maxWidth: 900,
+            padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
+            child: _buildContent(context, snapshot.storages),
+          ),
+      ],
+    );
+  }
+
+  Widget _buildContent(BuildContext context, List<ClusterStorage> storages) {
+    final List<ClusterStorage> visibleStorages = storages
+        .where(_matchesFilter)
+        .toList(growable: false);
+    final int sharedCount = storages
+        .where((ClusterStorage storage) => storage.shared)
+        .length;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        const PvePageHeader(
-          title: 'Storage',
-          subtitle: 'Configured storage visible to this Proxmox connection.',
-        ),
-        const SizedBox(height: 20),
-        PveInsetGroup(
-          child: Column(
-            children: <Widget>[
-              for (
-                int index = 0;
-                index < snapshot.storages.length;
-                index++
-              ) ...<Widget>[
-                _StorageRow(storage: snapshot.storages[index]),
-                if (index < snapshot.storages.length - 1)
-                  const PveRowSeparator(),
-              ],
-            ],
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '${storages.length} configured · $sharedCount shared',
+            style: PveAppleText.caption(context),
           ),
         ),
+        const SizedBox(height: 12),
+        PveSlidingSegmentedControl<_StorageFilter>(
+          groupValue: _filter,
+          children: const <_StorageFilter, Widget>{
+            _StorageFilter.all: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('All'),
+            ),
+            _StorageFilter.shared: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Shared'),
+            ),
+            _StorageFilter.local: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Local'),
+            ),
+          },
+          onValueChanged: (_StorageFilter? value) {
+            if (value != null) {
+              setState(() => _filter = value);
+            }
+          },
+        ),
+        const SizedBox(height: 16),
+        if (storages.isEmpty)
+          const PveInsetGroup(
+            padding: EdgeInsets.all(20),
+            child: Text('No storage was reported by this server.'),
+          )
+        else if (visibleStorages.isEmpty)
+          PveInsetGroup(
+            padding: const EdgeInsets.all(22),
+            child: Text(
+              'No storage matches this filter.',
+              textAlign: TextAlign.center,
+              style: PveAppleText.secondary(context),
+            ),
+          )
+        else
+          CupertinoListSection.insetGrouped(
+            margin: EdgeInsets.zero,
+            children: visibleStorages
+                .map((ClusterStorage storage) => _StorageRow(storage: storage))
+                .toList(growable: false),
+          ),
         const SizedBox(height: 12),
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 4),
           child: Text(
-            'Capacity and utilization depend on the permissions and API data '
-            'reported by the connected server.',
+            'Capacity and utilization appear only when the connected Proxmox '
+            'API account is allowed to report them.',
             style: PveAppleText.caption(context),
           ),
         ),
       ],
     );
   }
+
+  bool _matchesFilter(ClusterStorage storage) => switch (_filter) {
+    _StorageFilter.all => true,
+    _StorageFilter.shared => storage.shared,
+    _StorageFilter.local => !storage.shared,
+  };
 }
 
 class _StorageRow extends StatelessWidget {
@@ -66,14 +141,33 @@ class _StorageRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PveListRow(
-      leading: const Icon(CupertinoIcons.tray_full_fill),
+    return CupertinoListTile(
+      leading: DecoratedBox(
+        decoration: BoxDecoration(
+          color: PveAppleColors.primary(context).withValues(alpha: 0.12),
+          borderRadius: BorderRadius.circular(8),
+        ),
+        child: Center(
+          child: Icon(
+            CupertinoIcons.tray_full_fill,
+            size: 19,
+            color: PveAppleColors.primary(context),
+          ),
+        ),
+      ),
       title: Text(storage.name),
       subtitle: Text('${storage.type} · ${storage.content}'),
-      trailing: PveStatusPill(
-        label: storage.shared ? 'Shared' : 'Local',
-        color: PveAppleColors.primary(context),
+      additionalInfo: Text(
+        storage.shared ? 'Shared' : 'Local',
+        style: PveAppleText.caption(context).copyWith(
+          color: storage.shared
+              ? PveAppleColors.primary(context)
+              : PveAppleColors.secondaryLabel(context),
+          fontWeight: FontWeight.w600,
+        ),
       ),
     );
   }
 }
+
+enum _StorageFilter { all, shared, local }

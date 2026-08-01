@@ -6,40 +6,6 @@ import '../../cluster_overview/presentation/cluster_overview_format.dart';
 import '../application/guest_detail_controller.dart';
 import '../domain/pve_guest.dart';
 
-class GuestTitleBar extends StatelessWidget {
-  const GuestTitleBar({super.key, required this.guest});
-
-  final PveGuest guest;
-
-  @override
-  Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Icon(
-          guest.kind == GuestKind.virtualMachine
-              ? CupertinoIcons.desktopcomputer
-              : CupertinoIcons.cube_box_fill,
-          size: 30,
-          color: PveAppleColors.primary(context),
-        ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: Column(
-            crossAxisAlignment: CrossAxisAlignment.start,
-            children: <Widget>[
-              Text(guest.title, style: PveAppleText.title2(context)),
-              Text(
-                '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node}',
-                style: PveAppleText.secondary(context),
-              ),
-            ],
-          ),
-        ),
-      ],
-    );
-  }
-}
-
 class GuestDetailContent extends StatelessWidget {
   const GuestDetailContent({
     super.key,
@@ -60,6 +26,14 @@ class GuestDetailContent extends StatelessWidget {
     return ListView(
       controller: scrollController,
       children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 4),
+          child: Text(
+            '${guest.kind.label} ${guest.vmid} · ${guest.node}',
+            style: PveAppleText.caption(context),
+          ),
+        ),
+        const SizedBox(height: 10),
         _GuestStatusCard(guest: guest),
         const SizedBox(height: 14),
         Text('Power', style: PveAppleText.title3(context)),
@@ -107,6 +81,8 @@ class _GuestPowerControls extends StatelessWidget {
       children: <Widget>[
         if (!guest.isRunning)
           CupertinoButton.filled(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            minimumSize: const Size(44, 44),
             onPressed: guest.isTemplate || runningAction != null
                 ? null
                 : () => onPowerAction(GuestPowerAction.start),
@@ -118,6 +94,8 @@ class _GuestPowerControls extends StatelessWidget {
           ),
         if (guest.isRunning) ...<Widget>[
           CupertinoButton.tinted(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            minimumSize: const Size(44, 44),
             onPressed: runningAction != null
                 ? null
                 : () => onPowerAction(GuestPowerAction.shutdown),
@@ -128,6 +106,8 @@ class _GuestPowerControls extends StatelessWidget {
             ),
           ),
           CupertinoButton.tinted(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+            minimumSize: const Size(44, 44),
             onPressed: runningAction != null
                 ? null
                 : () => onPowerAction(GuestPowerAction.reboot),
@@ -156,25 +136,20 @@ class _GuestConfigurationCard extends StatelessWidget {
         child: Text('No safe configuration fields were reported.'),
       );
     }
-    return PveInsetGroup(
-      child: Column(
-        children: <Widget>[
-          for (
-            int index = 0;
-            index < configuration.entries.length;
-            index++
-          ) ...<Widget>[
-            PveListRow(
-              title: Text(configuration.entries.elementAt(index).key),
-              subtitle: SelectableText(
-                configuration.entries.elementAt(index).value,
+    return CupertinoFormSection.insetGrouped(
+      margin: EdgeInsets.zero,
+      children: configuration.entries
+          .map(
+            (MapEntry<String, String> entry) => CupertinoFormRow(
+              prefix: Text(entry.key),
+              child: SelectableText(
+                entry.value,
+                textAlign: TextAlign.end,
+                style: PveAppleText.secondary(context),
               ),
             ),
-            if (index < configuration.entries.length - 1)
-              const PveRowSeparator(leadingIndent: 16),
-          ],
-        ],
-      ),
+          )
+          .toList(growable: false),
     );
   }
 }
@@ -254,7 +229,7 @@ class _PowerActionIcon extends StatelessWidget {
       GuestPowerAction.start => CupertinoIcons.play_arrow_solid,
       GuestPowerAction.shutdown => CupertinoIcons.power,
       GuestPowerAction.reboot => CupertinoIcons.arrow_clockwise,
-    });
+    }, size: 17);
   }
 }
 

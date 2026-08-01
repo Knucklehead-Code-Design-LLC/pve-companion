@@ -26,7 +26,7 @@ void main() {
       await tester.pump();
 
       expect(find.text('Datacenter'), findsOneWidget);
-      expect(find.text('No reported issues.'), findsOneWidget);
+      expect(find.text('All systems operational'), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('dashboard-capacity-stacked')),
         findsOneWidget,
@@ -37,12 +37,14 @@ void main() {
       );
       expect(find.text('3 / 4 running'), findsOneWidget);
 
-      await tester.drag(
-        find.byKey(const ValueKey<String>('datacenter-dashboard')),
-        const Offset(0, -900),
+      await tester.scrollUntilVisible(
+        find.text('Workload'),
+        160,
+        scrollable: find.byType(Scrollable).first,
       );
-      await tester.pump();
-      await tester.tap(find.text('View Guests'));
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('Workload'));
+      await tester.tap(find.text('Workload'));
       expect(guestDrillDownCount, 1);
     },
   );
@@ -60,7 +62,7 @@ void main() {
     await tester.pumpWidget(_DashboardTestApp(controller: controller));
     await tester.pump();
 
-    expect(find.text('Critical attention needed'), findsOneWidget);
+    expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
     expect(find.text('Peak CPU use'), findsOneWidget);
@@ -110,7 +112,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Datacenter'), findsOneWidget);
-    expect(find.text('No reported issues.'), findsOneWidget);
+    expect(find.text('All systems operational'), findsOneWidget);
   });
 
   testWidgets('keeps the wide command center usable with larger text', (
@@ -132,7 +134,7 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('View Storage'), findsOneWidget);
+    expect(find.text('Storage inventory'), findsOneWidget);
     expect(find.text('Nodes'), findsOneWidget);
   });
 
@@ -161,9 +163,9 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('View Nodes'));
-    await tester.tap(find.text('View Guests'));
-    await tester.tap(find.text('View Storage'));
+    await tester.tap(find.text('All systems operational'));
+    await tester.tap(find.text('Workload'));
+    await tester.tap(find.text('Storage inventory'));
     await tester.drag(
       find.byKey(const ValueKey<String>('datacenter-dashboard')),
       const Offset(0, -900),

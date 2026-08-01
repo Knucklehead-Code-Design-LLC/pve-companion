@@ -28,17 +28,17 @@ class DatacenterStorageInventoryCard extends StatelessWidget {
         detail: detail,
         tone: DatacenterDashboardTone.neutral,
         icon: CupertinoIcons.tray_full,
-        actionLabel: 'View Storage',
-        actionSemanticsLabel: 'View all storage',
         onAction: onViewStorage,
       );
     }
 
     return Semantics(
       container: true,
+      button: true,
       label: 'Storage inventory: $primaryValue. $detail',
       child: PveInsetGroup(
         key: const ValueKey<String>('dashboard-storage-inventory-wide'),
+        onTap: onViewStorage,
         padding: const EdgeInsets.all(18),
         child: Row(
           children: <Widget>[
@@ -68,21 +68,10 @@ class DatacenterStorageInventoryCard extends StatelessWidget {
               ),
             ),
             const SizedBox(width: 12),
-            Semantics(
-              button: true,
-              label: 'View all storage',
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                onPressed: onViewStorage,
-                child: const Row(
-                  mainAxisSize: MainAxisSize.min,
-                  children: <Widget>[
-                    Text('View Storage'),
-                    SizedBox(width: 5),
-                    Icon(CupertinoIcons.chevron_forward, size: 14),
-                  ],
-                ),
-              ),
+            Icon(
+              CupertinoIcons.chevron_forward,
+              size: 14,
+              color: PveAppleColors.secondaryLabel(context),
             ),
           ],
         ),

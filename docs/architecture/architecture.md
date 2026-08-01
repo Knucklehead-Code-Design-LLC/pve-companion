@@ -13,6 +13,7 @@ domain, data, application, and presentation code.
 | `cluster_overview` | Cluster/node/storage/task models, strict response decoding, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
 | `guests` | VM/LXC models, safe configuration projection, power command behavior, detail state, and guest UI. |
 | `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
+| `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
@@ -33,6 +34,28 @@ envelope validation; UI code never assembles requests.
 `ChangeNotifier`/`Listenable` from Flutter SDK provide the small amount of
 long-lived state required here. There is no provider/state-management package,
 generic service locator, speculative shared `utils`, or code generation.
+
+## Apple system surfaces
+
+`system_surfaces` converts a loaded cluster snapshot into a deliberately small
+aggregate model. The projection includes only health and counts; it excludes
+server endpoints, host and guest names, users, credentials, tickets, and CSRF
+values. `PveCompanionController` publishes that model after a successful
+cluster refresh.
+
+One Flutter method channel forwards the model to native iOS code. The native
+host writes JSON to the private
+`group.com.knuckleheadcodedesign.pvecompanion` App Group and asks WidgetKit to
+reload its timeline. The SwiftUI extension owns Home Screen, Lock Screen, and
+Live Activity rendering. No Flutter engine or third-party widget package runs
+inside the extension.
+
+Widgets display the latest app-provided snapshot and make its age visible.
+They do not promise real-time status. Datacenter Watch is a user-started,
+four-hour ActivityKit session for a defined maintenance or incident window;
+it updates when the app refreshes and supports Lock Screen plus compact,
+minimal, and expanded Dynamic Island presentations. A future remote-update
+service would require an explicit APNs design and privacy review.
 
 ## Dashboard derivation
 
@@ -96,6 +119,21 @@ never depends on color alone. Feature presentation remains feature-owned;
 the shared layer contains only primitives used across several domains. A
 Material app host remains as Flutter infrastructure for compatibility, but
 the visible interaction system is Cupertino-first on iPhone, iPad, and Mac.
+
+Each compact destination owns one `CustomScrollView` headed by a
+`CupertinoSliverNavigationBar`. The large title collapses into the pinned bar,
+and `CupertinoSliverRefreshControl` participates in the same scroll view. This
+avoids a fixed navigation title competing with a second content title. The
+wide shell moves server identity into the sidebar and gives the detail pane one
+compact navigation bar, so iPad and Mac retain the same hierarchy without
+simulating an oversized iPhone layout.
+
+Inventory pages use Flutter's Cupertino search fields, sliding segmented
+controls, list sections, list tiles, form sections, sheets, alerts, and dynamic
+system colors. Revealed commands use an anchored menu; action sheets remain
+reserved for choices related to an action, and sheets remain scoped tasks.
+The complete surface and state contract lives in
+[`docs/design/interface-inventory.md`](../design/interface-inventory.md).
 
 ## Dependency audit
 

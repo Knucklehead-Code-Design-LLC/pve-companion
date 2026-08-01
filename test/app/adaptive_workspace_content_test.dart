@@ -4,6 +4,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
 import 'package:pve_companion/app/workspace/workspace_section.dart';
+import 'package:pve_companion/app/workspace/workspace_toolbar.dart';
 
 void main() {
   testWidgets('uses stable tabs in a compact window', (
@@ -33,7 +34,7 @@ void main() {
     await tester.pumpWidget(const _NavigationHarness());
 
     expect(find.byType(CupertinoTabBar), findsNothing);
-    expect(find.text('DATACENTER'), findsOneWidget);
+    expect(find.text('Datacenter'), findsWidgets);
 
     await tester.tap(find.text('Storage'));
     await tester.pump();
@@ -91,6 +92,19 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
                     Center(child: Text('Page: ${section.label}')),
               )
               .toList(growable: false),
+          sidebarHeader: const Text('Pennsylvania Lab'),
+          wideNavigationBar: WorkspaceToolbar(
+            profiles: const [],
+            selectedProfile: null,
+            title: _section.navigationTitle,
+            connected: true,
+            showServerMenu: false,
+            onConnectToProfile: (_) {},
+            onRefresh: () {},
+            onDisconnect: () {},
+            onManageServers: () {},
+            onAbout: () {},
+          ),
         ),
       ),
     );

@@ -11,7 +11,9 @@ mkdir -p "$output_directory"
 for filename in \
   01-datacenter-overview \
   02-guest-inventory \
-  03-node-health
+  03-node-health \
+  04-storage-inventory \
+  05-recent-tasks
 do
   sips \
     -s format jpeg \
@@ -22,5 +24,7 @@ done
 rm \
   "$generated_directory/01-datacenter-overview.png" \
   "$generated_directory/02-guest-inventory.png" \
-  "$generated_directory/03-node-health.png"
+  "$generated_directory/03-node-health.png" \
+  "$generated_directory/04-storage-inventory.png" \
+  "$generated_directory/05-recent-tasks.png"
 rmdir "$generated_directory"

@@ -80,6 +80,13 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
           onPressed: _submitting ? null : () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
         ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _submitting ? null : _submit,
+          child: _submitting
+              ? const CupertinoActivityIndicator(radius: 9)
+              : const Text('Add'),
+        ),
       ),
       child: SafeArea(
         top: false,
@@ -101,10 +108,21 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
                       padding: const EdgeInsets.symmetric(horizontal: 28),
                       child: Column(
                         children: <Widget>[
-                          Icon(
-                            CupertinoIcons.lock_shield,
-                            size: 40,
-                            color: PveAppleColors.primary(context),
+                          Container(
+                            width: 54,
+                            height: 54,
+                            decoration: BoxDecoration(
+                              color: PveAppleColors.primary(
+                                context,
+                              ).withValues(alpha: 0.12),
+                              shape: BoxShape.circle,
+                            ),
+                            alignment: Alignment.center,
+                            child: Icon(
+                              CupertinoIcons.lock_shield_fill,
+                              size: 27,
+                              color: PveAppleColors.primary(context),
+                            ),
                           ),
                           const SizedBox(height: 12),
                           Text(
@@ -153,17 +171,6 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
                         ),
                       ),
                     const SizedBox(height: 20),
-                    Padding(
-                      padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: CupertinoButton.filled(
-                        onPressed: _submitting ? null : _submit,
-                        child: _submitting
-                            ? const CupertinoActivityIndicator(
-                                color: CupertinoColors.white,
-                              )
-                            : const Text('Test & Add Server'),
-                      ),
-                    ),
                   ],
                 ),
               ),

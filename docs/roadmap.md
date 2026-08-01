@@ -14,13 +14,18 @@ claiming parity before it exists.
   recent reported activity.
 - [x] Guest details plus confirmed start, graceful shutdown, and reboot.
 - [x] Adaptive macOS, iPadOS, and iOS navigation.
+- [x] Cupertino search, status filters, and operational sorting across guest
+      and node inventories, plus focused storage and task filters.
+- [x] Home and Lock Screen status widgets using a privacy-safe last-known
+      datacenter snapshot.
+- [x] Time-bounded Datacenter Watch Live Activity for Lock Screen and Dynamic
+      Island maintenance monitoring.
 
 ## Milestone 0.2 — trustworthy operations
 
 - [ ] Guest task tracking with completion/error state after control actions.
 - [ ] TOTP/2FA password-authentication challenge flow and clear unsupported
   authentication feedback.
-- [ ] Filter, search, and sort across nodes and guests.
 - [ ] Read-only guest runtime details, logs, and richer node/storage metrics,
   including storage utilization only where a PVE API response reports it.
 - [ ] Named profile editing and certificate pin rotation with explicit

@@ -53,8 +53,6 @@ class DatacenterMetricCard extends StatelessWidget {
     required this.icon,
     this.progressValue,
     this.progressLabel,
-    this.actionLabel,
-    this.actionSemanticsLabel,
     this.onAction,
     this.semanticLabel,
   });
@@ -66,8 +64,6 @@ class DatacenterMetricCard extends StatelessWidget {
   final IconData icon;
   final double? progressValue;
   final String? progressLabel;
-  final String? actionLabel;
-  final String? actionSemanticsLabel;
   final VoidCallback? onAction;
   final String? semanticLabel;
 
@@ -76,8 +72,10 @@ class DatacenterMetricCard extends StatelessWidget {
     final Color accent = dashboardToneColor(context, tone);
     return Semantics(
       container: true,
+      button: onAction != null,
       label: semanticLabel,
       child: PveInsetGroup(
+        onTap: onAction,
         padding: const EdgeInsets.all(18),
         child: Column(
           mainAxisSize: MainAxisSize.min,
@@ -97,6 +95,14 @@ class DatacenterMetricCard extends StatelessWidget {
                       context,
                     ).copyWith(color: accent, fontWeight: FontWeight.w700),
                   ),
+                if (onAction != null) ...<Widget>[
+                  const SizedBox(width: 8),
+                  Icon(
+                    CupertinoIcons.chevron_forward,
+                    size: 14,
+                    color: PveAppleColors.secondaryLabel(context),
+                  ),
+                ],
               ],
             ),
             const SizedBox(height: 16),
@@ -106,32 +112,6 @@ class DatacenterMetricCard extends StatelessWidget {
             if (progressValue != null) ...<Widget>[
               const SizedBox(height: 16),
               PveProgressBar(value: progressValue, color: accent),
-            ],
-            if (actionLabel != null && onAction != null) ...<Widget>[
-              const SizedBox(height: 8),
-              Align(
-                alignment: Alignment.centerRight,
-                child: Semantics(
-                  button: true,
-                  label: actionSemanticsLabel,
-                  child: CupertinoButton(
-                    padding: const EdgeInsets.symmetric(
-                      horizontal: 8,
-                      vertical: 6,
-                    ),
-                    onPressed: onAction,
-                    child: Row(
-                      children: <Widget>[
-                        Expanded(
-                          child: Text(actionLabel!, textAlign: TextAlign.end),
-                        ),
-                        const SizedBox(width: 5),
-                        const Icon(CupertinoIcons.chevron_forward, size: 14),
-                      ],
-                    ),
-                  ),
-                ),
-              ),
             ],
           ],
         ),

@@ -11,6 +11,11 @@ extension WorkspaceSectionPresentation on WorkspaceSection {
     WorkspaceSection.tasks => 'Tasks',
   };
 
+  String get navigationTitle => switch (this) {
+    WorkspaceSection.overview => 'Datacenter',
+    _ => label,
+  };
+
   IconData get icon => switch (this) {
     WorkspaceSection.overview => CupertinoIcons.square_grid_2x2,
     WorkspaceSection.guests => CupertinoIcons.cube_box,
