@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 
 import '../application/cluster_overview_controller.dart';
-import '../domain/datacenter_health.dart';
+import '../domain/datacenter_health_evaluator.dart';
 import 'datacenter_dashboard.dart';
 
 class ClusterOverviewPage extends StatelessWidget {
@@ -39,7 +39,7 @@ class ClusterOverviewPage extends StatelessWidget {
     final snapshot = controller.snapshot!;
     return DatacenterDashboard(
       snapshot: snapshot,
-      health: DatacenterHealth.fromSnapshot(snapshot),
+      health: DatacenterHealthEvaluator.evaluate(snapshot),
       onRefresh: onRefresh,
       onViewGuests: onViewGuests,
       onViewNodes: onViewNodes,

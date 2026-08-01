@@ -15,6 +15,8 @@ domain, data, application, and presentation code.
 | `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
+| `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
+| `core/presentation` | Presentation primitives that are genuinely shared across features, currently the modal-sheet grabber. |
 
 Dependencies flow in one direction:
 
@@ -34,10 +36,12 @@ generic service locator, speculative shared `utils`, or code generation.
 
 ## Dashboard derivation
 
-`cluster_overview/domain/datacenter_health.dart` turns a decoded snapshot into
-typed health, issue, workload, task-activity, per-node, and capacity values.
-This keeps rendering code free of policy decisions and lets pure unit tests
-cover threshold boundaries without a widget or network connection.
+`cluster_overview/domain/datacenter_health.dart` owns the immutable health,
+issue, workload, task-activity, per-node, and capacity value types.
+`datacenter_health_evaluator.dart` owns the derivation policy that turns a
+decoded snapshot into those types. This keeps rendering code free of policy
+decisions and lets pure unit tests cover threshold boundaries without a widget
+or network connection.
 
 - Offline nodes and critical per-node CPU, memory, or root-disk pressure are
   critical. Failed reported tasks and warning pressure are warnings. A stopped
@@ -52,9 +56,17 @@ cover threshold boundaries without a widget or network connection.
   workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
   dashboard widgets receive callbacks rather than depending on app navigation.
 
+Large presentation surfaces are split at responsibility boundaries rather
+than by arbitrary size. Connection form orchestration, field rendering, and
+certificate consent are separate owners; guest-detail lifecycle, content, and
+power confirmation are separate owners; dashboard metric and storage cards
+are also independent from the section layout.
+
 The deterministic preview data belongs under `tool/support`, not `lib`, and
-the preview target is local-only. It gives maintainers a repeatable healthy or
-critical visual state without mixing demonstration data into application code.
+the preview targets are local-only. They give maintainers repeatable healthy,
+critical, and App Store capture states without mixing demonstration data into
+application code. The screenshot target reuses production workspace and
+feature widgets and performs no network requests.
 
 ## Security boundaries
 

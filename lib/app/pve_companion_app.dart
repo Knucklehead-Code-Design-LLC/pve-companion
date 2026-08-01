@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
+import 'pve_companion_about.dart';
 import 'pve_companion_controller.dart';
 import 'pve_companion_theme.dart';
 import 'pve_workspace.dart';
@@ -59,6 +60,7 @@ class _PveCompanionAppState extends State<PveCompanionApp> {
               if (profiles.profiles.isEmpty) {
                 return ConnectionProfilesWelcomeScreen(
                   controller: widget.controller,
+                  onAbout: () => showPveCompanionAboutDialog(context),
                 );
               }
               return PveWorkspace(controller: widget.controller);

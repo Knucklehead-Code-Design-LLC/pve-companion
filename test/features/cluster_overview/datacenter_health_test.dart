@@ -1,11 +1,12 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/domain/datacenter_health.dart';
+import 'package:pve_companion/features/cluster_overview/domain/datacenter_health_evaluator.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('derives workload, task activity, and reported-node pressure', () {
-    final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       ClusterOverviewSnapshot(
         version: const PveVersion(version: '8.4'),
         nodes: const <ClusterNode>[
@@ -116,7 +117,7 @@ void main() {
   test(
     'raises offline nodes and failed recent tasks without flagging stopped guests',
     () {
-      final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
         ClusterOverviewSnapshot(
           version: const PveVersion(version: '8.4'),
           nodes: const <ClusterNode>[
@@ -173,7 +174,7 @@ void main() {
   test(
     'treats a completed failed task as attention, not an ongoing outage',
     () {
-      final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
         ClusterOverviewSnapshot(
           version: const PveVersion(version: '8.4'),
           nodes: const <ClusterNode>[
@@ -206,7 +207,7 @@ void main() {
   test(
     'surfaces critical node pressure even when known-node aggregate is low',
     () {
-      final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
         const ClusterOverviewSnapshot(
           version: PveVersion(version: '8.4'),
           nodes: <ClusterNode>[
@@ -239,7 +240,7 @@ void main() {
   );
 
   test('orders offline nodes before critical, warning, and healthy nodes', () {
-    final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       const ClusterOverviewSnapshot(
         version: PveVersion(version: '8.4'),
         nodes: <ClusterNode>[
@@ -261,7 +262,7 @@ void main() {
   });
 
   test('does not invent pressure from incomplete node metrics', () {
-    final DatacenterHealth health = DatacenterHealth.fromSnapshot(
+    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       const ClusterOverviewSnapshot(
         version: PveVersion(version: '8.4'),
         nodes: <ClusterNode>[
@@ -287,7 +288,7 @@ void main() {
 }
 
 DatacenterHealth _healthWithCpu(double cpuFraction) {
-  return DatacenterHealth.fromSnapshot(
+  return DatacenterHealthEvaluator.evaluate(
     ClusterOverviewSnapshot(
       version: const PveVersion(version: '8.4'),
       nodes: <ClusterNode>[

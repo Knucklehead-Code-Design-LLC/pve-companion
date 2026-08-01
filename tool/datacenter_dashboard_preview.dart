@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
-import 'package:pve_companion/features/cluster_overview/domain/datacenter_health.dart';
+import 'package:pve_companion/features/cluster_overview/domain/datacenter_health_evaluator.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/datacenter_dashboard.dart';
 
 import 'support/datacenter_dashboard_preview_data.dart';
@@ -66,7 +66,7 @@ class _DatacenterDashboardPreviewAppState
         ),
         body: DatacenterDashboard(
           snapshot: snapshot,
-          health: DatacenterHealth.fromSnapshot(snapshot),
+          health: DatacenterHealthEvaluator.evaluate(snapshot),
           onRefresh: () async {},
           onViewGuests: _showPreviewDrillDown,
           onViewNodes: _showPreviewDrillDown,
