@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../app/pve_companion_controller.dart';
-import '../../../core/presentation/modal_sheet_grabber.dart';
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_credentials.dart';
 import '../domain/connection_profile.dart';
@@ -12,9 +12,9 @@ Future<void> showAddConnectionProfileSheet(
   BuildContext context, {
   required PveCompanionController controller,
 }) {
-  return showModalBottomSheet<void>(
+  return showCupertinoSheet<void>(
     context: context,
-    isScrollControlled: true,
+    useNestedNavigation: true,
     builder: (BuildContext sheetContext) {
       return AddConnectionProfileSheet(controller: controller);
     },
@@ -62,83 +62,100 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: Padding(
-        padding: EdgeInsets.fromLTRB(
-          20,
-          12,
-          20,
-          24 + MediaQuery.viewInsetsOf(context).bottom,
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Add Server'),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: _submitting ? null : () => Navigator.of(context).pop(),
+          child: const Text('Cancel'),
         ),
+      ),
+      child: SafeArea(
+        top: false,
         child: SingleChildScrollView(
-          child: ConstrainedBox(
-            constraints: const BoxConstraints(maxWidth: 640),
-            child: Form(
-              key: _formKey,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const ModalSheetGrabber(),
-                  const SizedBox(height: 20),
-                  Text(
-                    'Add server',
-                    style: Theme.of(context).textTheme.headlineSmall,
-                  ),
-                  const SizedBox(height: 4),
-                  Text(
-                    'HTTPS is required. Credentials are never written to '
-                    'preferences or logs.',
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                  const SizedBox(height: 24),
-                  ConnectionProfileFormFields(
-                    authenticationKind: _authenticationKind,
-                    nameController: _nameController,
-                    endpointController: _endpointController,
-                    usernameController: _usernameController,
-                    realmController: _realmController,
-                    tokenIdController: _tokenIdController,
-                    secretController: _secretController,
-                    secretVisible: _secretVisible,
-                    persistCredentials: _persistCredentials,
-                    enabled: !_submitting,
-                    onAuthenticationKindChanged:
-                        (ConnectionAuthenticationKind kind) {
-                          setState(() => _authenticationKind = kind);
-                        },
-                    onToggleSecretVisibility: () =>
-                        setState(() => _secretVisible = !_secretVisible),
-                    onPersistCredentialsChanged: (bool value) {
-                      setState(() => _persistCredentials = value);
-                    },
-                  ),
-                  if (_submitError != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    Text(
-                      _submitError!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+          padding: EdgeInsets.only(
+            top: 14,
+            bottom: 28 + MediaQuery.viewInsetsOf(context).bottom,
+          ),
+          child: Center(
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 680),
+              child: Form(
+                key: _formKey,
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: <Widget>[
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: Column(
+                        children: <Widget>[
+                          Icon(
+                            CupertinoIcons.lock_shield,
+                            size: 40,
+                            color: PveAppleColors.primary(context),
+                          ),
+                          const SizedBox(height: 12),
+                          Text(
+                            'Connect securely',
+                            style: PveAppleText.title2(context),
+                          ),
+                          const SizedBox(height: 6),
+                          Text(
+                            'PVE Companion verifies the server before saving '
+                            'anything. Credentials never go into preferences '
+                            'or logs.',
+                            textAlign: TextAlign.center,
+                            style: PveAppleText.secondary(context),
+                          ),
+                        ],
+                      ),
+                    ),
+                    const SizedBox(height: 8),
+                    ConnectionProfileFormFields(
+                      authenticationKind: _authenticationKind,
+                      nameController: _nameController,
+                      endpointController: _endpointController,
+                      usernameController: _usernameController,
+                      realmController: _realmController,
+                      tokenIdController: _tokenIdController,
+                      secretController: _secretController,
+                      secretVisible: _secretVisible,
+                      persistCredentials: _persistCredentials,
+                      enabled: !_submitting,
+                      onAuthenticationKindChanged: _changeAuthenticationKind,
+                      onToggleSecretVisibility: () =>
+                          setState(() => _secretVisible = !_secretVisible),
+                      onPersistCredentialsChanged: (bool value) {
+                        setState(() => _persistCredentials = value);
+                      },
+                    ),
+                    if (_submitError != null)
+                      Padding(
+                        padding: const EdgeInsets.fromLTRB(28, 4, 28, 0),
+                        child: Text(
+                          _submitError!,
+                          textAlign: TextAlign.center,
+                          style: PveAppleText.secondary(context).copyWith(
+                            color: PveAppleColors.destructive(context),
+                          ),
+                        ),
+                      ),
+                    const SizedBox(height: 20),
+                    Padding(
+                      padding: const EdgeInsets.symmetric(horizontal: 28),
+                      child: CupertinoButton.filled(
+                        onPressed: _submitting ? null : _submit,
+                        child: _submitting
+                            ? const CupertinoActivityIndicator(
+                                color: CupertinoColors.white,
+                              )
+                            : const Text('Test & Add Server'),
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  SizedBox(
-                    width: double.infinity,
-                    child: FilledButton.icon(
-                      onPressed: _submitting ? null : _submit,
-                      icon: _submitting
-                          ? const SizedBox(
-                              height: 18,
-                              width: 18,
-                              child: CircularProgressIndicator(strokeWidth: 2),
-                            )
-                          : const Icon(Icons.lock_open_outlined),
-                      label: Text(
-                        _submitting ? 'Connecting…' : 'Test and save',
-                      ),
-                    ),
-                  ),
-                ],
+                ),
               ),
             ),
           ),
@@ -197,6 +214,17 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
     }
   }
 
+  void _changeAuthenticationKind(ConnectionAuthenticationKind kind) {
+    if (_authenticationKind == kind) {
+      return;
+    }
+    _secretController.clear();
+    setState(() {
+      _authenticationKind = kind;
+      _secretVisible = false;
+    });
+  }
+
   ConnectionProfile _buildProfile() {
     final Uri endpoint = parseSecureEndpoint(_endpointController.text);
     return _authenticationKind == ConnectionAuthenticationKind.password
@@ -217,7 +245,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
     ConnectionProfile profile,
     String fingerprint,
   ) async {
-    final bool? trustsCertificate = await showDialog<bool>(
+    final bool? trustsCertificate = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
         return CertificateTrustDialog(

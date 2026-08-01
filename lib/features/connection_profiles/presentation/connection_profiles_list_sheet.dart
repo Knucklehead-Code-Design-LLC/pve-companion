@@ -1,7 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../app/pve_companion_controller.dart';
-import '../../../core/presentation/modal_sheet_grabber.dart';
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_profile.dart';
 import 'connection_profile_form_sheet.dart';
@@ -10,9 +10,9 @@ Future<void> showConnectionProfilesSheet(
   BuildContext context, {
   required PveCompanionController controller,
 }) {
-  return showModalBottomSheet<void>(
+  return showCupertinoSheet<void>(
     context: context,
-    isScrollControlled: true,
+    useNestedNavigation: true,
     builder: (BuildContext sheetContext) {
       return ConnectionProfilesListSheet(controller: controller);
     },
@@ -26,66 +26,68 @@ class ConnectionProfilesListSheet extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return SafeArea(
-      child: AnimatedBuilder(
-        animation: controller,
-        builder: (BuildContext context, Widget? child) {
-          final List<ConnectionProfile> profiles =
-              controller.connectionProfiles.profiles;
-          final ConnectionProfile? selected =
-              controller.connectionProfiles.selectedProfile;
-          return Padding(
-            padding: const EdgeInsets.fromLTRB(20, 12, 20, 28),
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxHeight: 560),
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  const ModalSheetGrabber(),
-                  const SizedBox(height: 20),
-                  Row(
-                    children: <Widget>[
-                      Expanded(
-                        child: Text(
-                          'Servers',
-                          style: Theme.of(context).textTheme.headlineSmall,
-                        ),
-                      ),
-                      TextButton.icon(
-                        onPressed: controller.connectionProfiles.isBusy
-                            ? null
-                            : () => _openAddServer(context),
-                        icon: const Icon(Icons.add),
-                        label: const Text('Add'),
-                      ),
-                    ],
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('Servers'),
+        leading: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: () => Navigator.of(context).pop(),
+          child: const Text('Done'),
+        ),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: controller.connectionProfiles.isBusy
+              ? null
+              : () => _openAddServer(context),
+          child: const Icon(CupertinoIcons.add),
+        ),
+      ),
+      child: SafeArea(
+        top: false,
+        child: AnimatedBuilder(
+          animation: controller,
+          builder: (BuildContext context, Widget? child) {
+            final List<ConnectionProfile> profiles =
+                controller.connectionProfiles.profiles;
+            final ConnectionProfile? selected =
+                controller.connectionProfiles.selectedProfile;
+            if (profiles.isEmpty) {
+              return PveEmptyState(
+                icon: CupertinoIcons.rectangle_stack_badge_plus,
+                title: 'No saved servers',
+                message:
+                    'Add a Proxmox VE server to see your datacenter from this device.',
+                actionLabel: 'Add Server',
+                onAction: () => _openAddServer(context),
+              );
+            }
+            return ListView(
+              padding: const EdgeInsets.only(top: 14, bottom: 32),
+              children: <Widget>[
+                CupertinoListSection.insetGrouped(
+                  header: const Text('SAVED SERVERS'),
+                  footer: const Text(
+                    'Tap a server to connect. Credentials are stored in Apple '
+                    'Keychain only when you choose to remember them.',
                   ),
-                  const SizedBox(height: 8),
-                  Expanded(
-                    child: profiles.isEmpty
-                        ? const Center(child: Text('No saved servers yet.'))
-                        : ListView.separated(
-                            itemCount: profiles.length,
-                            separatorBuilder:
-                                (BuildContext context, int index) =>
-                                    const Divider(height: 1),
-                            itemBuilder: (BuildContext context, int index) {
-                              final ConnectionProfile profile = profiles[index];
-                              return _ConnectionProfileListItem(
-                                profile: profile,
-                                selected: selected?.id == profile.id,
-                                disabled: controller.connectionProfiles.isBusy,
-                                onConnect: () => _connect(context, profile),
-                                onRemove: () => _remove(context, profile),
-                              );
-                            },
-                          ),
-                  ),
-                ],
-              ),
-            ),
-          );
-        },
+                  children: profiles
+                      .map(
+                        (ConnectionProfile profile) =>
+                            _ConnectionProfileListItem(
+                              profile: profile,
+                              selected: selected?.id == profile.id,
+                              disabled: controller.connectionProfiles.isBusy,
+                              onConnect: () => _connect(context, profile),
+                              onRemove: () => _remove(context, profile),
+                            ),
+                      )
+                      .toList(growable: false),
+                ),
+              ],
+            );
+          },
+        ),
       ),
     );
   }
@@ -112,30 +114,42 @@ class ConnectionProfilesListSheet extends StatelessWidget {
     }
     final String message =
         result.kind == ConnectionAttemptKind.certificateTrustRequired
-        ? 'The server certificate changed. Remove and re-add this profile after '
-              'verifying its new fingerprint.'
-        : result.message ?? 'Connection was not completed.';
-    ScaffoldMessenger.of(
-      context,
-    ).showSnackBar(SnackBar(content: Text(message)));
+        ? 'The server certificate changed. Remove and add this server again '
+              'after verifying its new fingerprint.'
+        : result.message ?? 'The connection could not be completed.';
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+        title: const Text('Couldn’t Connect'),
+        content: Text(message),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 
   Future<void> _remove(BuildContext context, ConnectionProfile profile) async {
-    final bool? approved = await showDialog<bool>(
+    final bool? approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
-        return AlertDialog(
+        return CupertinoAlertDialog(
           title: Text('Remove ${profile.displayName}?'),
           content: const Text(
-            'This removes the saved server profile and its locally stored '
-            'Keychain credential from this device.',
+            'This removes the server and its saved Keychain credential from '
+            'this device. Nothing changes on Proxmox.',
           ),
           actions: <Widget>[
-            TextButton(
+            CupertinoDialogAction(
               onPressed: () => Navigator.of(dialogContext).pop(false),
               child: const Text('Cancel'),
             ),
-            FilledButton(
+            CupertinoDialogAction(
+              isDestructiveAction: true,
               onPressed: () => Navigator.of(dialogContext).pop(true),
               child: const Text('Remove'),
             ),
@@ -166,26 +180,34 @@ class _ConnectionProfileListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return ListTile(
-      contentPadding: const EdgeInsets.symmetric(horizontal: 4, vertical: 4),
+    return PveListRow(
       leading: Icon(
-        profile.authenticationKind == ConnectionAuthenticationKind.password
-            ? Icons.key_outlined
-            : Icons.vpn_key_outlined,
+        profile.authenticationKind == ConnectionAuthenticationKind.apiToken
+            ? CupertinoIcons.lock_shield_fill
+            : CupertinoIcons.person_crop_circle_fill,
       ),
-      title: Text(profile.displayName),
-      subtitle: Text(profile.endpoint.toString()),
-      selected: selected,
-      onTap: disabled ? null : onConnect,
-      trailing: PopupMenuButton<String>(
-        onSelected: (String action) {
-          if (action == 'remove') {
-            onRemove();
-          }
-        },
-        itemBuilder: (BuildContext context) => const <PopupMenuEntry<String>>[
-          PopupMenuItem<String>(value: 'remove', child: Text('Remove server')),
+      title: Row(
+        children: <Widget>[
+          Expanded(child: Text(profile.displayName)),
+          if (selected)
+            Icon(
+              CupertinoIcons.check_mark,
+              size: 18,
+              color: PveAppleColors.primary(context),
+            ),
         ],
+      ),
+      subtitle: Text(profile.endpoint.toString()),
+      onTap: disabled ? null : onConnect,
+      trailing: CupertinoButton(
+        padding: const EdgeInsets.all(6),
+        minimumSize: const Size(36, 36),
+        onPressed: disabled ? null : onRemove,
+        child: Icon(
+          CupertinoIcons.delete,
+          size: 20,
+          color: PveAppleColors.destructive(context),
+        ),
       ),
     );
   }

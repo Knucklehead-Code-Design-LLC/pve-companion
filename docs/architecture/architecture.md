@@ -16,7 +16,7 @@ domain, data, application, and presentation code.
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
-| `core/presentation` | Presentation primitives that are genuinely shared across features, currently the modal-sheet grabber. |
+| `core/presentation` | Apple-first colors, typography, inset groups, list rows, progress, status, section, and state primitives shared across features. |
 
 Dependencies flow in one direction:
 
@@ -82,25 +82,34 @@ feature widgets and performs no network requests.
 - Guest configuration is allow-listed before rendering. No force-stop or
   destructive guest control is present in the first milestone.
 
-## Adaptive UI
+## Adaptive Apple UI
 
-The workspace uses a navigation rail at wider Mac/iPad widths and a bottom
-navigation bar at compact iPhone widths. All pages retain their controller
-state when the layout switches. This is a single restrained Material 3 design
-system, not a component-library abstraction.
+The workspace uses five stable Cupertino tabs at compact iPhone widths and a
+persistent sidebar at wider iPad and Mac widths. Both present the same
+destinations in the same order, and an `IndexedStack` retains each page's
+controller and navigation state as people move through the app.
+
+The shared presentation layer follows Apple platform conventions with system
+typography and dynamic colors, inset grouped surfaces, 44-point controls,
+Cupertino sheets and alerts, labeled navigation, and semantic status that
+never depends on color alone. Feature presentation remains feature-owned;
+the shared layer contains only primitives used across several domains. A
+Material app host remains as Flutter infrastructure for compatibility, but
+the visible interaction system is Cupertino-first on iPhone, iPad, and Mac.
 
 ## Dependency audit
 
-The project has three direct third-party runtime dependencies:
+The project has four direct third-party runtime dependencies:
 
 | Dependency | Why it is justified | Rejected alternative |
 | --- | --- | --- |
+| [`cupertino_icons`](https://pub.dev/packages/cupertino_icons) | Flutter's official Cupertino symbol font for familiar Apple-platform navigation and actions. | Shipping missing glyphs, drawing and maintaining a custom icon font, or using Android-oriented symbols. |
 | [`crypto`](https://pub.dev/packages/crypto) | Vetted SHA-256 implementation for certificate fingerprint pinning. | Hand-rolled cryptography. |
 | [`flutter_secure_storage`](https://pub.dev/packages/flutter_secure_storage) | Apple Keychain-backed credential persistence across iOS, iPadOS, and macOS. | Plaintext preferences or duplicating platform-channel Keychain code. |
 | [`shared_preferences`](https://pub.dev/packages/shared_preferences) | Platform preference store for non-secret server metadata and selection. | Treating Keychain as a general JSON database. |
 
-Flutter SDK facilities supply UI, networking (`dart:io`), state
+Flutter SDK facilities supply Cupertino UI, networking (`dart:io`), state
 (`ChangeNotifier`), JSON, and testing. The project intentionally has no
-`http`, provider, BLoC, reactive-state, UI-kit, analytics, push, or codegen
-dependency. Transitive packages are resolved and pinned in `pubspec.lock`; they
-are not used directly by application code.
+third-party UI kit, `http`, provider, BLoC, reactive-state, analytics, push,
+or codegen dependency. Transitive packages are resolved and pinned in
+`pubspec.lock`; they are not used directly by application code.

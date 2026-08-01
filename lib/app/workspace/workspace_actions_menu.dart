@@ -1,6 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
-enum _WorkspaceAction { refresh, disconnect, manageServers, about }
+import '../../core/presentation/pve_apple_ui.dart';
 
 class WorkspaceActionsMenu extends StatelessWidget {
   const WorkspaceActionsMenu({
@@ -20,57 +20,69 @@ class WorkspaceActionsMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<_WorkspaceAction>(
-      tooltip: 'More actions',
-      onSelected: (_WorkspaceAction action) {
-        switch (action) {
-          case _WorkspaceAction.refresh:
-            onRefresh();
-          case _WorkspaceAction.disconnect:
-            onDisconnect();
-          case _WorkspaceAction.manageServers:
-            onManageServers();
-          case _WorkspaceAction.about:
-            onAbout();
-        }
-      },
-      itemBuilder: (BuildContext context) => <PopupMenuEntry<_WorkspaceAction>>[
-        if (connected)
-          const PopupMenuItem<_WorkspaceAction>(
-            value: _WorkspaceAction.refresh,
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.refresh),
-              title: Text('Refresh cluster'),
-            ),
-          ),
-        if (connected)
-          const PopupMenuItem<_WorkspaceAction>(
-            value: _WorkspaceAction.disconnect,
-            child: ListTile(
-              contentPadding: EdgeInsets.zero,
-              leading: Icon(Icons.link_off_outlined),
-              title: Text('Disconnect'),
-            ),
-          ),
-        const PopupMenuItem<_WorkspaceAction>(
-          value: _WorkspaceAction.manageServers,
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.dns_outlined),
-            title: Text('Manage servers'),
-          ),
-        ),
-        const PopupMenuDivider(),
-        const PopupMenuItem<_WorkspaceAction>(
-          value: _WorkspaceAction.about,
-          child: ListTile(
-            contentPadding: EdgeInsets.zero,
-            leading: Icon(Icons.info_outline),
-            title: Text('About PVE Companion'),
-          ),
-        ),
-      ],
+    return CupertinoButton(
+      padding: const EdgeInsets.all(8),
+      minimumSize: const Size(44, 44),
+      onPressed: () => _showActions(context),
+      child: Icon(
+        CupertinoIcons.ellipsis_circle,
+        size: 24,
+        color: PveAppleColors.primary(context),
+      ),
     );
   }
+
+  Future<void> _showActions(BuildContext context) async {
+    final _WorkspaceAction? action = await showCupertinoModalPopup(
+      context: context,
+      builder: (BuildContext popupContext) {
+        return CupertinoActionSheet(
+          title: const Text('PVE Companion'),
+          actions: <Widget>[
+            if (connected)
+              CupertinoActionSheetAction(
+                onPressed: () =>
+                    Navigator.pop(popupContext, _WorkspaceAction.refresh),
+                child: const Text('Refresh datacenter'),
+              ),
+            CupertinoActionSheetAction(
+              onPressed: () =>
+                  Navigator.pop(popupContext, _WorkspaceAction.manageServers),
+              child: const Text('Manage servers'),
+            ),
+            CupertinoActionSheetAction(
+              onPressed: () =>
+                  Navigator.pop(popupContext, _WorkspaceAction.about),
+              child: const Text('About and privacy'),
+            ),
+            if (connected)
+              CupertinoActionSheetAction(
+                isDestructiveAction: true,
+                onPressed: () =>
+                    Navigator.pop(popupContext, _WorkspaceAction.disconnect),
+                child: const Text('Disconnect'),
+              ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.pop(popupContext),
+            child: const Text('Cancel'),
+          ),
+        );
+      },
+    );
+    switch (action) {
+      case _WorkspaceAction.refresh:
+        onRefresh();
+      case _WorkspaceAction.disconnect:
+        onDisconnect();
+      case _WorkspaceAction.manageServers:
+        onManageServers();
+      case _WorkspaceAction.about:
+        onAbout();
+      case null:
+        return;
+    }
+  }
 }
+
+enum _WorkspaceAction { refresh, disconnect, manageServers, about }

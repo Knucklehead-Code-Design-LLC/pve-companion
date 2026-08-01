@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
+import '../../../core/presentation/pve_apple_ui.dart';
 
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
@@ -36,12 +38,11 @@ DatacenterDashboardTone dashboardToneForTask(ClusterTask task) {
 }
 
 Color dashboardToneColor(BuildContext context, DatacenterDashboardTone tone) {
-  final ColorScheme colors = Theme.of(context).colorScheme;
   return switch (tone) {
-    DatacenterDashboardTone.healthy => colors.primary,
-    DatacenterDashboardTone.warning => colors.tertiary,
-    DatacenterDashboardTone.critical => colors.error,
-    DatacenterDashboardTone.neutral => colors.outline,
+    DatacenterDashboardTone.healthy => PveAppleColors.success(context),
+    DatacenterDashboardTone.warning => PveAppleColors.warning(context),
+    DatacenterDashboardTone.critical => PveAppleColors.destructive(context),
+    DatacenterDashboardTone.neutral => PveAppleColors.secondaryLabel(context),
   };
 }
 
@@ -49,34 +50,22 @@ Color dashboardToneSurfaceColor(
   BuildContext context,
   DatacenterDashboardTone tone,
 ) {
-  final ColorScheme colors = Theme.of(context).colorScheme;
-  return switch (tone) {
-    DatacenterDashboardTone.healthy => colors.primaryContainer,
-    DatacenterDashboardTone.warning => colors.tertiaryContainer,
-    DatacenterDashboardTone.critical => colors.errorContainer,
-    DatacenterDashboardTone.neutral => colors.surfaceContainerHighest,
-  };
+  return dashboardToneColor(context, tone).withValues(alpha: 0.11);
 }
 
 Color dashboardToneOnSurfaceColor(
   BuildContext context,
   DatacenterDashboardTone tone,
 ) {
-  final ColorScheme colors = Theme.of(context).colorScheme;
-  return switch (tone) {
-    DatacenterDashboardTone.healthy => colors.onPrimaryContainer,
-    DatacenterDashboardTone.warning => colors.onTertiaryContainer,
-    DatacenterDashboardTone.critical => colors.onErrorContainer,
-    DatacenterDashboardTone.neutral => colors.onSurfaceVariant,
-  };
+  return PveAppleColors.label(context);
 }
 
 IconData dashboardToneIcon(DatacenterDashboardTone tone) {
   return switch (tone) {
-    DatacenterDashboardTone.healthy => Icons.check_circle_outline,
-    DatacenterDashboardTone.warning => Icons.warning_amber_outlined,
-    DatacenterDashboardTone.critical => Icons.error_outline,
-    DatacenterDashboardTone.neutral => Icons.info_outline,
+    DatacenterDashboardTone.healthy => CupertinoIcons.check_mark_circled,
+    DatacenterDashboardTone.warning => CupertinoIcons.exclamationmark_triangle,
+    DatacenterDashboardTone.critical => CupertinoIcons.exclamationmark_circle,
+    DatacenterDashboardTone.neutral => CupertinoIcons.info_circle,
   };
 }
 

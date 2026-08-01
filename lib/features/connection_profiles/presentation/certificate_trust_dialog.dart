@@ -1,4 +1,5 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show SelectableText;
 
 import '../domain/connection_profile.dart';
 
@@ -15,7 +16,7 @@ class CertificateTrustDialog extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final int port = profile.endpoint.hasPort ? profile.endpoint.port : 443;
-    return AlertDialog(
+    return CupertinoAlertDialog(
       title: const Text('Verify this server certificate'),
       content: Column(
         mainAxisSize: MainAxisSize.min,
@@ -41,13 +42,14 @@ class CertificateTrustDialog extends StatelessWidget {
         ],
       ),
       actions: <Widget>[
-        TextButton(
+        CupertinoDialogAction(
           onPressed: () => Navigator.of(context).pop(false),
           child: const Text('Cancel'),
         ),
-        FilledButton(
+        CupertinoDialogAction(
+          isDefaultAction: true,
           onPressed: () => Navigator.of(context).pop(true),
-          child: const Text('Trust and connect'),
+          child: const Text('Trust & Connect'),
         ),
       ],
     );

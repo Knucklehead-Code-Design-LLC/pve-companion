@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../domain/pve_guest.dart';
 
@@ -7,21 +7,23 @@ Future<bool> confirmGuestPowerAction(
   required PveGuest guest,
   required GuestPowerAction action,
 }) async {
-  final bool? approved = await showDialog<bool>(
+  final bool? approved = await showCupertinoDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) {
       final String caution = action.isPotentiallyDisruptive
           ? 'This can interrupt workloads and active users.'
-          : 'The guest will be started through the Proxmox API.';
-      return AlertDialog(
+          : 'Proxmox will start this guest normally.';
+      return CupertinoAlertDialog(
         title: Text('${action.label} ${guest.title}?'),
-        content: Text('$caution No force action will be sent.'),
+        content: Text('$caution PVE Companion never sends a force action.'),
         actions: <Widget>[
-          TextButton(
+          CupertinoDialogAction(
             onPressed: () => Navigator.of(dialogContext).pop(false),
             child: const Text('Cancel'),
           ),
-          FilledButton(
+          CupertinoDialogAction(
+            isDefaultAction: !action.isPotentiallyDisruptive,
+            isDestructiveAction: action.isPotentiallyDisruptive,
             onPressed: () => Navigator.of(dialogContext).pop(true),
             child: Text(action.label),
           ),

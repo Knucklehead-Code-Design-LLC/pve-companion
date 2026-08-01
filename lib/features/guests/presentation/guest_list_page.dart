@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../core/api/proxmox_session.dart';
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_overview_format.dart';
@@ -23,60 +24,47 @@ class GuestListPage extends StatelessWidget {
   Widget build(BuildContext context) {
     final ClusterOverviewSnapshot? snapshot = overviewController.snapshot;
     if (snapshot == null) {
-      return const Center(
-        child: Text('Guest inventory will appear after the overview loads.'),
-      );
+      return const PveLoadingState(label: 'Loading guests');
     }
     final List<PveGuest> guests = List<PveGuest>.of(
       snapshot.guests,
     )..sort((PveGuest left, PveGuest right) => left.vmid.compareTo(right.vmid));
-    return ListView.separated(
+    if (guests.isEmpty) {
+      return const PveEmptyState(
+        icon: CupertinoIcons.cube_box,
+        title: 'No guests reported',
+        message: 'This server did not report virtual machines or containers.',
+      );
+    }
+    return ListView(
       padding: const EdgeInsets.all(20),
-      itemCount: guests.length + 1,
-      separatorBuilder: (BuildContext context, int index) =>
-          const SizedBox(height: 10),
-      itemBuilder: (BuildContext context, int index) {
-        if (index == 0) {
-          return _GuestPageHeader(totalGuests: guests.length);
-        }
-        final PveGuest guest = guests[index - 1];
-        return _GuestListItem(
-          guest: guest,
-          onTap: () => showGuestDetailSheet(
-            context,
-            guest: guest,
-            session: session,
-            onGuestPowerAction: onGuestPowerAction,
+      children: <Widget>[
+        PvePageHeader(
+          title: 'Guests',
+          subtitle:
+              '${guests.length} ${guests.length == 1 ? 'workload' : 'workloads'} '
+              'across the datacenter.',
+        ),
+        const SizedBox(height: 20),
+        PveInsetGroup(
+          child: Column(
+            children: <Widget>[
+              for (int index = 0; index < guests.length; index++) ...<Widget>[
+                _GuestListItem(
+                  guest: guests[index],
+                  onTap: () => showGuestDetailSheet(
+                    context,
+                    guest: guests[index],
+                    session: session,
+                    onGuestPowerAction: onGuestPowerAction,
+                  ),
+                ),
+                if (index < guests.length - 1) const PveRowSeparator(),
+              ],
+            ],
           ),
-        );
-      },
-    );
-  }
-}
-
-class _GuestPageHeader extends StatelessWidget {
-  const _GuestPageHeader({required this.totalGuests});
-
-  final int totalGuests;
-
-  @override
-  Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.only(bottom: 8),
-      child: Row(
-        children: <Widget>[
-          Expanded(
-            child: Text(
-              'Guests',
-              style: Theme.of(context).textTheme.headlineSmall,
-            ),
-          ),
-          Text(
-            '$totalGuests total',
-            style: Theme.of(context).textTheme.labelLarge,
-          ),
-        ],
-      ),
+        ),
+      ],
     );
   }
 }
@@ -90,35 +78,31 @@ class _GuestListItem extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final Color statusColor = guest.isRunning
-        ? Theme.of(context).colorScheme.primary
-        : Theme.of(context).colorScheme.outline;
-    return Card(
-      child: ListTile(
-        onTap: onTap,
-        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-        leading: Icon(
-          guest.kind == GuestKind.virtualMachine
-              ? Icons.memory_outlined
-              : Icons.inventory_2_outlined,
-          color: Theme.of(context).colorScheme.primary,
-        ),
-        title: Text(guest.title),
-        subtitle: Text(
-          '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node} · '
-          '${formatPveBytes(guest.memoryBytes)} memory',
-        ),
-        trailing: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            Text(
-              guest.isTemplate ? 'Template' : guest.status,
-              style: TextStyle(color: statusColor, fontWeight: FontWeight.w600),
-            ),
-            const SizedBox(width: 4),
-            const Icon(Icons.chevron_right),
-          ],
-        ),
+        ? PveAppleColors.success(context)
+        : PveAppleColors.secondaryLabel(context);
+    return PveListRow(
+      onTap: onTap,
+      leading: Icon(
+        guest.kind == GuestKind.virtualMachine
+            ? CupertinoIcons.desktopcomputer
+            : CupertinoIcons.cube_box_fill,
+      ),
+      title: Text(guest.title),
+      subtitle: Text(
+        '${guest.kind.shortLabel} ${guest.vmid} · ${guest.node} · '
+        '${formatPveBytes(guest.memoryBytes)} memory',
+      ),
+      trailing: PveStatusPill(
+        label: guest.isTemplate ? 'Template' : _statusLabel(guest.status),
+        color: statusColor,
       ),
     );
   }
+}
+
+String _statusLabel(String status) {
+  if (status.isEmpty) {
+    return 'Unknown';
+  }
+  return '${status[0].toUpperCase()}${status.substring(1)}';
 }

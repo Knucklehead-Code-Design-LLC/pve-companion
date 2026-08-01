@@ -30,14 +30,12 @@ Use `sips` to verify pixel dimensions and the absence of alpha before upload.
 
 ## Mac capture
 
-Run the same preview target in a 1280 × 800 app window and use macOS window
-capture without a shadow. A locally signed development app can be launched
-with:
+Render the same production-widget preview at the exact 1280 × 800 canvas:
 
 ```sh
-flutter run -d macos -t tool/store_screenshot_preview.dart \
-  --dart-define=SCREENSHOT_SCENE=overview
+tool/capture_macos_store_screenshots.sh
 ```
 
-Unsigned compile-only builds remain the repository's standard verification;
-do not commit a team ID just to automate screenshot capture.
+The helper uses Flutter's deterministic golden renderer and converts the
+results to App Store-ready JPEGs. It needs no signing identity and does not
+change project signing settings.

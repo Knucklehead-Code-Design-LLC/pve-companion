@@ -1,6 +1,7 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../../../app/pve_companion_controller.dart';
+import '../../../core/presentation/pve_apple_ui.dart';
 import 'connection_profile_form_sheet.dart';
 
 export 'connection_profile_form_sheet.dart' show showAddConnectionProfileSheet;
@@ -18,73 +19,122 @@ class ConnectionProfilesWelcomeScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      appBar: AppBar(
-        title: const Text('PVE Companion'),
-        actions: <Widget>[
-          IconButton(
-            onPressed: onAbout,
-            tooltip: 'About and privacy',
-            icon: const Icon(Icons.info_outline),
-          ),
-          const SizedBox(width: 4),
-        ],
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      navigationBar: CupertinoNavigationBar(
+        middle: const Text('PVE Companion'),
+        trailing: CupertinoButton(
+          padding: EdgeInsets.zero,
+          onPressed: onAbout,
+          child: const Icon(CupertinoIcons.info_circle),
+        ),
       ),
-      body: Center(
-        child: ConstrainedBox(
-          constraints: const BoxConstraints(maxWidth: 540),
-          child: Padding(
+      child: SafeArea(
+        top: false,
+        child: Center(
+          child: SingleChildScrollView(
             padding: const EdgeInsets.all(24),
-            child: Card(
-              child: Padding(
-                padding: const EdgeInsets.all(28),
-                child: Column(
-                  mainAxisSize: MainAxisSize.min,
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    ClipRRect(
-                      borderRadius: BorderRadius.circular(16),
-                      child: Image.asset(
-                        'assets/brand/pve_companion_mark.png',
-                        width: 64,
-                        height: 64,
-                        semanticLabel: 'PVE Companion logo',
-                      ),
+            child: ConstrainedBox(
+              constraints: const BoxConstraints(maxWidth: 560),
+              child: Column(
+                children: <Widget>[
+                  ClipRRect(
+                    borderRadius: BorderRadius.circular(22),
+                    child: Image.asset(
+                      'assets/brand/pve_companion_mark.png',
+                      width: 88,
+                      height: 88,
+                      semanticLabel: 'PVE Companion logo',
                     ),
-                    const SizedBox(height: 20),
-                    Text(
-                      'Connect a Proxmox VE server',
-                      style: Theme.of(context).textTheme.headlineSmall,
+                  ),
+                  const SizedBox(height: 24),
+                  Text(
+                    'Your datacenter, at a glance',
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.largeTitle(context),
+                  ),
+                  const SizedBox(height: 10),
+                  Text(
+                    'Connect securely to Proxmox VE and understand health, '
+                    'capacity, guests, storage, and recent work without sorting '
+                    'through the full web console.',
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.body(context).copyWith(
+                      color: PveAppleColors.secondaryLabel(context),
+                      fontSize: 17,
                     ),
-                    const SizedBox(height: 12),
-                    const Text(
-                      'PVE Companion keeps server metadata on this device and, '
-                      'if you choose, stores credentials only in Apple Keychain. '
-                      'Connect over HTTPS or a trusted VPN—never expose the '
-                      'Proxmox management port publicly.',
+                  ),
+                  const SizedBox(height: 28),
+                  PveInsetGroup(
+                    child: Column(
+                      children: const <Widget>[
+                        _WelcomeFeature(
+                          icon: CupertinoIcons.heart_fill,
+                          title: 'See what needs attention',
+                          message: 'Health and pressure are summarized first.',
+                        ),
+                        PveRowSeparator(),
+                        _WelcomeFeature(
+                          icon: CupertinoIcons.lock_shield_fill,
+                          title: 'Keep access private',
+                          message:
+                              'HTTPS is required and saved secrets use Apple Keychain.',
+                        ),
+                        PveRowSeparator(),
+                        _WelcomeFeature(
+                          icon: CupertinoIcons.device_phone_portrait,
+                          title: 'Built for Apple devices',
+                          message:
+                              'One clear experience on iPhone, iPad, and Mac.',
+                        ),
+                      ],
                     ),
-                    const SizedBox(height: 24),
-                    FilledButton.icon(
+                  ),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton.filled(
                       onPressed: () => showAddConnectionProfileSheet(
                         context,
                         controller: controller,
                       ),
-                      icon: const Icon(Icons.add),
-                      label: const Text('Add a server'),
+                      child: const Text('Add Proxmox Server'),
                     ),
-                    const SizedBox(height: 12),
-                    Text(
-                      'Supports password sessions and API tokens. Password '
-                      'sessions use an in-memory ticket after sign-in.',
-                      style: Theme.of(context).textTheme.bodySmall,
-                    ),
-                  ],
-                ),
+                  ),
+                  const SizedBox(height: 12),
+                  Text(
+                    'Use a trusted local network or VPN. Never expose the '
+                    'Proxmox management port directly to the internet.',
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.caption(context),
+                  ),
+                ],
               ),
             ),
           ),
         ),
       ),
+    );
+  }
+}
+
+class _WelcomeFeature extends StatelessWidget {
+  const _WelcomeFeature({
+    required this.icon,
+    required this.title,
+    required this.message,
+  });
+
+  final IconData icon;
+  final String title;
+  final String message;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveListRow(
+      leading: Icon(icon),
+      title: Text(title),
+      subtitle: Text(message),
     );
   }
 }

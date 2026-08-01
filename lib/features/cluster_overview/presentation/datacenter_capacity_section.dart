@@ -1,4 +1,4 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
 import '../domain/datacenter_health.dart';
 import 'datacenter_dashboard_visuals.dart';
@@ -57,8 +57,8 @@ class DatacenterCapacityAndWorkloadSection extends StatelessWidget {
                 'LXC ${health.workload.runningContainers}/'
                 '${health.workload.totalContainers}',
             tone: DatacenterDashboardTone.healthy,
-            icon: Icons.memory_outlined,
-            actionLabel: 'View guests',
+            icon: CupertinoIcons.cube_box_fill,
+            actionLabel: 'View Guests',
             actionSemanticsLabel: 'View all guests',
             onAction: onViewGuests,
           ),

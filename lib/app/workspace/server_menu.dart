@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../core/presentation/pve_apple_ui.dart';
 import '../../features/connection_profiles/domain/connection_profile.dart';
 
 class ServerMenu extends StatelessWidget {
@@ -16,42 +17,86 @@ class ServerMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PopupMenuButton<String>(
-      tooltip: 'Choose server',
-      initialValue: selectedProfile?.id,
-      onSelected: onSelected,
-      itemBuilder: (BuildContext context) => profiles
-          .map(
-            (ConnectionProfile profile) => PopupMenuItem<String>(
-              value: profile.id,
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(profile.displayName),
-                  Text(
-                    profile.endpoint.host,
-                    style: Theme.of(context).textTheme.bodySmall,
-                  ),
-                ],
-              ),
-            ),
-          )
-          .toList(growable: false),
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 5),
+      minimumSize: const Size(44, 40),
+      onPressed: () => _showServerPicker(context),
       child: Row(
         mainAxisSize: MainAxisSize.min,
         children: <Widget>[
-          const Icon(Icons.hub_outlined),
-          const SizedBox(width: 8),
-          Flexible(
-            child: Text(
-              selectedProfile?.displayName ?? 'Choose server',
-              overflow: TextOverflow.ellipsis,
-              style: Theme.of(context).textTheme.titleMedium,
+          ClipRRect(
+            borderRadius: BorderRadius.circular(8),
+            child: Image.asset(
+              'assets/brand/pve_companion_mark.png',
+              width: 32,
+              height: 32,
+              excludeFromSemantics: true,
             ),
           ),
-          const Icon(Icons.arrow_drop_down),
+          const SizedBox(width: 10),
+          Flexible(
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(
+                  selectedProfile?.displayName ?? 'Choose a server',
+                  overflow: TextOverflow.ellipsis,
+                  style: PveAppleText.title3(context),
+                ),
+                if (selectedProfile != null)
+                  Text(
+                    selectedProfile!.endpoint.host,
+                    overflow: TextOverflow.ellipsis,
+                    style: PveAppleText.caption(context),
+                  ),
+              ],
+            ),
+          ),
+          const SizedBox(width: 6),
+          Icon(
+            CupertinoIcons.chevron_down,
+            size: 14,
+            color: PveAppleColors.secondaryLabel(context),
+          ),
         ],
       ),
     );
+  }
+
+  Future<void> _showServerPicker(BuildContext context) async {
+    final String? profileId = await showCupertinoModalPopup<String>(
+      context: context,
+      builder: (BuildContext popupContext) {
+        return CupertinoActionSheet(
+          title: const Text('Connect to a server'),
+          message: const Text('Choose a saved Proxmox VE server.'),
+          actions: profiles
+              .map(
+                (ConnectionProfile profile) => CupertinoActionSheetAction(
+                  isDefaultAction: profile.id == selectedProfile?.id,
+                  onPressed: () => Navigator.of(popupContext).pop(profile.id),
+                  child: Column(
+                    children: <Widget>[
+                      Text(profile.displayName),
+                      Text(
+                        profile.endpoint.host,
+                        style: PveAppleText.caption(popupContext),
+                      ),
+                    ],
+                  ),
+                ),
+              )
+              .toList(growable: false),
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(popupContext).pop(),
+            child: const Text('Cancel'),
+          ),
+        );
+      },
+    );
+    if (profileId != null) {
+      onSelected(profileId);
+    }
   }
 }

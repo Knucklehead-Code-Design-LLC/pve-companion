@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
 import 'datacenter_activity_section.dart';
@@ -29,67 +30,65 @@ class DatacenterDashboard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return RefreshIndicator(
-      onRefresh: onRefresh,
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          final bool wideLayout = constraints.maxWidth >= 760;
-          final EdgeInsets padding = EdgeInsets.symmetric(
-            horizontal: wideLayout ? 28 : 16,
-            vertical: wideLayout ? 24 : 16,
-          );
-          return ListView(
-            key: const ValueKey<String>('datacenter-dashboard'),
-            physics: const AlwaysScrollableScrollPhysics(),
-            padding: padding,
-            children: <Widget>[
-              Center(
-                child: ConstrainedBox(
-                  constraints: const BoxConstraints(maxWidth: 1360),
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      _DatacenterHeader(
-                        version: snapshot.version,
-                        onRefresh: onRefresh,
-                      ),
-                      const SizedBox(height: 20),
-                      DatacenterHealthBanner(
-                        health: health,
-                        onViewNodes: onViewNodes,
-                      ),
-                      const SizedBox(height: 28),
-                      Text(
-                        'Capacity and workload',
-                        style: Theme.of(context).textTheme.titleLarge,
-                      ),
-                      const SizedBox(height: 12),
-                      DatacenterCapacityAndWorkloadSection(
-                        health: health,
-                        nodeCount: snapshot.nodes.length,
-                        storageCount: snapshot.storages.length,
-                        onViewGuests: onViewGuests,
-                        onViewStorage: onViewStorage,
-                      ),
-                      const SizedBox(height: 28),
-                      DatacenterNodesSection(
-                        health: health,
-                        onViewNodes: onViewNodes,
-                      ),
-                      const SizedBox(height: 28),
-                      DatacenterRecentActivitySection(
-                        tasks: snapshot.tasks,
-                        onViewTasks: onViewTasks,
-                      ),
-                      const SizedBox(height: 28),
-                    ],
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool wideLayout = constraints.maxWidth >= 760;
+        final EdgeInsets padding = EdgeInsets.symmetric(
+          horizontal: wideLayout ? 28 : 16,
+          vertical: wideLayout ? 24 : 16,
+        );
+        return CustomScrollView(
+          key: const ValueKey<String>('datacenter-dashboard'),
+          physics: const AlwaysScrollableScrollPhysics(),
+          slivers: <Widget>[
+            CupertinoSliverRefreshControl(onRefresh: onRefresh),
+            SliverPadding(
+              padding: padding,
+              sliver: SliverToBoxAdapter(
+                child: Center(
+                  child: ConstrainedBox(
+                    constraints: const BoxConstraints(maxWidth: 1360),
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        _DatacenterHeader(
+                          version: snapshot.version,
+                          onRefresh: onRefresh,
+                        ),
+                        const SizedBox(height: 20),
+                        DatacenterHealthBanner(
+                          health: health,
+                          onViewNodes: onViewNodes,
+                        ),
+                        const SizedBox(height: 28),
+                        const PveSectionHeader(title: 'Capacity & Workload'),
+                        DatacenterCapacityAndWorkloadSection(
+                          health: health,
+                          nodeCount: snapshot.nodes.length,
+                          storageCount: snapshot.storages.length,
+                          onViewGuests: onViewGuests,
+                          onViewStorage: onViewStorage,
+                        ),
+                        const SizedBox(height: 28),
+                        DatacenterNodesSection(
+                          health: health,
+                          onViewNodes: onViewNodes,
+                        ),
+                        const SizedBox(height: 28),
+                        DatacenterRecentActivitySection(
+                          tasks: snapshot.tasks,
+                          onViewTasks: onViewTasks,
+                        ),
+                        const SizedBox(height: 28),
+                      ],
+                    ),
                   ),
                 ),
               ),
-            ],
-          );
-        },
-      ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
@@ -104,27 +103,21 @@ class _DatacenterHeader extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final Widget refreshButton = OutlinedButton.icon(
+        final Widget refreshButton = CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
           onPressed: () => onRefresh(),
-          icon: const Icon(Icons.refresh),
-          label: const Text('Refresh'),
+          child: const Row(
+            mainAxisSize: MainAxisSize.min,
+            children: <Widget>[
+              Icon(CupertinoIcons.refresh, size: 18),
+              SizedBox(width: 6),
+              Text('Refresh'),
+            ],
+          ),
         );
-        final Widget heading = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Semantics(
-              header: true,
-              child: Text(
-                'Datacenter',
-                style: Theme.of(context).textTheme.headlineSmall,
-              ),
-            ),
-            const SizedBox(height: 4),
-            Text(
-              _versionContext(version),
-              style: Theme.of(context).textTheme.bodyMedium,
-            ),
-          ],
+        final Widget heading = PvePageHeader(
+          title: 'Datacenter',
+          subtitle: _versionContext(version),
         );
         if (constraints.maxWidth >= 520) {
           return Row(

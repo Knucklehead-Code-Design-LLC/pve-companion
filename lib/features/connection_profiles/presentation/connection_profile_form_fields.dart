@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/connection_profile.dart';
 
 class ConnectionProfileFormFields extends StatelessWidget {
@@ -36,33 +37,129 @@ class ConnectionProfileFormFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool passwordAuthentication =
+        authenticationKind == ConnectionAuthenticationKind.password;
     return AutofillGroup(
       child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
-          _ConnectionIdentityFields(
-            nameController: nameController,
-            endpointController: endpointController,
+          CupertinoFormSection.insetGrouped(
+            header: const Text('SERVER'),
+            footer: const Text(
+              'Use the address you normally open in Safari. HTTPS is required.',
+            ),
+            children: <Widget>[
+              CupertinoTextFormFieldRow(
+                controller: nameController,
+                prefix: const Text('Name'),
+                placeholder: 'Home lab',
+                textInputAction: TextInputAction.next,
+                textCapitalization: TextCapitalization.words,
+                enabled: enabled,
+                validator: requiredConnectionField('Enter a name.'),
+              ),
+              CupertinoTextFormFieldRow(
+                controller: endpointController,
+                prefix: const Text('Address'),
+                placeholder: 'https://pve.example.net:8006',
+                keyboardType: TextInputType.url,
+                textInputAction: TextInputAction.next,
+                autocorrect: false,
+                enableSuggestions: false,
+                autofillHints: const <String>[AutofillHints.url],
+                enabled: enabled,
+                validator: (String? value) {
+                  try {
+                    parseSecureEndpoint(value ?? '');
+                    return null;
+                  } on FormatException catch (error) {
+                    return error.message;
+                  }
+                },
+              ),
+            ],
           ),
-          const SizedBox(height: 22),
-          _AuthenticationMethodPicker(
-            authenticationKind: authenticationKind,
-            onChanged: enabled ? onAuthenticationKindChanged : null,
+          CupertinoFormSection.insetGrouped(
+            header: const Text('SIGN IN'),
+            footer: Text(
+              passwordAuthentication
+                  ? 'PVE Companion exchanges your password for a short-lived '
+                        'session ticket. API tokens are recommended when you '
+                        'only need selected permissions.'
+                  : 'Use a dedicated, least-privilege Proxmox API token. Enter '
+                        'the complete token ID in user@realm!token-name form.',
+            ),
+            children: <Widget>[
+              CupertinoFormRow(
+                child: SizedBox(
+                  width: double.infinity,
+                  child: _AuthenticationKindPicker(
+                    value: authenticationKind,
+                    enabled: enabled,
+                    onChanged: onAuthenticationKindChanged,
+                  ),
+                ),
+              ),
+              if (passwordAuthentication) ...<Widget>[
+                CupertinoTextFormFieldRow(
+                  controller: usernameController,
+                  prefix: const Text('Username'),
+                  placeholder: 'root or admin',
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  autofillHints: const <String>[AutofillHints.username],
+                  enabled: enabled,
+                  validator: requiredConnectionField('Enter the username.'),
+                ),
+                CupertinoTextFormFieldRow(
+                  controller: realmController,
+                  prefix: const Text('Realm'),
+                  placeholder: 'pam',
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enabled: enabled,
+                  validator: requiredConnectionField('Enter the realm.'),
+                ),
+              ] else
+                CupertinoTextFormFieldRow(
+                  controller: tokenIdController,
+                  prefix: const Text('Token ID'),
+                  placeholder: 'user@realm!token',
+                  textInputAction: TextInputAction.next,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  enabled: enabled,
+                  validator: (String? value) {
+                    final String tokenId = value?.trim() ?? '';
+                    return tokenId.isNotEmpty && tokenId.contains('!')
+                        ? null
+                        : 'Use user@realm!token-name.';
+                  },
+                ),
+              _SecretFormRow(
+                label: passwordAuthentication ? 'Password' : 'Secret',
+                controller: secretController,
+                visible: secretVisible,
+                enabled: enabled,
+                passwordAuthentication: passwordAuthentication,
+                onToggleVisibility: onToggleSecretVisibility,
+              ),
+            ],
           ),
-          const SizedBox(height: 16),
-          _AuthenticationCredentialFields(
-            authenticationKind: authenticationKind,
-            usernameController: usernameController,
-            realmController: realmController,
-            tokenIdController: tokenIdController,
-            secretController: secretController,
-            secretVisible: secretVisible,
-            onToggleSecretVisibility: enabled ? onToggleSecretVisibility : null,
-          ),
-          const SizedBox(height: 8),
-          _CredentialPersistenceOption(
-            enabled: persistCredentials,
-            onChanged: enabled ? onPersistCredentialsChanged : null,
+          CupertinoFormSection.insetGrouped(
+            header: const Text('ON THIS DEVICE'),
+            footer: const Text(
+              'When enabled, the credential is encrypted in Apple Keychain. '
+              'When disabled, it is kept only for this connection.',
+            ),
+            children: <Widget>[
+              _PersistCredentialsRow(
+                value: persistCredentials,
+                enabled: enabled,
+                onChanged: onPersistCredentialsChanged,
+              ),
+            ],
           ),
         ],
       ),
@@ -70,213 +167,207 @@ class ConnectionProfileFormFields extends StatelessWidget {
   }
 }
 
-class _ConnectionIdentityFields extends StatelessWidget {
-  const _ConnectionIdentityFields({
-    required this.nameController,
-    required this.endpointController,
-  });
-
-  final TextEditingController nameController;
-  final TextEditingController endpointController;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      children: <Widget>[
-        TextFormField(
-          controller: nameController,
-          textInputAction: TextInputAction.next,
-          textCapitalization: TextCapitalization.words,
-          decoration: const InputDecoration(
-            labelText: 'Friendly name',
-            hintText: 'Home cluster',
-          ),
-          validator: requiredConnectionField('Enter a friendly name.'),
-        ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: endpointController,
-          keyboardType: TextInputType.url,
-          textInputAction: TextInputAction.next,
-          autocorrect: false,
-          enableSuggestions: false,
-          autofillHints: const <String>[AutofillHints.url],
-          decoration: const InputDecoration(
-            labelText: 'Server URL',
-            hintText: 'https://pve.example.net:8006',
-          ),
-          validator: (String? value) {
-            try {
-              parseSecureEndpoint(value ?? '');
-              return null;
-            } on FormatException catch (error) {
-              return error.message;
-            }
-          },
-        ),
-      ],
-    );
-  }
-}
-
-class _AuthenticationMethodPicker extends StatelessWidget {
-  const _AuthenticationMethodPicker({
-    required this.authenticationKind,
-    required this.onChanged,
-  });
-
-  final ConnectionAuthenticationKind authenticationKind;
-  final ValueChanged<ConnectionAuthenticationKind>? onChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Sign-in method', style: Theme.of(context).textTheme.titleSmall),
-        const SizedBox(height: 8),
-        SegmentedButton<ConnectionAuthenticationKind>(
-          segments: const <ButtonSegment<ConnectionAuthenticationKind>>[
-            ButtonSegment<ConnectionAuthenticationKind>(
-              value: ConnectionAuthenticationKind.password,
-              label: Text('Password'),
-              icon: Icon(Icons.person_outline),
-            ),
-            ButtonSegment<ConnectionAuthenticationKind>(
-              value: ConnectionAuthenticationKind.apiToken,
-              label: Text('API token'),
-              icon: Icon(Icons.key_outlined),
-            ),
-          ],
-          selected: <ConnectionAuthenticationKind>{authenticationKind},
-          onSelectionChanged: onChanged == null
-              ? null
-              : (Set<ConnectionAuthenticationKind> selection) {
-                  onChanged!(selection.first);
-                },
-        ),
-      ],
-    );
-  }
-}
-
-class _AuthenticationCredentialFields extends StatelessWidget {
-  const _AuthenticationCredentialFields({
-    required this.authenticationKind,
-    required this.usernameController,
-    required this.realmController,
-    required this.tokenIdController,
-    required this.secretController,
-    required this.secretVisible,
-    required this.onToggleSecretVisibility,
-  });
-
-  final ConnectionAuthenticationKind authenticationKind;
-  final TextEditingController usernameController;
-  final TextEditingController realmController;
-  final TextEditingController tokenIdController;
-  final TextEditingController secretController;
-  final bool secretVisible;
-  final VoidCallback? onToggleSecretVisibility;
-
-  @override
-  Widget build(BuildContext context) {
-    final bool passwordAuthentication =
-        authenticationKind == ConnectionAuthenticationKind.password;
-    return Column(
-      children: <Widget>[
-        if (passwordAuthentication) ...<Widget>[
-          TextFormField(
-            controller: usernameController,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            enableSuggestions: false,
-            autofillHints: const <String>[AutofillHints.username],
-            decoration: const InputDecoration(
-              labelText: 'Username',
-              hintText: 'root or admin@pve',
-            ),
-            validator: requiredConnectionField('Enter the username.'),
-          ),
-          const SizedBox(height: 16),
-          TextFormField(
-            controller: realmController,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: const InputDecoration(
-              labelText: 'Realm',
-              hintText: 'pam',
-            ),
-            validator: requiredConnectionField(
-              'Enter the authentication realm.',
-            ),
-          ),
-        ] else
-          TextFormField(
-            controller: tokenIdController,
-            textInputAction: TextInputAction.next,
-            autocorrect: false,
-            enableSuggestions: false,
-            decoration: const InputDecoration(
-              labelText: 'Token ID',
-              hintText: 'user@realm!token-name',
-            ),
-            validator: (String? value) {
-              final String tokenId = value?.trim() ?? '';
-              return tokenId.isNotEmpty && tokenId.contains('!')
-                  ? null
-                  : 'Use the user@realm!token-name form.';
-            },
-          ),
-        const SizedBox(height: 16),
-        TextFormField(
-          controller: secretController,
-          obscureText: !secretVisible,
-          autocorrect: false,
-          enableSuggestions: false,
-          autofillHints: passwordAuthentication
-              ? const <String>[AutofillHints.password]
-              : null,
-          decoration: InputDecoration(
-            labelText: passwordAuthentication ? 'Password' : 'Token secret',
-            suffixIcon: IconButton(
-              tooltip: secretVisible ? 'Hide secret' : 'Show secret',
-              icon: Icon(
-                secretVisible
-                    ? Icons.visibility_off_outlined
-                    : Icons.visibility_outlined,
-              ),
-              onPressed: onToggleSecretVisibility,
-            ),
-          ),
-          validator: requiredConnectionField('Enter the secret.'),
-        ),
-      ],
-    );
-  }
-}
-
-class _CredentialPersistenceOption extends StatelessWidget {
-  const _CredentialPersistenceOption({
+class _PersistCredentialsRow extends StatelessWidget {
+  const _PersistCredentialsRow({
+    required this.value,
     required this.enabled,
     required this.onChanged,
   });
 
+  final bool value;
   final bool enabled;
-  final ValueChanged<bool>? onChanged;
+  final ValueChanged<bool> onChanged;
 
   @override
   Widget build(BuildContext context) {
-    return SwitchListTile.adaptive(
-      contentPadding: EdgeInsets.zero,
-      title: const Text('Remember in Apple Keychain'),
-      subtitle: const Text(
-        'Turn this off for a session-only connection. You will need to add '
-        'the server again after disconnecting.',
+    final Widget toggle = CupertinoSwitch(
+      value: value,
+      activeTrackColor: PveAppleColors.primary(context),
+      onChanged: enabled ? onChanged : null,
+    );
+    if (MediaQuery.textScalerOf(context).scale(15) < 20) {
+      return CupertinoFormRow(
+        prefix: const Text('Remember credential'),
+        child: toggle,
+      );
+    }
+    return CupertinoFormRow(
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          const Text('Remember credential'),
+          const SizedBox(height: 8),
+          Align(alignment: Alignment.centerRight, child: toggle),
+        ],
       ),
-      value: enabled,
-      onChanged: onChanged,
+    );
+  }
+}
+
+class _AuthenticationKindPicker extends StatelessWidget {
+  const _AuthenticationKindPicker({
+    required this.value,
+    required this.enabled,
+    required this.onChanged,
+  });
+
+  final ConnectionAuthenticationKind value;
+  final bool enabled;
+  final ValueChanged<ConnectionAuthenticationKind> onChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool usesLargeText = MediaQuery.textScalerOf(context).scale(17) >= 22;
+    if (!usesLargeText) {
+      return IgnorePointer(
+        ignoring: !enabled,
+        child: CupertinoSlidingSegmentedControl<ConnectionAuthenticationKind>(
+          groupValue: value,
+          children: const <ConnectionAuthenticationKind, Widget>{
+            ConnectionAuthenticationKind.password: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('Password'),
+            ),
+            ConnectionAuthenticationKind.apiToken: Padding(
+              padding: EdgeInsets.symmetric(horizontal: 8),
+              child: Text('API Token'),
+            ),
+          },
+          onValueChanged: (ConnectionAuthenticationKind? kind) {
+            if (kind != null) {
+              onChanged(kind);
+            }
+          },
+        ),
+      );
+    }
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        _AuthenticationKindChoice(
+          label: 'Password',
+          selected: value == ConnectionAuthenticationKind.password,
+          enabled: enabled,
+          onPressed: () => onChanged(ConnectionAuthenticationKind.password),
+        ),
+        const SizedBox(height: 6),
+        _AuthenticationKindChoice(
+          label: 'API Token',
+          selected: value == ConnectionAuthenticationKind.apiToken,
+          enabled: enabled,
+          onPressed: () => onChanged(ConnectionAuthenticationKind.apiToken),
+        ),
+      ],
+    );
+  }
+}
+
+class _AuthenticationKindChoice extends StatelessWidget {
+  const _AuthenticationKindChoice({
+    required this.label,
+    required this.selected,
+    required this.enabled,
+    required this.onPressed,
+  });
+
+  final String label;
+  final bool selected;
+  final bool enabled;
+  final VoidCallback onPressed;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = PveAppleColors.primary(context);
+    return Semantics(
+      button: true,
+      selected: selected,
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
+        minimumSize: const Size(44, 44),
+        borderRadius: BorderRadius.circular(9),
+        color: selected ? accent.withValues(alpha: 0.14) : null,
+        onPressed: enabled ? onPressed : null,
+        child: Row(
+          children: <Widget>[
+            Expanded(
+              child: Text(
+                label,
+                style: PveAppleText.body(context).copyWith(
+                  color: PveAppleColors.label(context),
+                  fontWeight: selected ? FontWeight.w600 : FontWeight.w400,
+                ),
+              ),
+            ),
+            if (selected) ...<Widget>[
+              const SizedBox(width: 8),
+              Icon(CupertinoIcons.check_mark, size: 18, color: accent),
+            ],
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _SecretFormRow extends StatelessWidget {
+  const _SecretFormRow({
+    required this.label,
+    required this.controller,
+    required this.visible,
+    required this.enabled,
+    required this.passwordAuthentication,
+    required this.onToggleVisibility,
+  });
+
+  final String label;
+  final TextEditingController controller;
+  final bool visible;
+  final bool enabled;
+  final bool passwordAuthentication;
+  final VoidCallback onToggleVisibility;
+
+  @override
+  Widget build(BuildContext context) {
+    return FormField<String>(
+      validator: (_) => controller.text.trim().isEmpty
+          ? 'Enter the ${label.toLowerCase()}.'
+          : null,
+      builder: (FormFieldState<String> field) {
+        return CupertinoFormRow(
+          prefix: Text(label),
+          error: field.errorText == null ? null : Text(field.errorText!),
+          child: Row(
+            children: <Widget>[
+              Expanded(
+                child: CupertinoTextField.borderless(
+                  controller: controller,
+                  enabled: enabled,
+                  obscureText: !visible,
+                  autocorrect: false,
+                  enableSuggestions: false,
+                  autofillHints: passwordAuthentication
+                      ? const <String>[AutofillHints.password]
+                      : null,
+                  placeholder: passwordAuthentication
+                      ? 'Required'
+                      : 'Token secret',
+                  textAlign: TextAlign.end,
+                  onChanged: field.didChange,
+                ),
+              ),
+              CupertinoButton(
+                padding: const EdgeInsets.only(left: 8),
+                minimumSize: const Size(34, 34),
+                onPressed: enabled ? onToggleVisibility : null,
+                child: Icon(
+                  visible ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                  size: 20,
+                ),
+              ),
+            ],
+          ),
+        );
+      },
     );
   }
 }

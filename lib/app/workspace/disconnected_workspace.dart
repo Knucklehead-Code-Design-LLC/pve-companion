@@ -1,5 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
 
+import '../../core/presentation/pve_apple_ui.dart';
 import '../../features/connection_profiles/application/connection_profiles_controller.dart';
 import '../../features/connection_profiles/domain/connection_profile.dart';
 
@@ -22,68 +23,103 @@ class DisconnectedWorkspace extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final bool isConnecting = status == ConnectionStatus.connecting;
-    final String connectionMessage = profile == null
-        ? 'Choose or add a server to begin.'
-        : 'Connect to ${profile!.displayName} to view its cluster.';
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Padding(
-          padding: const EdgeInsets.all(24),
-          child: Card(
+    final String title = profile == null
+        ? 'Choose a server'
+        : 'Connect to ${profile!.displayName}';
+    final String message = profile == null
+        ? 'Add a Proxmox VE server to open its datacenter.'
+        : 'PVE Companion connects only when you ask and keeps the last '
+              'reported view on this device.';
+    return ListView(
+      padding: const EdgeInsets.all(24),
+      children: <Widget>[
+        Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 480),
             child: Padding(
-              padding: const EdgeInsets.all(24),
+              padding: const EdgeInsets.only(top: 56),
               child: Column(
-                mainAxisSize: MainAxisSize.min,
-                crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Icon(
-                    Icons.link_off_outlined,
-                    size: 38,
-                    color: Theme.of(context).colorScheme.primary,
+                  Container(
+                    width: 76,
+                    height: 76,
+                    decoration: BoxDecoration(
+                      color: PveAppleColors.primary(
+                        context,
+                      ).withValues(alpha: 0.12),
+                      shape: BoxShape.circle,
+                    ),
+                    child: Icon(
+                      CupertinoIcons.link,
+                      size: 36,
+                      color: PveAppleColors.primary(context),
+                    ),
                   ),
-                  const SizedBox(height: 16),
+                  const SizedBox(height: 22),
                   Text(
-                    'Not connected',
-                    style: Theme.of(context).textTheme.titleLarge,
+                    title,
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.title1(context),
                   ),
                   const SizedBox(height: 8),
-                  Text(connectionMessage),
+                  Text(
+                    message,
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.secondary(context),
+                  ),
                   if (errorMessage != null) ...<Widget>[
-                    const SizedBox(height: 12),
-                    Text(
-                      errorMessage!,
-                      style: TextStyle(
-                        color: Theme.of(context).colorScheme.error,
+                    const SizedBox(height: 16),
+                    PveInsetGroup(
+                      color: PveAppleColors.destructive(
+                        context,
+                      ).withValues(alpha: 0.1),
+                      padding: const EdgeInsets.all(14),
+                      child: Row(
+                        crossAxisAlignment: CrossAxisAlignment.start,
+                        children: <Widget>[
+                          Icon(
+                            CupertinoIcons.exclamationmark_triangle_fill,
+                            size: 20,
+                            color: PveAppleColors.destructive(context),
+                          ),
+                          const SizedBox(width: 10),
+                          Expanded(
+                            child: Text(
+                              errorMessage!,
+                              style: PveAppleText.secondary(context).copyWith(
+                                color: PveAppleColors.destructive(context),
+                              ),
+                            ),
+                          ),
+                        ],
                       ),
                     ),
                   ],
-                  const SizedBox(height: 20),
-                  FilledButton.icon(
-                    onPressed: profile == null || isConnecting
-                        ? null
-                        : () => onConnect(),
-                    icon: isConnecting
-                        ? const SizedBox(
-                            height: 18,
-                            width: 18,
-                            child: CircularProgressIndicator(strokeWidth: 2),
-                          )
-                        : const Icon(Icons.link_outlined),
-                    label: Text(isConnecting ? 'Connecting…' : 'Connect'),
+                  const SizedBox(height: 24),
+                  SizedBox(
+                    width: double.infinity,
+                    child: CupertinoButton.filled(
+                      onPressed: profile == null || isConnecting
+                          ? null
+                          : () => onConnect(),
+                      child: isConnecting
+                          ? const CupertinoActivityIndicator(
+                              color: CupertinoColors.white,
+                            )
+                          : const Text('Connect'),
+                    ),
                   ),
                   const SizedBox(height: 8),
-                  TextButton.icon(
+                  CupertinoButton(
                     onPressed: onAddServer,
-                    icon: const Icon(Icons.add),
-                    label: const Text('Add another server'),
+                    child: const Text('Add Another Server'),
                   ),
                 ],
               ),
             ),
           ),
         ),
-      ),
+      ],
     );
   }
 }

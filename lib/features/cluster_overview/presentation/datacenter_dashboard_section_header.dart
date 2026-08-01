@@ -1,4 +1,6 @@
-import 'package:flutter/material.dart';
+import 'package:flutter/cupertino.dart';
+
+import '../../../core/presentation/pve_apple_ui.dart';
 
 class DatacenterDashboardSectionHeader extends StatelessWidget {
   const DatacenterDashboardSectionHeader({
@@ -16,17 +18,11 @@ class DatacenterDashboardSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
-      children: <Widget>[
-        Expanded(
-          child: Text(title, style: Theme.of(context).textTheme.titleLarge),
-        ),
-        Semantics(
-          button: true,
-          label: actionSemanticsLabel,
-          child: TextButton(onPressed: onAction, child: Text(actionLabel)),
-        ),
-      ],
+    return PveSectionHeader(
+      title: title,
+      actionLabel: actionLabel,
+      actionSemanticsLabel: actionSemanticsLabel,
+      onAction: onAction,
     );
   }
 }
