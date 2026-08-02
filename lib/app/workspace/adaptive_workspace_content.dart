@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../core/presentation/pve_apple_ui.dart';
 import 'workspace_section.dart';
@@ -14,8 +15,8 @@ import 'workspace_section.dart';
 enum WorkspaceLayoutSize { compact, regular, wide }
 
 abstract final class WorkspaceLayout {
-  static const double compactBreakpoint = 760;
-  static const double wideBreakpoint = 1280;
+  static const double compactBreakpoint = PveAppleLayout.compactBreakpoint;
+  static const double wideBreakpoint = PveAppleLayout.wideBreakpoint;
 
   static WorkspaceLayoutSize forWidth(double width) {
     if (width < compactBreakpoint) {
@@ -40,6 +41,8 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     required this.refreshing,
     this.lastUpdatedAt,
     this.refreshErrorMessage,
+    this.sidebarActions = const <WorkspaceSidebarAction>[],
+    this.desktopInspector,
   }) : assert(pages.length == WorkspaceSection.values.length);
 
   final WorkspaceSection section;
@@ -51,6 +54,14 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
   final bool refreshing;
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
+
+  /// Secondary workspace destinations that remain visible on desktop instead
+  /// of being hidden behind the overflow menu.
+  final List<WorkspaceSidebarAction> sidebarActions;
+
+  /// An optional persistent inspector supplied by a selected-resource owner.
+  /// The shell deliberately does not invent inspection content itself.
+  final Widget? desktopInspector;
 
   @override
   Widget build(BuildContext context) {
@@ -77,6 +88,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 refreshing: refreshing,
                 lastUpdatedAt: lastUpdatedAt,
                 refreshErrorMessage: refreshErrorMessage,
+                actions: sidebarActions,
               ),
               Container(
                 width: 0.5,
@@ -91,6 +103,9 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                   child: IndexedStack(index: selectedIndex, children: pages),
                 ),
               ),
+              if (layout == WorkspaceLayoutSize.wide &&
+                  desktopInspector != null)
+                _DesktopInspector(child: desktopInspector!),
             ],
           );
         }
@@ -154,6 +169,7 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.refreshing,
     required this.lastUpdatedAt,
     required this.refreshErrorMessage,
+    required this.actions,
   });
 
   final WorkspaceSection section;
@@ -164,6 +180,7 @@ class _WorkspaceSidebar extends StatelessWidget {
   final bool refreshing;
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
+  final List<WorkspaceSidebarAction> actions;
 
   @override
   Widget build(BuildContext context) {
@@ -209,19 +226,15 @@ class _WorkspaceSidebar extends StatelessWidget {
                   ),
                 ),
                 Expanded(
-                  child: ListView(
-                    padding: EdgeInsets.zero,
-                    children: WorkspaceSection.values
-                        .map(
-                          (WorkspaceSection item) => _SidebarDestination(
-                            item: item,
-                            selected: item == section,
-                            onTap: () => onSectionChanged(item),
-                          ),
-                        )
-                        .toList(growable: false),
+                  child: _SidebarDestinations(
+                    section: section,
+                    onSectionChanged: onSectionChanged,
                   ),
                 ),
+                if (actions.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 8),
+                  _SidebarWorkspaceActions(actions: actions),
+                ],
                 const SizedBox(height: 12),
                 _WorkspaceConnectionFooter(
                   refreshing: refreshing,
@@ -235,6 +248,167 @@ class _WorkspaceSidebar extends StatelessWidget {
           ),
         ),
       ),
+    );
+  }
+}
+
+class WorkspaceSidebarAction {
+  const WorkspaceSidebarAction({
+    required this.label,
+    required this.icon,
+    required this.onPressed,
+    this.badgeCount = 0,
+  }) : assert(badgeCount >= 0);
+
+  final String label;
+  final IconData icon;
+  final VoidCallback onPressed;
+  final int badgeCount;
+}
+
+class _SidebarDestinations extends StatelessWidget {
+  const _SidebarDestinations({
+    required this.section,
+    required this.onSectionChanged,
+  });
+
+  final WorkspaceSection section;
+  final ValueChanged<WorkspaceSection> onSectionChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return Shortcuts(
+      shortcuts: const <ShortcutActivator, Intent>{
+        SingleActivator(LogicalKeyboardKey.arrowUp): _SidebarMoveIntent(-1),
+        SingleActivator(LogicalKeyboardKey.arrowDown): _SidebarMoveIntent(1),
+      },
+      child: Actions(
+        actions: <Type, Action<Intent>>{
+          _SidebarMoveIntent: CallbackAction<_SidebarMoveIntent>(
+            onInvoke: (_SidebarMoveIntent intent) {
+              final int nextIndex = (section.index + intent.delta)
+                  .clamp(0, WorkspaceSection.values.length - 1)
+                  .toInt();
+              onSectionChanged(WorkspaceSection.values[nextIndex]);
+              return null;
+            },
+          ),
+        },
+        child: FocusableActionDetector(
+          autofocus: true,
+          child: ListView(
+            padding: EdgeInsets.zero,
+            children: WorkspaceSection.values
+                .map(
+                  (WorkspaceSection item) => _SidebarDestination(
+                    item: item,
+                    selected: item == section,
+                    onTap: () => onSectionChanged(item),
+                  ),
+                )
+                .toList(growable: false),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _SidebarMoveIntent extends Intent {
+  const _SidebarMoveIntent(this.delta);
+
+  final int delta;
+}
+
+class _SidebarWorkspaceActions extends StatelessWidget {
+  const _SidebarWorkspaceActions({required this.actions});
+
+  final List<WorkspaceSidebarAction> actions;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: actions
+          .map(
+            (WorkspaceSidebarAction action) => Semantics(
+              button: true,
+              label: action.badgeCount == 0
+                  ? action.label
+                  : '${action.label}, ${action.badgeCount} datacenter incidents need attention',
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 8,
+                ),
+                alignment: Alignment.centerLeft,
+                onPressed: action.onPressed,
+                child: Row(
+                  children: <Widget>[
+                    Icon(action.icon, size: 17),
+                    const SizedBox(width: 9),
+                    Expanded(child: Text(action.label)),
+                    if (action.badgeCount > 0)
+                      _AttentionBadge(count: action.badgeCount),
+                  ],
+                ),
+              ),
+            ),
+          )
+          .toList(growable: false),
+    );
+  }
+}
+
+class _AttentionBadge extends StatelessWidget {
+  const _AttentionBadge({required this.count});
+
+  final int count;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      label: '$count datacenter incidents need attention',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: PveAppleColors.warning(context),
+          borderRadius: BorderRadius.circular(10),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
+          child: Text(
+            '$count',
+            style: PveAppleText.caption(context).copyWith(
+              color: CupertinoColors.white,
+              fontWeight: FontWeight.w700,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopInspector extends StatelessWidget {
+  const _DesktopInspector({required this.child});
+
+  final Widget child;
+
+  @override
+  Widget build(BuildContext context) {
+    return Container(
+      key: const ValueKey<String>('workspace-desktop-inspector'),
+      width: 360,
+      decoration: BoxDecoration(
+        color: PveAppleColors.surface(context),
+        border: Border(
+          left: BorderSide(
+            color: PveAppleColors.separator(context).withValues(alpha: 0.55),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: SafeArea(left: false, child: child),
     );
   }
 }

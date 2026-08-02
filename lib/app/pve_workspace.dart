@@ -13,6 +13,7 @@ import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
 import '../features/fleet/presentation/fleet_workspace_sheet.dart';
 import '../features/guests/presentation/guest_list_page.dart';
+import '../features/incidents/domain/datacenter_incident_evaluator.dart';
 import '../features/notifications/presentation/datacenter_notifications_sheet.dart';
 import '../features/storage/presentation/storage_page.dart';
 import '../features/system_surfaces/presentation/datacenter_watch_sheet.dart';
@@ -23,6 +24,7 @@ import 'workspace/adaptive_workspace_content.dart';
 import 'workspace/disconnected_workspace.dart';
 import 'workspace/server_menu.dart';
 import 'workspace/workspace_actions_menu.dart';
+import 'workspace/workspace_command_palette.dart';
 import 'workspace/workspace_keyboard_shortcuts.dart';
 import 'workspace/workspace_section.dart';
 import 'workspace/workspace_toolbar.dart';
@@ -85,6 +87,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       enabled: session != null && defaultTargetPlatform == TargetPlatform.macOS,
       onRefresh: widget.controller.refreshCluster,
       onSectionSelected: _selectSection,
+      onOpenCommandPalette: _showCommandPalette,
       child: CupertinoPageScaffold(
         backgroundColor: PveAppleColors.page(context),
         navigationBar: session == null ? disconnectedToolbar : null,
@@ -121,10 +124,43 @@ class _PveWorkspaceState extends State<PveWorkspace> {
                 lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
                 refreshErrorMessage:
                     widget.controller.clusterOverview.errorMessage,
+                sidebarActions: _sidebarActions(),
                 pages: _buildPages(session, compact: compact),
               ),
       ),
     );
+  }
+
+  List<WorkspaceSidebarAction> _sidebarActions() {
+    final ClusterOverviewSnapshot? snapshot =
+        widget.controller.clusterOverview.snapshot;
+    final int attentionCount = snapshot == null
+        ? 0
+        : DatacenterIncidentEvaluator.evaluate(snapshot).incidents.length;
+    return <WorkspaceSidebarAction>[
+      WorkspaceSidebarAction(
+        label: attentionCount == 0 ? 'Notifications' : 'Needs attention',
+        icon: CupertinoIcons.bell,
+        badgeCount: attentionCount,
+        onPressed: _showNotifications,
+      ),
+      WorkspaceSidebarAction(
+        label: 'Manage servers',
+        icon: CupertinoIcons.rectangle_stack_badge_plus,
+        onPressed: () =>
+            showConnectionProfilesSheet(context, controller: widget.controller),
+      ),
+      WorkspaceSidebarAction(
+        label: 'Datacenter portfolio',
+        icon: CupertinoIcons.rectangle_stack_badge_person_crop,
+        onPressed: _showFleetWorkspace,
+      ),
+      WorkspaceSidebarAction(
+        label: 'Cluster administration',
+        icon: CupertinoIcons.shield_lefthalf_fill,
+        onPressed: _showClusterAdministration,
+      ),
+    ];
   }
 
   List<Widget> _buildPages(ProxmoxSession session, {required bool compact}) {
@@ -318,6 +354,18 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       controller: widget.controller.fleetOverview,
       activeProfileId: widget.controller.connectionProfiles.selectedProfile?.id,
       onOpenProfile: _connectToProfile,
+    );
+  }
+
+  Future<void> _showCommandPalette() {
+    return showWorkspaceCommandPalette(
+      context,
+      onRefresh: widget.controller.refreshCluster,
+      onSectionSelected: _selectSection,
+      onManageServers: () =>
+          showConnectionProfilesSheet(context, controller: widget.controller),
+      onManageNotifications: _showNotifications,
+      onViewPortfolio: _showFleetWorkspace,
     );
   }
 
