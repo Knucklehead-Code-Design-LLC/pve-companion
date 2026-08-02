@@ -210,7 +210,7 @@ class _StoragePageState extends State<StoragePage> {
                       ),
                       const SizedBox(height: 2),
                       Text(
-                        'Review backup destinations, schedules, copies, and activity.',
+                        'Backup readiness has not been evaluated on this page. Open Backup Center to review destinations, schedules, copies, and activity.',
                         style: PveAppleText.secondary(context),
                       ),
                     ],

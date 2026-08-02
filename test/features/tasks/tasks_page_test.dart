@@ -2,6 +2,7 @@ import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
+import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/tasks/presentation/tasks_page.dart';
 
 import '../cluster_overview/datacenter_dashboard_fixture.dart';
@@ -107,6 +108,43 @@ void main() {
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
+
+  testWidgets(
+    'opens a truthful read-only task inspector from the desktop table',
+    (WidgetTester tester) async {
+      debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+      addTearDown(() => debugDefaultTargetPlatformOverride = null);
+      await tester.binding.setSurfaceSize(const Size(1366, 900));
+      addTearDown(() => tester.binding.setSurfaceSize(null));
+      final ClusterOverviewController controller =
+          await readyDashboardController(healthyDatacenterSnapshot());
+      addTearDown(controller.dispose);
+
+      await tester.pumpWidget(
+        MaterialApp(
+          theme: PveCompanionTheme.light(),
+          home: Scaffold(
+            body: TasksPage(controller: controller, onRefresh: () async {}),
+          ),
+        ),
+      );
+
+      expect(
+        find.byKey(const ValueKey<String>('desktop-task-table')),
+        findsOneWidget,
+      );
+      await tester.tap(find.text('backup on pve-01').first);
+      await tester.pumpAndSettle();
+
+      expect(find.text('Task details'), findsOneWidget);
+      expect(
+        find.textContaining('has not loaded a server task log'),
+        findsOneWidget,
+      );
+      expect(find.text('Task ID'), findsOneWidget);
+      debugDefaultTargetPlatformOverride = null;
+    },
+  );
 }
 
 Widget _largeTextBuilder(BuildContext context, Widget? child) {
