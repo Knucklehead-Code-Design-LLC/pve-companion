@@ -163,17 +163,18 @@ class _PveCommandMenuOverlay<T> extends StatelessWidget {
             ? Alignment.topLeft
             : Alignment.topRight;
         return Stack(
-          fit: StackFit.expand,
           children: <Widget>[
-            Semantics(
-              label: CupertinoLocalizations.of(
-                context,
-              ).modalBarrierDismissLabel,
-              button: true,
-              onTap: onDismiss,
-              child: GestureDetector(
-                behavior: HitTestBehavior.opaque,
+            Positioned.fill(
+              child: Semantics(
+                label: CupertinoLocalizations.of(
+                  context,
+                ).modalBarrierDismissLabel,
+                button: true,
                 onTap: onDismiss,
+                child: GestureDetector(
+                  behavior: HitTestBehavior.opaque,
+                  onTap: onDismiss,
+                ),
               ),
             ),
             CompositedTransformFollower(
@@ -187,6 +188,7 @@ class _PveCommandMenuOverlay<T> extends StatelessWidget {
                 child: ConstrainedBox(
                   constraints: BoxConstraints(maxHeight: maxHeight),
                   child: _PveCommandMenuPanel<T>(
+                    key: const ValueKey<String>('pve-command-menu-panel'),
                     items: items,
                     onSelected: onSelected,
                   ),
@@ -201,7 +203,11 @@ class _PveCommandMenuOverlay<T> extends StatelessWidget {
 }
 
 class _PveCommandMenuPanel<T> extends StatelessWidget {
-  const _PveCommandMenuPanel({required this.items, required this.onSelected});
+  const _PveCommandMenuPanel({
+    super.key,
+    required this.items,
+    required this.onSelected,
+  });
 
   final List<PveCommandMenuItem<T>> items;
   final ValueChanged<T> onSelected;
@@ -233,25 +239,20 @@ class _PveCommandMenuPanel<T> extends StatelessWidget {
                 width: 0.5,
               ),
             ),
-            child: SingleChildScrollView(
+            child: ListView(
+              primary: false,
+              shrinkWrap: true,
               padding: const EdgeInsets.symmetric(vertical: 6),
-              child: Column(
-                mainAxisSize: MainAxisSize.min,
-                children: <Widget>[
-                  for (
-                    int index = 0;
-                    index < items.length;
-                    index++
-                  ) ...<Widget>[
-                    if (items[index].startsNewSection)
-                      const PveRowSeparator(leadingIndent: 0),
-                    _PveCommandMenuRow<T>(
-                      item: items[index],
-                      onSelected: onSelected,
-                    ),
-                  ],
+              children: <Widget>[
+                for (int index = 0; index < items.length; index++) ...<Widget>[
+                  if (items[index].startsNewSection)
+                    const PveRowSeparator(leadingIndent: 0),
+                  _PveCommandMenuRow<T>(
+                    item: items[index],
+                    onSelected: onSelected,
+                  ),
                 ],
-              ),
+              ],
             ),
           ),
         ),

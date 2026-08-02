@@ -40,26 +40,30 @@ class _PveModalSheetState extends State<_PveModalSheet> {
 
   @override
   Widget build(BuildContext context) {
+    final bool isCompact = MediaQuery.sizeOf(context).width < 600;
+    final Color backgroundColor = CupertinoColors.systemGroupedBackground
+        .resolveFrom(context);
     final BorderRadius borderRadius = const BorderRadius.vertical(
-      top: Radius.circular(18),
+      top: Radius.circular(24),
     );
     return Align(
       alignment: Alignment.bottomCenter,
       child: FractionallySizedBox(
-        heightFactor: 0.92,
+        heightFactor: isCompact ? 0.94 : 0.92,
         widthFactor: 1,
         child: ClipRRect(
           borderRadius: borderRadius,
           child: DecoratedBox(
-            decoration: BoxDecoration(
-              color: CupertinoColors.systemGroupedBackground.resolveFrom(
+            decoration: BoxDecoration(color: backgroundColor),
+            child: CupertinoTheme(
+              data: CupertinoTheme.of(
                 context,
+              ).copyWith(barBackgroundColor: backgroundColor),
+              child: MediaQuery.removePadding(
+                context: context,
+                removeTop: true,
+                child: widget.scrollableBuilder(context, _scrollController),
               ),
-            ),
-            child: MediaQuery.removePadding(
-              context: context,
-              removeTop: true,
-              child: widget.scrollableBuilder(context, _scrollController),
             ),
           ),
         ),

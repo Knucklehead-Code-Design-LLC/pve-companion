@@ -83,7 +83,7 @@ abstract final class PveAppleText {
 
   static TextStyle secondary(BuildContext context) => body(
     context,
-  ).copyWith(color: PveAppleColors.secondaryLabel(context), fontSize: 13);
+  ).copyWith(color: PveAppleColors.secondaryLabel(context), fontSize: 14);
 
   static TextStyle caption(BuildContext context) => body(context).copyWith(
     color: PveAppleColors.secondaryLabel(context),
@@ -506,53 +506,65 @@ class PveListRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final Widget row = Padding(
       padding: padding,
-      child: Row(
-        children: <Widget>[
-          if (leading != null) ...<Widget>[
-            IconTheme(
-              data: IconThemeData(
-                color: PveAppleColors.primary(context),
-                size: 22,
-              ),
-              child: leading!,
-            ),
-            const SizedBox(width: 13),
-          ],
-          Expanded(
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                DefaultTextStyle.merge(
-                  style: PveAppleText.body(context),
-                  child: title,
-                ),
-                if (subtitle != null) ...<Widget>[
-                  const SizedBox(height: 3),
-                  DefaultTextStyle.merge(
-                    style: PveAppleText.secondary(context),
-                    child: subtitle!,
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          final double maxTrailingWidth = constraints.maxWidth * 0.6;
+          return Row(
+            children: <Widget>[
+              if (leading != null) ...<Widget>[
+                IconTheme(
+                  data: IconThemeData(
+                    color: PveAppleColors.primary(context),
+                    size: 22,
                   ),
-                ],
+                  child: leading!,
+                ),
+                const SizedBox(width: 13),
               ],
-            ),
-          ),
-          if (trailing != null) ...<Widget>[
-            const SizedBox(width: 12),
-            DefaultTextStyle.merge(
-              style: PveAppleText.secondary(context),
-              child: trailing!,
-            ),
-          ],
-          if (onTap != null) ...<Widget>[
-            const SizedBox(width: 6),
-            Icon(
-              CupertinoIcons.chevron_forward,
-              size: 15,
-              color: PveAppleColors.secondaryLabel(context),
-            ),
-          ],
-        ],
+              Expanded(
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  mainAxisSize: MainAxisSize.min,
+                  children: <Widget>[
+                    DefaultTextStyle.merge(
+                      style: PveAppleText.body(context),
+                      child: title,
+                    ),
+                    if (subtitle != null) ...<Widget>[
+                      const SizedBox(height: 3),
+                      DefaultTextStyle.merge(
+                        style: PveAppleText.secondary(context),
+                        child: subtitle!,
+                      ),
+                    ],
+                  ],
+                ),
+              ),
+              if (trailing != null) ...<Widget>[
+                const SizedBox(width: 12),
+                ConstrainedBox(
+                  constraints: BoxConstraints(maxWidth: maxTrailingWidth),
+                  child: Align(
+                    alignment: Alignment.centerRight,
+                    widthFactor: 1,
+                    child: DefaultTextStyle.merge(
+                      style: PveAppleText.secondary(context),
+                      child: trailing!,
+                    ),
+                  ),
+                ),
+              ],
+              if (onTap != null) ...<Widget>[
+                const SizedBox(width: 6),
+                Icon(
+                  CupertinoIcons.chevron_forward,
+                  size: 15,
+                  color: PveAppleColors.secondaryLabel(context),
+                ),
+              ],
+            ],
+          );
+        },
       ),
     );
     if (onTap == null) {

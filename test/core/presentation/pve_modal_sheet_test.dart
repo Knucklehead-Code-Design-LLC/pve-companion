@@ -36,7 +36,13 @@ void main() {
                             ),
                             child: ListView(
                               controller: scrollController,
-                              children: const <Widget>[SizedBox(height: 120)],
+                              padding: EdgeInsets.zero,
+                              children: const <Widget>[
+                                SizedBox(
+                                  key: ValueKey<String>('sheet-first-item'),
+                                  height: 120,
+                                ),
+                              ],
                             ),
                           ),
                     ),
@@ -67,6 +73,14 @@ void main() {
       isEmpty,
     );
     expect(tester.getRect(workspace), workspaceRect);
+    expect(
+      tester
+          .getTopLeft(find.byKey(const ValueKey<String>('sheet-first-item')))
+          .dy,
+      greaterThanOrEqualTo(
+        tester.getBottomLeft(find.byType(CupertinoNavigationBar)).dy,
+      ),
+    );
 
     await tester.tap(find.text('Done'));
     await tester.pumpAndSettle();
