@@ -85,34 +85,35 @@ class DatacenterDashboard extends StatelessWidget {
                           onViewNodes: onViewNodes,
                         ),
                         const SizedBox(height: 28),
-                        PveSectionHeader(
-                          title: 'Incident Center',
-                          actionLabel: incidents.isEmpty ? null : 'View All',
-                          actionSemanticsLabel: 'View all datacenter incidents',
-                          onAction: incidents.isEmpty
-                              ? null
-                              : () => showDatacenterIncidentCenter(
-                                  context,
-                                  snapshot: incidents,
-                                  onViewNodes: onViewNodes,
-                                  onViewStorage: onViewStorage,
-                                  onViewTasks: onViewTasks,
-                                ),
-                        ),
-                        DatacenterIncidentHighlights(
-                          snapshot: incidents,
-                          onViewAll: () => showDatacenterIncidentCenter(
-                            context,
+                        if (!incidents.isEmpty) ...<Widget>[
+                          PveSectionHeader(
+                            title: 'Needs attention',
+                            actionLabel: 'View all',
+                            actionSemanticsLabel:
+                                'View all datacenter incidents',
+                            onAction: () => showDatacenterIncidentCenter(
+                              context,
+                              snapshot: incidents,
+                              onViewNodes: onViewNodes,
+                              onViewStorage: onViewStorage,
+                              onViewTasks: onViewTasks,
+                            ),
+                          ),
+                          DatacenterIncidentHighlights(
                             snapshot: incidents,
+                            onViewAll: () => showDatacenterIncidentCenter(
+                              context,
+                              snapshot: incidents,
+                              onViewNodes: onViewNodes,
+                              onViewStorage: onViewStorage,
+                              onViewTasks: onViewTasks,
+                            ),
                             onViewNodes: onViewNodes,
                             onViewStorage: onViewStorage,
                             onViewTasks: onViewTasks,
                           ),
-                          onViewNodes: onViewNodes,
-                          onViewStorage: onViewStorage,
-                          onViewTasks: onViewTasks,
-                        ),
-                        const SizedBox(height: 28),
+                          const SizedBox(height: 28),
+                        ],
                         const PveSectionHeader(title: 'Operational Summary'),
                         DatacenterOperationalSummary(
                           snapshot: snapshot,

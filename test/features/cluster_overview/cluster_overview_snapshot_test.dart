@@ -60,4 +60,24 @@ void main() {
     expect(failed.state, ClusterTaskState.failed);
     expect(running.state, ClusterTaskState.running);
   });
+
+  test('recognizes long-running interactive task types as sessions', () {
+    const ClusterTask console = ClusterTask(
+      upid: 'console',
+      node: 'pve-01',
+      type: 'vncproxy',
+      user: 'root@pam',
+      status: 'running',
+    );
+    const ClusterTask backup = ClusterTask(
+      upid: 'backup',
+      node: 'pve-01',
+      type: 'backup',
+      user: 'root@pam',
+      status: 'running',
+    );
+
+    expect(console.isInteractiveSession, isTrue);
+    expect(backup.isInteractiveSession, isFalse);
+  });
 }

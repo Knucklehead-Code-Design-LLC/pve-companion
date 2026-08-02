@@ -30,6 +30,9 @@ DatacenterDashboardTone dashboardToneForPressure(
 }
 
 DatacenterDashboardTone dashboardToneForTask(ClusterTask task) {
+  if (task.isRunning && task.isInteractiveSession) {
+    return DatacenterDashboardTone.neutral;
+  }
   return switch (task.state) {
     ClusterTaskState.running => DatacenterDashboardTone.warning,
     ClusterTaskState.successful => DatacenterDashboardTone.healthy,
@@ -71,6 +74,9 @@ IconData dashboardToneIcon(DatacenterDashboardTone tone) {
 }
 
 String dashboardTaskStateLabel(ClusterTask task) {
+  if (task.isRunning && task.isInteractiveSession) {
+    return 'Interactive session';
+  }
   return switch (task.state) {
     ClusterTaskState.running => 'Running',
     ClusterTaskState.successful => 'Successful',

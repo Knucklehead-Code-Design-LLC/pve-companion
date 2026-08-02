@@ -30,6 +30,7 @@ class TasksPage extends StatefulWidget {
 
 class _TasksPageState extends State<TasksPage> {
   _TaskFilter _filter = _TaskFilter.all;
+  String _query = '';
 
   @override
   Widget build(BuildContext context) {
@@ -72,12 +73,24 @@ class _TasksPageState extends State<TasksPage> {
     required bool usesExpandedPresentation,
   }) {
     final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
-      ..sort(compareClusterTasksByRecency);
+      ..sort(_compareTasksForAttention);
     final List<ClusterTask> visibleTasks = orderedTasks
         .where(_matchesFilter)
+        .where(_matchesQuery)
         .toList(growable: false);
     final int runningCount = tasks
-        .where((ClusterTask task) => task.state == ClusterTaskState.running)
+        .where(
+          (ClusterTask task) =>
+              task.state == ClusterTaskState.running &&
+              !task.isInteractiveSession,
+        )
+        .length;
+    final int interactiveSessionCount = tasks
+        .where(
+          (ClusterTask task) =>
+              task.state == ClusterTaskState.running &&
+              task.isInteractiveSession,
+        )
         .length;
     final int failedCount = tasks
         .where((ClusterTask task) => task.state == ClusterTaskState.failed)
@@ -127,10 +140,16 @@ class _TasksPageState extends State<TasksPage> {
               icon: CupertinoIcons.clock_fill,
             ),
             PveMetricStripItem(
-              label: 'Running',
+              label: 'Active work',
               value: '$runningCount',
               icon: CupertinoIcons.arrow_2_circlepath,
             ),
+            if (interactiveSessionCount > 0)
+              PveMetricStripItem(
+                label: 'Sessions',
+                value: '$interactiveSessionCount',
+                icon: CupertinoIcons.desktopcomputer,
+              ),
             PveMetricStripItem(
               label: 'Successful',
               value: '$successfulCount',
@@ -157,6 +176,12 @@ class _TasksPageState extends State<TasksPage> {
           primary: const PveSectionTitle(title: 'Recent activity'),
           secondary: filter,
         ),
+        const SizedBox(height: 12),
+        CupertinoSearchTextField(
+          key: const ValueKey<String>('task-search'),
+          placeholder: 'Search operation, node, or operator',
+          onChanged: (String value) => setState(() => _query = value),
+        ),
         const SizedBox(height: 16),
         if (tasks.isEmpty)
           PveInsetGroup(
@@ -176,10 +201,23 @@ class _TasksPageState extends State<TasksPage> {
         else if (visibleTasks.isEmpty)
           PveInsetGroup(
             padding: const EdgeInsets.all(22),
-            child: Text(
-              'No tasks match this filter.',
-              textAlign: TextAlign.center,
-              style: PveAppleText.secondary(context),
+            child: Column(
+              children: <Widget>[
+                Text(
+                  'No tasks match these controls.',
+                  textAlign: TextAlign.center,
+                  style: PveAppleText.secondary(context),
+                ),
+                const SizedBox(height: 8),
+                CupertinoButton(
+                  padding: EdgeInsets.zero,
+                  onPressed: () => setState(() {
+                    _filter = _TaskFilter.all;
+                    _query = '';
+                  }),
+                  child: const Text('Clear filters'),
+                ),
+              ],
             ),
           )
         else if (usesExpandedPresentation)
@@ -216,6 +254,14 @@ class _TasksPageState extends State<TasksPage> {
           const SizedBox(height: 12),
           TaskActivityInsights(tasks: orderedTasks),
         ],
+        if (tasks.isNotEmpty) ...<Widget>[
+          const SizedBox(height: 12),
+          Text(
+            'Showing ${visibleTasks.length} of ${tasks.length} recent ${tasks.length == 1 ? 'task' : 'tasks'}',
+            textAlign: TextAlign.center,
+            style: PveAppleText.caption(context),
+          ),
+        ],
       ],
     );
   }
@@ -225,6 +271,14 @@ class _TasksPageState extends State<TasksPage> {
     _TaskFilter.running => task.state == ClusterTaskState.running,
     _TaskFilter.failed => task.state == ClusterTaskState.failed,
   };
+
+  bool _matchesQuery(ClusterTask task) {
+    final String query = _query.trim().toLowerCase();
+    if (query.isEmpty) return true;
+    return task.type.toLowerCase().contains(query) ||
+        task.node.toLowerCase().contains(query) ||
+        task.user.toLowerCase().contains(query);
+  }
 }
 
 class _TaskCard extends StatelessWidget {
@@ -318,6 +372,24 @@ class _TaskRow extends StatelessWidget {
 }
 
 enum _TaskFilter { all, running, failed }
+
+int _compareTasksForAttention(ClusterTask left, ClusterTask right) {
+  final int priorityComparison = _taskAttentionPriority(
+    left,
+  ).compareTo(_taskAttentionPriority(right));
+  if (priorityComparison != 0) return priorityComparison;
+  return compareClusterTasksByRecency(left, right);
+}
+
+int _taskAttentionPriority(ClusterTask task) {
+  if (task.state == ClusterTaskState.failed) return 0;
+  if (task.state == ClusterTaskState.running && !task.isInteractiveSession) {
+    return 1;
+  }
+  if (task.state == ClusterTaskState.unknown) return 2;
+  if (task.isInteractiveSession) return 3;
+  return 4;
+}
 
 String _taskDurationLabel(ClusterTask task) {
   final DateTime? startedAt = task.startedAt;

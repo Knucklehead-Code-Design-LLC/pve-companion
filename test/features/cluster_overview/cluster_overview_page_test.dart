@@ -27,6 +27,7 @@ void main() {
 
       expect(find.text('Datacenter'), findsOneWidget);
       expect(find.text('All systems operational'), findsOneWidget);
+      expect(find.text('No active incidents'), findsNothing);
       expect(
         find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
         findsOneWidget,
@@ -117,7 +118,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Incident Center'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
     await tester.tap(find.textContaining('compute-a CPU is'));
 
     expect(nodeDrillDownCount, 1);
@@ -166,7 +167,7 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Incident Center'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
   });
 
   testWidgets('keeps the wide command center usable with larger text', (

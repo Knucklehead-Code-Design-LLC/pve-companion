@@ -121,8 +121,8 @@ class _NotificationContent extends StatelessWidget {
           footer: Text(
             supported
                 ? authorized
-                      ? 'New matching incidents create a local alert once per active incident.'
-                      : 'Choose alert types now, then allow notifications to receive them.'
+                      ? 'A new matching incident can create one local alert when this app refreshes the datacenter. Alerts are not continuously monitored in the background.'
+                      : 'You can choose alert types now, but no local alerts are delivered until macOS notifications are allowed.'
                 : 'Notifications are available on iPhone, iPad, and Mac builds of PVE Companion.',
           ),
           children: <Widget>[
@@ -244,11 +244,11 @@ String _authorizationDetail(
   LocalNotificationAuthorization authorization,
 ) => switch (authorization) {
   LocalNotificationAuthorization.authorized =>
-    'PVE Companion can alert you to new matching incidents during refreshes.',
+    'Local alerts are available when PVE Companion refreshes this datacenter. They do not provide continuous background monitoring.',
   LocalNotificationAuthorization.denied =>
-    'Enable notifications for PVE Companion in your device Settings to receive alerts.',
+    'Local alerts are blocked. Enable notifications for PVE Companion in System Settings on Mac or Settings on iPhone and iPad to receive alerts after refreshes.',
   LocalNotificationAuthorization.undetermined =>
-    'Allow alerts to receive new incidents while you use PVE Companion.',
+    'Allow local alerts for new matching incidents found during app refreshes.',
   LocalNotificationAuthorization.unsupported =>
     'This runtime does not support Apple local notifications.',
 };

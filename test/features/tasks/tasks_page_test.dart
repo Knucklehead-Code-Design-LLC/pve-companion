@@ -33,8 +33,36 @@ void main() {
     await tester.pump();
 
     expect(find.text('backup on pve-01'), findsNothing);
-    expect(find.text('No tasks match this filter.'), findsOneWidget);
+    expect(find.text('No tasks match these controls.'), findsOneWidget);
     expect(find.byKey(const ValueKey<String>('task-outcomes')), findsOneWidget);
+  });
+
+  testWidgets('searches tasks and reports the visible result count', (
+    WidgetTester tester,
+  ) async {
+    final controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: TasksPage(controller: controller, onRefresh: () async {}),
+        ),
+      ),
+    );
+
+    await tester.enterText(
+      find.byKey(const ValueKey<String>('task-search')),
+      'automation',
+    );
+    await tester.pump();
+
+    expect(find.text('snapshot on pve-02'), findsOneWidget);
+    expect(find.text('backup on pve-01'), findsNothing);
+    expect(find.text('Showing 1 of 5 recent tasks'), findsOneWidget);
   });
 
   testWidgets('uses activity summary cards on iPad', (

@@ -210,6 +210,16 @@ class ClusterTask {
   }
 
   bool get isRunning => state == ClusterTaskState.running;
+
+  /// Proxmox reports interactive connections as long-running tasks. They are
+  /// sessions, not necessarily work that needs an operator's attention.
+  bool get isInteractiveSession {
+    final String normalizedType = type.trim().toLowerCase();
+    return normalizedType.contains('console') ||
+        normalizedType.contains('vnc') ||
+        normalizedType.contains('shell') ||
+        normalizedType.contains('termproxy');
+  }
 }
 
 int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {
