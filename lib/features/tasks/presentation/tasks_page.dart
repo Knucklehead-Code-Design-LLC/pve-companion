@@ -45,6 +45,7 @@ class _TasksPageState extends State<TasksPage> {
   String? _node;
   String? _operator;
   int? _guestVmid;
+  String? _selectedTaskUpid;
 
   @override
   Widget build(BuildContext context) {
@@ -53,6 +54,8 @@ class _TasksPageState extends State<TasksPage> {
     final bool usesDesktopTaskTable =
         usesExpandedPresentation &&
         defaultTargetPlatform == TargetPlatform.macOS;
+    final bool usesDesktopInspector =
+        usesDesktopTaskTable && PveAppleLayout.usesWidePresentation(context);
     final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Tasks',
@@ -72,13 +75,14 @@ class _TasksPageState extends State<TasksPage> {
           )
         else
           PveCenteredSliver(
-            maxWidth: 980,
+            maxWidth: usesDesktopInspector ? 1100 : 980,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: _buildContent(
               context,
               snapshot,
               usesExpandedPresentation: usesExpandedPresentation,
               usesDesktopTaskTable: usesDesktopTaskTable,
+              usesDesktopInspector: usesDesktopInspector,
             ),
           ),
       ],
@@ -90,6 +94,7 @@ class _TasksPageState extends State<TasksPage> {
     ClusterOverviewSnapshot snapshot, {
     required bool usesExpandedPresentation,
     required bool usesDesktopTaskTable,
+    required bool usesDesktopInspector,
   }) {
     final List<ClusterTask> tasks = snapshot.tasks;
     final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
@@ -161,6 +166,13 @@ class _TasksPageState extends State<TasksPage> {
         }
       },
     );
+    void inspectTask(ClusterTask task) {
+      if (usesDesktopInspector) {
+        setState(() => _selectedTaskUpid = task.upid);
+        return;
+      }
+      _showTaskInspector(task);
+    }
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -276,67 +288,17 @@ class _TasksPageState extends State<TasksPage> {
               ],
             ),
           )
-        else ...<Widget>[
-          if (visibleSessions.isNotEmpty) ...<Widget>[
-            _InteractiveSessionsGroup(
-              sessions: visibleSessions,
-              onInspect: _showTaskInspector,
-            ),
-            const SizedBox(height: 16),
-          ],
-          if (visibleOperations.isEmpty)
-            PveInsetGroup(
-              padding: const EdgeInsets.all(22),
-              child: Text(
-                'No non-session operations match these controls.',
-                textAlign: TextAlign.center,
-                style: PveAppleText.secondary(context),
-              ),
-            )
-          else if (usesDesktopTaskTable)
-            _DesktopTaskTable(
-              tasks: visibleOperations,
-              sort: _sort,
-              onSortChanged: (_TaskSort value) => setState(() => _sort = value),
-              onInspect: _showTaskInspector,
-            )
-          else if (usesExpandedPresentation)
-            LayoutBuilder(
-              builder: (BuildContext context, BoxConstraints constraints) {
-                final bool twoColumns = constraints.maxWidth >= 700;
-                final double cardWidth = twoColumns
-                    ? (constraints.maxWidth - 12) / 2
-                    : constraints.maxWidth;
-                return Wrap(
-                  spacing: 12,
-                  runSpacing: 12,
-                  children: visibleOperations
-                      .map(
-                        (ClusterTask task) => SizedBox(
-                          width: cardWidth,
-                          child: _TaskCard(
-                            task: task,
-                            onTap: () => _showTaskInspector(task),
-                          ),
-                        ),
-                      )
-                      .toList(growable: false),
-                );
-              },
-            )
-          else
-            CupertinoListSection.insetGrouped(
-              margin: EdgeInsets.zero,
-              children: visibleOperations
-                  .map(
-                    (ClusterTask task) => _TaskRow(
-                      task: task,
-                      onTap: () => _showTaskInspector(task),
-                    ),
-                  )
-                  .toList(growable: false),
-            ),
-        ],
+        else
+          _buildTaskResults(
+            context,
+            visibleTasks: visibleTasks,
+            visibleSessions: visibleSessions,
+            visibleOperations: visibleOperations,
+            usesExpandedPresentation: usesExpandedPresentation,
+            usesDesktopTaskTable: usesDesktopTaskTable,
+            usesDesktopInspector: usesDesktopInspector,
+            onInspect: inspectTask,
+          ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
           const PveSectionTitle(title: 'Activity analysis'),
@@ -353,6 +315,109 @@ class _TasksPageState extends State<TasksPage> {
         ],
       ],
     );
+  }
+
+  Widget _buildTaskResults(
+    BuildContext context, {
+    required List<ClusterTask> visibleTasks,
+    required List<ClusterTask> visibleSessions,
+    required List<ClusterTask> visibleOperations,
+    required bool usesExpandedPresentation,
+    required bool usesDesktopTaskTable,
+    required bool usesDesktopInspector,
+    required ValueChanged<ClusterTask> onInspect,
+  }) {
+    final ClusterTask? selectedTask = _selectedVisibleTask(visibleTasks);
+    final Widget activity = Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        if (visibleSessions.isNotEmpty) ...<Widget>[
+          _InteractiveSessionsGroup(
+            sessions: visibleSessions,
+            selectedUpid: selectedTask?.upid,
+            onInspect: onInspect,
+          ),
+          const SizedBox(height: 16),
+        ],
+        if (visibleOperations.isEmpty)
+          PveInsetGroup(
+            padding: const EdgeInsets.all(22),
+            child: Text(
+              'No non-session operations match these controls.',
+              textAlign: TextAlign.center,
+              style: PveAppleText.secondary(context),
+            ),
+          )
+        else if (usesDesktopTaskTable)
+          _DesktopTaskTable(
+            tasks: visibleOperations,
+            selectedUpid: selectedTask?.upid,
+            sort: _sort,
+            onSortChanged: (_TaskSort value) => setState(() => _sort = value),
+            onInspect: onInspect,
+          )
+        else if (usesExpandedPresentation)
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool twoColumns =
+                  constraints.maxWidth >=
+                  PveAppleLayout.controlBarStackBreakpoint;
+              final double cardWidth = twoColumns
+                  ? (constraints.maxWidth - 12) / 2
+                  : constraints.maxWidth;
+              return Wrap(
+                spacing: 12,
+                runSpacing: 12,
+                children: visibleOperations
+                    .map(
+                      (ClusterTask task) => SizedBox(
+                        width: cardWidth,
+                        child: _TaskCard(
+                          task: task,
+                          selected: selectedTask?.upid == task.upid,
+                          onTap: () => onInspect(task),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              );
+            },
+          )
+        else
+          CupertinoListSection.insetGrouped(
+            margin: EdgeInsets.zero,
+            children: visibleOperations
+                .map(
+                  (ClusterTask task) =>
+                      _TaskRow(task: task, onTap: () => onInspect(task)),
+                )
+                .toList(growable: false),
+          ),
+      ],
+    );
+    if (!usesDesktopInspector) return activity;
+    return PveInspectorLayout(
+      primary: activity,
+      inspector: selectedTask == null
+          ? const _TaskInspectorPlaceholder()
+          : _TaskInspector(
+              key: ValueKey<String>(
+                'desktop-task-inspector-${selectedTask.upid}',
+              ),
+              task: selectedTask,
+              session: widget.session,
+              inline: true,
+            ),
+    );
+  }
+
+  ClusterTask? _selectedVisibleTask(List<ClusterTask> visibleTasks) {
+    final String? selectedUpid = _selectedTaskUpid;
+    if (selectedUpid == null) return null;
+    for (final ClusterTask task in visibleTasks) {
+      if (task.upid == selectedUpid) return task;
+    }
+    return null;
   }
 
   bool _matchesFilter(ClusterTask task) => switch (_filter) {
@@ -460,10 +525,12 @@ class _TaskRow extends StatelessWidget {
 class _InteractiveSessionsGroup extends StatelessWidget {
   const _InteractiveSessionsGroup({
     required this.sessions,
+    required this.selectedUpid,
     required this.onInspect,
   });
 
   final List<ClusterTask> sessions;
+  final String? selectedUpid;
   final ValueChanged<ClusterTask> onInspect;
 
   @override
@@ -481,35 +548,41 @@ class _InteractiveSessionsGroup extends StatelessWidget {
           ),
         ),
         for (final ClusterTask session in sessions)
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
-            alignment: Alignment.centerLeft,
-            onPressed: () => onInspect(session),
-            child: Row(
-              children: <Widget>[
-                Icon(
-                  CupertinoIcons.desktopcomputer,
-                  color: PveAppleColors.primary(context),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: <Widget>[
-                      Text(
-                        '${session.type} on ${session.node}',
-                        style: PveAppleText.body(context),
-                      ),
-                      const SizedBox(height: 2),
-                      Text(
-                        '${session.user} · ${_taskAgeLabel(session)}',
-                        style: PveAppleText.caption(context),
-                      ),
-                    ],
+          Semantics(
+            selected: session.upid == selectedUpid,
+            child: CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+              alignment: Alignment.centerLeft,
+              color: session.upid == selectedUpid
+                  ? PveAppleColors.primary(context).withValues(alpha: 0.09)
+                  : null,
+              onPressed: () => onInspect(session),
+              child: Row(
+                children: <Widget>[
+                  Icon(
+                    CupertinoIcons.desktopcomputer,
+                    color: PveAppleColors.primary(context),
                   ),
-                ),
-                const Icon(CupertinoIcons.chevron_right, size: 16),
-              ],
+                  const SizedBox(width: 10),
+                  Expanded(
+                    child: Column(
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: <Widget>[
+                        Text(
+                          '${session.type} on ${session.node}',
+                          style: PveAppleText.body(context),
+                        ),
+                        const SizedBox(height: 2),
+                        Text(
+                          '${session.user} · ${_taskAgeLabel(session)}',
+                          style: PveAppleText.caption(context),
+                        ),
+                      ],
+                    ),
+                  ),
+                  const Icon(CupertinoIcons.chevron_right, size: 16),
+                ],
+              ),
             ),
           ),
       ],
@@ -518,9 +591,14 @@ class _InteractiveSessionsGroup extends StatelessWidget {
 }
 
 class _TaskCard extends StatelessWidget {
-  const _TaskCard({required this.task, required this.onTap});
+  const _TaskCard({
+    required this.task,
+    required this.selected,
+    required this.onTap,
+  });
 
   final ClusterTask task;
+  final bool selected;
   final VoidCallback onTap;
 
   @override
@@ -529,11 +607,15 @@ class _TaskCard extends StatelessWidget {
     final Color accent = dashboardToneColor(context, tone);
     return Semantics(
       button: true,
+      selected: selected,
       label: 'Inspect ${task.type} on ${task.node}',
       child: PveInsetGroup(
         key: ValueKey<String>('ipad-task-card-${task.upid}'),
         onTap: onTap,
         padding: const EdgeInsets.all(16),
+        color: selected
+            ? PveAppleColors.primary(context).withValues(alpha: 0.09)
+            : null,
         child: Row(
           children: <Widget>[
             DecoratedBox(
@@ -616,7 +698,7 @@ class _TaskFilterControls extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
-        CupertinoSlidingSegmentedControl<_TaskDateFilter>(
+        PveSlidingSegmentedControl<_TaskDateFilter>(
           groupValue: dateFilter,
           children: const <_TaskDateFilter, Widget>{
             _TaskDateFilter.all: Padding(
@@ -634,6 +716,11 @@ class _TaskFilterControls extends StatelessWidget {
           },
           onValueChanged: (_TaskDateFilter? value) {
             if (value != null) onDateFilterChanged(value);
+          },
+          semanticLabels: const <_TaskDateFilter, String>{
+            _TaskDateFilter.all: 'Tasks from any time',
+            _TaskDateFilter.day: 'Tasks from the last 24 hours',
+            _TaskDateFilter.week: 'Tasks from the last 7 days',
           },
         ),
         _TaskChoiceMenu(
@@ -780,12 +867,14 @@ class _TaskChoiceMenu extends StatelessWidget {
 class _DesktopTaskTable extends StatelessWidget {
   const _DesktopTaskTable({
     required this.tasks,
+    required this.selectedUpid,
     required this.sort,
     required this.onSortChanged,
     required this.onInspect,
   });
 
   final List<ClusterTask> tasks;
+  final String? selectedUpid;
   final _TaskSort sort;
   final ValueChanged<_TaskSort> onSortChanged;
   final ValueChanged<ClusterTask> onInspect;
@@ -801,6 +890,7 @@ class _DesktopTaskTable extends StatelessWidget {
           for (int index = 0; index < tasks.length; index += 1) ...<Widget>[
             _DesktopTaskRow(
               task: tasks[index],
+              selected: tasks[index].upid == selectedUpid,
               onTap: () => onInspect(tasks[index]),
             ),
             if (index < tasks.length - 1) const PveRowSeparator(),
@@ -897,8 +987,13 @@ class _TaskHeaderButton extends StatelessWidget {
 }
 
 class _DesktopTaskRow extends StatelessWidget {
-  const _DesktopTaskRow({required this.task, required this.onTap});
+  const _DesktopTaskRow({
+    required this.task,
+    required this.selected,
+    required this.onTap,
+  });
   final ClusterTask task;
+  final bool selected;
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
@@ -906,58 +1001,66 @@ class _DesktopTaskRow extends StatelessWidget {
     final Color accent = dashboardToneColor(context, tone);
     return Semantics(
       button: true,
+      selected: selected,
       label: 'Inspect ${task.type} on ${task.node}',
-      child: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        alignment: Alignment.centerLeft,
-        onPressed: onTap,
-        child: Row(
-          children: <Widget>[
-            SizedBox(
-              width: 102,
-              child: Text(
-                task.isLongRunning
-                    ? 'Long-running'
-                    : dashboardTaskStateLabel(task),
-                style: PveAppleText.caption(
-                  context,
-                ).copyWith(color: accent, fontWeight: FontWeight.w700),
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: selected
+              ? PveAppleColors.primary(context).withValues(alpha: 0.09)
+              : null,
+        ),
+        child: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          alignment: Alignment.centerLeft,
+          onPressed: onTap,
+          child: Row(
+            children: <Widget>[
+              SizedBox(
+                width: 102,
+                child: Text(
+                  task.isLongRunning
+                      ? 'Long-running'
+                      : dashboardTaskStateLabel(task),
+                  style: PveAppleText.caption(
+                    context,
+                  ).copyWith(color: accent, fontWeight: FontWeight.w700),
+                ),
               ),
-            ),
-            Expanded(
-              flex: 3,
-              child: Text(
-                '${task.type} on ${task.node}',
-                overflow: TextOverflow.ellipsis,
-                style: PveAppleText.body(context),
+              Expanded(
+                flex: 3,
+                child: Text(
+                  '${task.type} on ${task.node}',
+                  overflow: TextOverflow.ellipsis,
+                  style: PveAppleText.body(context),
+                ),
               ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                task.node,
-                overflow: TextOverflow.ellipsis,
-                style: PveAppleText.body(context),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  task.node,
+                  overflow: TextOverflow.ellipsis,
+                  style: PveAppleText.body(context),
+                ),
               ),
-            ),
-            Expanded(
-              flex: 2,
-              child: Text(
-                task.user,
-                overflow: TextOverflow.ellipsis,
-                style: PveAppleText.body(context),
+              Expanded(
+                flex: 2,
+                child: Text(
+                  task.user,
+                  overflow: TextOverflow.ellipsis,
+                  style: PveAppleText.body(context),
+                ),
               ),
-            ),
-            SizedBox(
-              width: 154,
-              child: Text(
-                formatPveDateTime(task.startedAt),
-                overflow: TextOverflow.ellipsis,
-                textAlign: TextAlign.end,
-                style: PveAppleText.caption(context),
+              SizedBox(
+                width: 154,
+                child: Text(
+                  formatPveDateTime(task.startedAt),
+                  overflow: TextOverflow.ellipsis,
+                  textAlign: TextAlign.end,
+                  style: PveAppleText.caption(context),
+                ),
               ),
-            ),
-          ],
+            ],
+          ),
         ),
       ),
     );
@@ -966,13 +1069,16 @@ class _DesktopTaskRow extends StatelessWidget {
 
 class _TaskInspector extends StatefulWidget {
   const _TaskInspector({
+    super.key,
     required this.task,
     required this.session,
-    required this.scrollController,
+    this.scrollController,
+    this.inline = false,
   });
   final ClusterTask task;
   final ProxmoxSession? session;
-  final ScrollController scrollController;
+  final ScrollController? scrollController;
+  final bool inline;
 
   @override
   State<_TaskInspector> createState() => _TaskInspectorState();
@@ -994,58 +1100,89 @@ class _TaskInspectorState extends State<_TaskInspector> {
   @override
   Widget build(BuildContext context) {
     final ClusterTask task = widget.task;
+    final List<Widget> details = <Widget>[
+      if (widget.inline) ...<Widget>[
+        Text('Task details', style: PveAppleText.title3(context)),
+        const SizedBox(height: 6),
+      ] else ...<Widget>[
+        Text(task.type, style: PveAppleText.largeTitle(context)),
+        const SizedBox(height: 6),
+      ],
+      Text(
+        'Read-only details from the latest task list refresh. Load the server task log only when you need it.',
+        style: PveAppleText.secondary(context),
+      ),
+      const SizedBox(height: 18),
+      CupertinoListSection.insetGrouped(
+        margin: EdgeInsets.zero,
+        children: <Widget>[
+          _InspectorRow(label: 'Status', value: dashboardTaskStateLabel(task)),
+          _InspectorRow(label: 'Node', value: task.node),
+          _InspectorRow(label: 'Operator', value: task.user),
+          _InspectorRow(
+            label: 'Started',
+            value: formatPveDateTime(task.startedAt),
+          ),
+          _InspectorRow(
+            label: 'Finished',
+            value: formatPveDateTime(task.endedAt),
+          ),
+          _InspectorRow(label: 'Duration', value: _taskDurationLabel(task)),
+          _InspectorRow(label: 'Task ID', value: task.upid),
+        ],
+      ),
+      const SizedBox(height: 18),
+      _TaskLogSection(controller: _logController),
+    ];
+    if (widget.inline) {
+      return PveInsetGroup(
+        key: const ValueKey<String>('desktop-task-inspector'),
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: details,
+        ),
+      );
+    }
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Task details'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Close'),
+          child: const Text(PveActionLabels.close),
         ),
       ),
       child: SafeArea(
         child: ListView(
           controller: widget.scrollController,
           padding: const EdgeInsets.all(16),
-          children: <Widget>[
-            Text(task.type, style: PveAppleText.largeTitle(context)),
-            const SizedBox(height: 6),
-            Text(
-              'Read-only details from the latest task list refresh. Load the server task log only when you need it.',
-              style: PveAppleText.secondary(context),
-            ),
-            const SizedBox(height: 18),
-            CupertinoListSection.insetGrouped(
-              margin: EdgeInsets.zero,
-              children: <Widget>[
-                _InspectorRow(
-                  label: 'Status',
-                  value: dashboardTaskStateLabel(task),
-                ),
-                _InspectorRow(label: 'Node', value: task.node),
-                _InspectorRow(label: 'Operator', value: task.user),
-                _InspectorRow(
-                  label: 'Started',
-                  value: formatPveDateTime(task.startedAt),
-                ),
-                _InspectorRow(
-                  label: 'Finished',
-                  value: formatPveDateTime(task.endedAt),
-                ),
-                _InspectorRow(
-                  label: 'Duration',
-                  value: _taskDurationLabel(task),
-                ),
-                _InspectorRow(label: 'Task ID', value: task.upid),
-              ],
-            ),
-            const SizedBox(height: 18),
-            _TaskLogSection(controller: _logController),
-          ],
+          children: details,
         ),
       ),
     );
   }
+}
+
+class _TaskInspectorPlaceholder extends StatelessWidget {
+  const _TaskInspectorPlaceholder();
+
+  @override
+  Widget build(BuildContext context) => PveInsetGroup(
+    key: const ValueKey<String>('desktop-task-inspector-placeholder'),
+    padding: const EdgeInsets.all(18),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text('Task details', style: PveAppleText.title3(context)),
+        const SizedBox(height: 8),
+        Text(
+          'Select a task or interactive session to inspect its reported details and request its server log.',
+          style: PveAppleText.secondary(context),
+        ),
+      ],
+    ),
+  );
 }
 
 class _TaskLogSection extends StatelessWidget {

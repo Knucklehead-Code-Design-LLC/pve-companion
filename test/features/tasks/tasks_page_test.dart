@@ -112,11 +112,11 @@ void main() {
   });
 
   testWidgets(
-    'opens a truthful read-only task inspector from the desktop table',
+    'uses a persistent truthful task inspector from the desktop table',
     (WidgetTester tester) async {
       debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
-      await tester.binding.setSurfaceSize(const Size(1366, 900));
+      await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
       final ClusterOverviewController controller =
           await readyDashboardController(healthyDatacenterSnapshot());
@@ -124,9 +124,14 @@ void main() {
 
       await tester.pumpWidget(
         MaterialApp(
-          theme: PveCompanionTheme.light(),
-          home: Scaffold(
-            body: TasksPage(controller: controller, onRefresh: () async {}),
+          theme: PveCompanionTheme.light().copyWith(
+            platform: TargetPlatform.macOS,
+          ),
+          home: MediaQuery(
+            data: const MediaQueryData(size: Size(1440, 900)),
+            child: Scaffold(
+              body: TasksPage(controller: controller, onRefresh: () async {}),
+            ),
           ),
         ),
       );
@@ -135,12 +140,29 @@ void main() {
         find.byKey(const ValueKey<String>('desktop-task-table')),
         findsOneWidget,
       );
+      expect(
+        find.byKey(
+          const ValueKey<String>('desktop-task-inspector-placeholder'),
+        ),
+        findsOneWidget,
+      );
       await tester.tap(find.text('backup on pve-01').first);
       await tester.pumpAndSettle();
 
+      expect(
+        find.byKey(const ValueKey<String>('desktop-task-inspector')),
+        findsOneWidget,
+      );
+      expect(
+        find.byKey(
+          const ValueKey<String>('desktop-task-inspector-placeholder'),
+        ),
+        findsNothing,
+      );
       expect(find.text('Task details'), findsOneWidget);
       expect(find.text('Load server log'), findsOneWidget);
       expect(find.text('Task ID'), findsOneWidget);
+      expect(find.text('Close'), findsNothing);
       debugDefaultTargetPlatformOverride = null;
     },
   );
