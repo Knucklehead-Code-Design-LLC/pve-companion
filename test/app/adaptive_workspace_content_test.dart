@@ -43,6 +43,49 @@ void main() {
     expect(find.text('Page: Storage'), findsOneWidget);
   });
 
+  test('selects compact, regular, and wide workspace navigation layouts', () {
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.compactBreakpoint - 1),
+      WorkspaceLayoutSize.compact,
+    );
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.compactBreakpoint),
+      WorkspaceLayoutSize.regular,
+    );
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.wideBreakpoint),
+      WorkspaceLayoutSize.wide,
+    );
+  });
+
+  testWidgets('widens the macOS sidebar as the workspace grows', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      304,
+    );
+    expect(find.text('Refresh data'), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pump();
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      320,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('uses the expanded connected sidebar on iPad', (
     WidgetTester tester,
   ) async {
@@ -92,7 +135,8 @@ void main() {
     );
 
     await tester.pumpWidget(_NavigationHarness(lastUpdatedAt: updatedAt));
-    expect(find.text('Updated 2m ago'), findsOneWidget);
+    expect(find.text('Data refreshed 2m ago'), findsOneWidget);
+    expect(find.bySemanticsLabel('Data last refreshed 2m ago'), findsOneWidget);
   });
 
   testWidgets('discloses a failed refresh in the connection footer', (
@@ -106,7 +150,8 @@ void main() {
     );
 
     expect(find.text('Connected'), findsOneWidget);
-    expect(find.text('Refresh failed'), findsOneWidget);
+    expect(find.text('Data refresh failed'), findsOneWidget);
+    expect(find.bySemanticsLabel('Data refresh failed'), findsOneWidget);
   });
 }
 

@@ -6,6 +6,28 @@ import 'package:flutter/foundation.dart';
 import '../../core/presentation/pve_apple_ui.dart';
 import 'workspace_section.dart';
 
+/// The workspace's navigation layout, based on the available window width.
+///
+/// Pages retain control of their own responsive content, while this layout
+/// selects the appropriate navigation chrome for compact, regular, and wide
+/// workspaces.
+enum WorkspaceLayoutSize { compact, regular, wide }
+
+abstract final class WorkspaceLayout {
+  static const double compactBreakpoint = 760;
+  static const double wideBreakpoint = 1280;
+
+  static WorkspaceLayoutSize forWidth(double width) {
+    if (width < compactBreakpoint) {
+      return WorkspaceLayoutSize.compact;
+    }
+    if (width < wideBreakpoint) {
+      return WorkspaceLayoutSize.regular;
+    }
+    return WorkspaceLayoutSize.wide;
+  }
+}
+
 class AdaptiveWorkspaceContent extends StatelessWidget {
   const AdaptiveWorkspaceContent({
     super.key,
@@ -35,7 +57,10 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final int selectedIndex = section.index;
-        if (constraints.maxWidth >= 760) {
+        final WorkspaceLayoutSize layout = WorkspaceLayout.forWidth(
+          constraints.maxWidth,
+        );
+        if (layout != WorkspaceLayoutSize.compact) {
           final bool usesIpadSidebar =
               defaultTargetPlatform == TargetPlatform.iOS;
           return Row(
@@ -44,7 +69,10 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 section: section,
                 onSectionChanged: onSectionChanged,
                 header: sidebarHeader,
-                width: usesIpadSidebar ? 288 : 264,
+                width: _sidebarWidth(
+                  layout: layout,
+                  usesIpadSidebar: usesIpadSidebar,
+                ),
                 onRefresh: onRefresh,
                 refreshing: refreshing,
                 lastUpdatedAt: lastUpdatedAt,
@@ -98,6 +126,22 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
 
   void _selectIndex(int index) =>
       onSectionChanged(WorkspaceSection.values[index]);
+
+  double _sidebarWidth({
+    required WorkspaceLayoutSize layout,
+    required bool usesIpadSidebar,
+  }) {
+    if (usesIpadSidebar) {
+      return 288;
+    }
+    return switch (layout) {
+      WorkspaceLayoutSize.regular => 304,
+      WorkspaceLayoutSize.wide => 320,
+      WorkspaceLayoutSize.compact => throw StateError(
+        'Compact workspaces do not show a sidebar.',
+      ),
+    };
+  }
 }
 
 class _WorkspaceSidebar extends StatelessWidget {
@@ -131,7 +175,7 @@ class _WorkspaceSidebar extends StatelessWidget {
           key: const ValueKey<String>('workspace-sidebar'),
           width: width,
           child: Padding(
-            padding: const EdgeInsets.fromLTRB(12, 14, 12, 16),
+            padding: const EdgeInsets.fromLTRB(14, 16, 14, 18),
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.stretch,
               children: <Widget>[
@@ -154,28 +198,37 @@ class _WorkspaceSidebar extends StatelessWidget {
                     child: header,
                   ),
                 ),
-                const SizedBox(height: 18),
+                const SizedBox(height: 20),
                 Padding(
-                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 7),
+                  padding: const EdgeInsets.fromLTRB(12, 0, 12, 8),
                   child: Text(
                     'Datacenter',
                     style: PveAppleText.caption(
                       context,
-                    ).copyWith(fontSize: 12, fontWeight: FontWeight.w600),
+                    ).copyWith(fontSize: 13, fontWeight: FontWeight.w600),
                   ),
                 ),
-                for (final WorkspaceSection item in WorkspaceSection.values)
-                  _SidebarDestination(
-                    item: item,
-                    selected: item == section,
-                    onTap: () => onSectionChanged(item),
+                Expanded(
+                  child: ListView(
+                    padding: EdgeInsets.zero,
+                    children: WorkspaceSection.values
+                        .map(
+                          (WorkspaceSection item) => _SidebarDestination(
+                            item: item,
+                            selected: item == section,
+                            onTap: () => onSectionChanged(item),
+                          ),
+                        )
+                        .toList(growable: false),
                   ),
-                const Spacer(),
+                ),
+                const SizedBox(height: 12),
                 _WorkspaceConnectionFooter(
                   refreshing: refreshing,
                   lastUpdatedAt: lastUpdatedAt,
                   refreshErrorMessage: refreshErrorMessage,
                   onRefresh: onRefresh,
+                  showRefreshLabel: width >= 300,
                 ),
               ],
             ),
@@ -192,12 +245,14 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
     required this.lastUpdatedAt,
     required this.refreshErrorMessage,
     required this.onRefresh,
+    required this.showRefreshLabel,
   });
 
   final bool refreshing;
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
   final Future<void> Function() onRefresh;
+  final bool showRefreshLabel;
 
   @override
   Widget build(BuildContext context) {
@@ -223,21 +278,30 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text('Connected', style: PveAppleText.caption(context)),
-                  if (refreshErrorMessage != null)
-                    Text(
-                      'Refresh failed',
-                      style: PveAppleText.caption(context).copyWith(
-                        color: PveAppleColors.warning(context),
-                        fontSize: 11,
-                      ),
-                    )
-                  else if (lastUpdatedAt != null)
-                    _LastUpdatedText(updatedAt: lastUpdatedAt!),
-                ],
+              child: Semantics(
+                container: true,
+                excludeSemantics: true,
+                label: _freshnessSemanticsLabel(
+                  refreshing: refreshing,
+                  lastUpdatedAt: lastUpdatedAt,
+                  refreshErrorMessage: refreshErrorMessage,
+                ),
+                child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: <Widget>[
+                    Text('Connected', style: PveAppleText.caption(context)),
+                    if (refreshErrorMessage != null)
+                      Text(
+                        'Data refresh failed',
+                        style: PveAppleText.caption(context).copyWith(
+                          color: PveAppleColors.warning(context),
+                          fontSize: 12,
+                        ),
+                      )
+                    else if (lastUpdatedAt != null)
+                      _LastUpdatedText(updatedAt: lastUpdatedAt!),
+                  ],
+                ),
               ),
             ),
             Semantics(
@@ -257,8 +321,10 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
                       const CupertinoActivityIndicator(radius: 8)
                     else
                       const Icon(CupertinoIcons.refresh, size: 16),
-                    const SizedBox(width: 5),
-                    Text(refreshing ? 'Updating' : 'Refresh'),
+                    if (showRefreshLabel) ...<Widget>[
+                      const SizedBox(width: 5),
+                      Text(refreshing ? 'Updating' : 'Refresh data'),
+                    ],
                   ],
                 ),
               ),
@@ -322,7 +388,7 @@ class _LastUpdatedTextState extends State<_LastUpdatedText> {
   Widget build(BuildContext context) {
     return Text(
       _lastUpdatedLabel(widget.updatedAt),
-      style: PveAppleText.caption(context).copyWith(fontSize: 11),
+      style: PveAppleText.caption(context).copyWith(fontSize: 12),
     );
   }
 }
@@ -330,15 +396,32 @@ class _LastUpdatedTextState extends State<_LastUpdatedText> {
 String _lastUpdatedLabel(DateTime updatedAt) {
   final Duration elapsed = DateTime.now().difference(updatedAt);
   if (elapsed.isNegative || elapsed.inMinutes < 1) {
-    return 'Updated just now';
+    return 'Data refreshed just now';
   }
   if (elapsed.inHours < 1) {
-    return 'Updated ${elapsed.inMinutes}m ago';
+    return 'Data refreshed ${elapsed.inMinutes}m ago';
   }
   if (elapsed.inDays >= 1) {
-    return 'Updated ${elapsed.inDays}d ago';
+    return 'Data refreshed ${elapsed.inDays}d ago';
   }
-  return 'Updated ${elapsed.inHours}h ago';
+  return 'Data refreshed ${elapsed.inHours}h ago';
+}
+
+String _freshnessSemanticsLabel({
+  required bool refreshing,
+  required DateTime? lastUpdatedAt,
+  required String? refreshErrorMessage,
+}) {
+  if (refreshing) {
+    return 'Data refresh in progress';
+  }
+  if (refreshErrorMessage != null) {
+    return 'Data refresh failed';
+  }
+  if (lastUpdatedAt == null) {
+    return 'Data has not been refreshed yet';
+  }
+  return 'Data last refreshed ${_lastUpdatedLabel(lastUpdatedAt).replaceFirst('Data refreshed ', '')}';
 }
 
 class _SidebarDestination extends StatelessWidget {
