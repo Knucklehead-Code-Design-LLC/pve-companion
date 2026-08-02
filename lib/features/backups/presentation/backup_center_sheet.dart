@@ -182,11 +182,17 @@ class _BackupCenterContent extends StatelessWidget {
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Scheduled backups'),
         const SizedBox(height: 8),
-        _BackupSchedulesCard(schedules: snapshot.schedules),
+        _BackupSchedulesCard(
+          schedules: snapshot.schedules,
+          dataState: snapshot.scheduleDataState,
+        ),
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Latest backup copies'),
         const SizedBox(height: 8),
-        _BackupRecordsCard(records: snapshot.records),
+        _BackupRecordsCard(
+          records: snapshot.records,
+          dataState: snapshot.recordDataState,
+        ),
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Recent backup activity'),
         const SizedBox(height: 8),
@@ -206,8 +212,15 @@ class _BackupDestinationCard extends StatelessWidget {
     if (destinations.isEmpty) {
       return const PveInsetGroup(
         padding: EdgeInsets.all(16),
-        child: Text(
-          'No Proxmox storage configured for backup content was reported.',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('No backup destination is configured.'),
+            SizedBox(height: 6),
+            Text(
+              'Add a storage target that accepts backup content in Proxmox, then refresh this center.',
+            ),
+          ],
         ),
       );
     }
@@ -278,17 +291,31 @@ class _BackupDestinationCard extends StatelessWidget {
 }
 
 class _BackupSchedulesCard extends StatelessWidget {
-  const _BackupSchedulesCard({required this.schedules});
+  const _BackupSchedulesCard({
+    required this.schedules,
+    required this.dataState,
+  });
 
   final List<PveBackupSchedule> schedules;
+  final PveBackupDataState dataState;
 
   @override
   Widget build(BuildContext context) {
     if (schedules.isEmpty) {
-      return const PveInsetGroup(
+      return PveInsetGroup(
         padding: EdgeInsets.all(16),
         child: Text(
-          'No backup schedules were reported, or this account cannot read them.',
+          _emptyBackupDataMessage(
+            dataState,
+            emptyMessage: 'No backup schedules are configured.',
+            notConfiguredMessage: 'Backup schedules are not configured.',
+            unavailableMessage:
+                'Backup schedules are not available from this server.',
+            permissionMessage:
+                'This account cannot read backup schedules. Ask an administrator to grant backup job access.',
+            partiallyAvailableMessage:
+                'Some backup schedules could not be read. Refresh to try again.',
+          ),
         ),
       );
     }
@@ -317,17 +344,30 @@ class _BackupSchedulesCard extends StatelessWidget {
 }
 
 class _BackupRecordsCard extends StatelessWidget {
-  const _BackupRecordsCard({required this.records});
+  const _BackupRecordsCard({required this.records, required this.dataState});
 
   final List<PveBackupRecord> records;
+  final PveBackupDataState dataState;
 
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
-      return const PveInsetGroup(
+      return PveInsetGroup(
         padding: EdgeInsets.all(16),
         child: Text(
-          'No backup copies were reported by the configured destinations.',
+          _emptyBackupDataMessage(
+            dataState,
+            emptyMessage:
+                'No backup copies were found in the configured destinations.',
+            notConfiguredMessage:
+                'Configure a storage target that accepts backup content to view backup copies.',
+            unavailableMessage:
+                'Backup copies could not be loaded from the configured destinations.',
+            permissionMessage:
+                'This account cannot read backup copies. Ask an administrator to grant storage-content access.',
+            partiallyAvailableMessage:
+                'Some configured destinations could not be read, so this list may be incomplete.',
+          ),
         ),
       );
     }
@@ -335,6 +375,19 @@ class _BackupRecordsCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(
         children: <Widget>[
+          if (dataState == PveBackupDataState.partiallyAvailable) ...<Widget>[
+            PveListRow(
+              leading: Icon(
+                CupertinoIcons.exclamationmark_triangle,
+                color: PveAppleColors.warning(context),
+              ),
+              title: const Text('Some backup destinations could not be read'),
+              subtitle: const Text(
+                'The copies shown may be incomplete. Check storage-content access, then refresh.',
+              ),
+            ),
+            const PveRowSeparator(),
+          ],
           for (int index = 0; index < records.length; index++) ...<Widget>[
             PveListRow(
               leading: Icon(
@@ -396,6 +449,21 @@ class _BackupTasksCard extends StatelessWidget {
     );
   }
 }
+
+String _emptyBackupDataMessage(
+  PveBackupDataState dataState, {
+  required String emptyMessage,
+  required String notConfiguredMessage,
+  required String unavailableMessage,
+  required String permissionMessage,
+  required String partiallyAvailableMessage,
+}) => switch (dataState) {
+  PveBackupDataState.available => emptyMessage,
+  PveBackupDataState.partiallyAvailable => partiallyAvailableMessage,
+  PveBackupDataState.unavailable => unavailableMessage,
+  PveBackupDataState.permissionLimited => permissionMessage,
+  PveBackupDataState.notConfigured => notConfiguredMessage,
+};
 
 String _scheduleSubtitle(PveBackupSchedule schedule) {
   final List<String> fragments = <String>[

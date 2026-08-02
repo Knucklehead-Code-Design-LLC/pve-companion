@@ -20,7 +20,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
         .where(_isBackupStorage)
         .map((ClusterStorage storage) => PveBackupDestination(storage: storage))
         .toList(growable: false);
-    final Future<Object?> schedulesRequest = _loadOptional(
+    final Future<_OptionalBackupData> schedulesRequest = _loadOptional(
       session,
       'cluster/backup',
     );
@@ -28,7 +28,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
       overview,
       destinations,
     );
-    final List<Future<Object?>> recordRequests = routes
+    final List<Future<_OptionalBackupData>> recordRequests = routes
         .map(
           (_BackupContentRoute route) => _loadOptional(
             session,
@@ -36,13 +36,14 @@ class ProxmoxBackupRepository implements PveBackupRepository {
           ),
         )
         .toList(growable: false);
-    final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[
-      schedulesRequest,
-      ...recordRequests,
-    ]);
+    final List<_OptionalBackupData> results =
+        await Future.wait<_OptionalBackupData>(<Future<_OptionalBackupData>>[
+          schedulesRequest,
+          ...recordRequests,
+        ]);
     final List<PveBackupRecord> records = <PveBackupRecord>[];
     for (int index = 0; index < routes.length; index += 1) {
-      records.addAll(_decodeRecords(results[index + 1], routes[index]));
+      records.addAll(_decodeRecords(results[index + 1].data, routes[index]));
     }
     final Map<String, PveBackupRecord> uniqueRecords =
         <String, PveBackupRecord>{};
@@ -70,10 +71,16 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     return PveBackupCenterSnapshot(
       destinations: List<PveBackupDestination>.unmodifiable(destinations),
       schedules: List<PveBackupSchedule>.unmodifiable(
-        _decodeSchedules(results.first),
+        _decodeSchedules(results.first.data),
       ),
       records: List<PveBackupRecord>.unmodifiable(orderedRecords),
       recentTasks: List<ClusterTask>.unmodifiable(recentTasks),
+      scheduleDataState: results.first.state,
+      recordDataState: _combineRecordDataStates(
+        results.skip(1).map((_OptionalBackupData result) => result.state),
+        hasDestinations: destinations.isNotEmpty,
+        hasRoutes: routes.isNotEmpty,
+      ),
     );
   }
 
@@ -116,20 +123,55 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     return routes;
   }
 
-  Future<Object?> _loadOptional(
+  PveBackupDataState _combineRecordDataStates(
+    Iterable<PveBackupDataState> states, {
+    required bool hasDestinations,
+    required bool hasRoutes,
+  }) {
+    if (!hasDestinations) {
+      return PveBackupDataState.notConfigured;
+    }
+    if (!hasRoutes) {
+      return PveBackupDataState.unavailable;
+    }
+    final bool hasAvailableData = states.contains(PveBackupDataState.available);
+    final bool hasLimitedData = states.any(
+      (PveBackupDataState state) => state != PveBackupDataState.available,
+    );
+    if (hasAvailableData && hasLimitedData) {
+      return PveBackupDataState.partiallyAvailable;
+    }
+    if (hasAvailableData) {
+      return PveBackupDataState.available;
+    }
+    if (states.contains(PveBackupDataState.permissionLimited)) {
+      return PveBackupDataState.permissionLimited;
+    }
+    return PveBackupDataState.unavailable;
+  }
+
+  Future<_OptionalBackupData> _loadOptional(
     ProxmoxSession session,
     String resource, {
     Map<String, String> query = const <String, String>{},
   }) async {
     try {
-      return await session.getData(resource, query: query);
+      return _OptionalBackupData(
+        data: await session.getData(resource, query: query),
+        state: PveBackupDataState.available,
+      );
     } on ProxmoxUnauthorizedException {
-      return null;
+      return const _OptionalBackupData(
+        state: PveBackupDataState.permissionLimited,
+      );
     } on ProxmoxResponseException catch (error) {
-      if (error.statusCode == 403 ||
-          error.statusCode == 404 ||
-          error.statusCode == 501) {
-        return null;
+      if (error.statusCode == 403) {
+        return const _OptionalBackupData(
+          state: PveBackupDataState.permissionLimited,
+        );
+      }
+      if (error.statusCode == 404 || error.statusCode == 501) {
+        return const _OptionalBackupData(state: PveBackupDataState.unavailable);
       }
       rethrow;
     }
@@ -234,4 +276,11 @@ class _BackupContentRoute {
 
   final String node;
   final String storage;
+}
+
+class _OptionalBackupData {
+  const _OptionalBackupData({this.data, required this.state});
+
+  final Object? data;
+  final PveBackupDataState state;
 }

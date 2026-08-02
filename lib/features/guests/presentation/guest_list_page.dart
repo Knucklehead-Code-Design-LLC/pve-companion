@@ -55,6 +55,9 @@ class _GuestListPageState extends State<GuestListPage> {
           PveGuest left,
           PveGuest right,
         ) {
+          if (left.isTemplate != right.isTemplate) {
+            return left.isTemplate ? 1 : -1;
+          }
           if (left.isRunning != right.isRunning) {
             return left.isRunning ? -1 : 1;
           }
@@ -100,13 +103,16 @@ class _GuestListPageState extends State<GuestListPage> {
         .where(_matchesFilter)
         .where(_matchesSearch)
         .toList(growable: false);
-    final int runningCount = guests
+    final List<PveGuest> workloads = guests
+        .where((PveGuest guest) => !guest.isTemplate)
+        .toList(growable: false);
+    final int runningCount = workloads
         .where((PveGuest guest) => guest.isRunning)
         .length;
-    final int virtualMachineCount = guests
+    final int virtualMachineCount = workloads
         .where((PveGuest guest) => guest.kind == GuestKind.virtualMachine)
         .length;
-    final int containerCount = guests.length - virtualMachineCount;
+    final int containerCount = workloads.length - virtualMachineCount;
     final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
       key: const ValueKey<String>('guest-status-filter'),
       groupValue: _filter,
@@ -122,6 +128,10 @@ class _GuestListPageState extends State<GuestListPage> {
         _GuestFilter.stopped: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text('Stopped'),
+        ),
+        _GuestFilter.templates: Padding(
+          padding: EdgeInsets.symmetric(horizontal: 8),
+          child: Text('Templates'),
         ),
       },
       onValueChanged: (_GuestFilter? value) {
@@ -151,7 +161,7 @@ class _GuestListPageState extends State<GuestListPage> {
           items: <PveMetricStripItem>[
             PveMetricStripItem(
               label: 'Workloads',
-              value: '${guests.length}',
+              value: '${workloads.length}',
               icon: CupertinoIcons.cube_box,
             ),
             PveMetricStripItem(
@@ -181,6 +191,15 @@ class _GuestListPageState extends State<GuestListPage> {
         const PveSectionTitle(title: 'Guest inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
+        const SizedBox(height: 8),
+        Text(
+          _inventoryCountLabel(
+            visibleCount: visibleGuests.length,
+            totalCount: guests.length,
+          ),
+          key: const ValueKey<String>('guest-inventory-result-count'),
+          style: PveAppleText.secondary(context),
+        ),
         const SizedBox(height: 16),
         if (visibleGuests.isEmpty)
           PveInsetGroup(
@@ -267,8 +286,9 @@ class _GuestListPageState extends State<GuestListPage> {
 
   bool _matchesFilter(PveGuest guest) => switch (_filter) {
     _GuestFilter.all => true,
-    _GuestFilter.running => guest.isRunning,
-    _GuestFilter.stopped => !guest.isRunning,
+    _GuestFilter.running => !guest.isTemplate && guest.isRunning,
+    _GuestFilter.stopped => !guest.isTemplate && !guest.isRunning,
+    _GuestFilter.templates => guest.isTemplate,
   };
 
   bool _isAvailableBackupStorage(ClusterStorage storage) {
@@ -301,7 +321,9 @@ class _GuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = guest.isRunning
+    final Color statusColor = guest.isTemplate
+        ? PveAppleColors.primary(context)
+        : guest.isRunning
         ? PveAppleColors.success(context)
         : PveAppleColors.secondaryLabel(context);
     return PveInsetGroup(
@@ -448,7 +470,9 @@ class _GuestListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = guest.isRunning
+    final Color statusColor = guest.isTemplate
+        ? PveAppleColors.primary(context)
+        : guest.isRunning
         ? PveAppleColors.success(context)
         : PveAppleColors.secondaryLabel(context);
     return CupertinoListTile(
@@ -484,7 +508,18 @@ class _GuestListItem extends StatelessWidget {
   }
 }
 
-enum _GuestFilter { all, running, stopped }
+enum _GuestFilter { all, running, stopped, templates }
+
+String _inventoryCountLabel({
+  required int visibleCount,
+  required int totalCount,
+}) {
+  final String noun = totalCount == 1 ? 'guest' : 'guests';
+  if (visibleCount == totalCount) {
+    return 'Showing all $totalCount $noun';
+  }
+  return 'Showing $visibleCount of $totalCount $noun';
+}
 
 String _statusLabel(String status) {
   if (status.isEmpty) {

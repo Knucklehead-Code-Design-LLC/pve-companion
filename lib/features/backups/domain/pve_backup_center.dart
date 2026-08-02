@@ -62,14 +62,26 @@ class PveBackupCenterSnapshot {
     required this.schedules,
     required this.records,
     required this.recentTasks,
+    this.scheduleDataState = PveBackupDataState.available,
+    this.recordDataState = PveBackupDataState.available,
   });
 
   final List<PveBackupDestination> destinations;
   final List<PveBackupSchedule> schedules;
   final List<PveBackupRecord> records;
   final List<ClusterTask> recentTasks;
+  final PveBackupDataState scheduleDataState;
+  final PveBackupDataState recordDataState;
 
   int get failedRecentTaskCount => recentTasks
       .where((ClusterTask task) => task.state == ClusterTaskState.failed)
       .length;
+}
+
+enum PveBackupDataState {
+  available,
+  partiallyAvailable,
+  unavailable,
+  permissionLimited,
+  notConfigured,
 }

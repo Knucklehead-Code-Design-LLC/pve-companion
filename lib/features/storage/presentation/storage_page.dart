@@ -74,9 +74,9 @@ class _StoragePageState extends State<StoragePage> {
     List<ClusterStorage> storages, {
     required bool usesExpandedPresentation,
   }) {
-    final List<ClusterStorage> visibleStorages = storages
-        .where(_matchesFilter)
-        .toList(growable: false);
+    final List<ClusterStorage> visibleStorages =
+        storages.where(_matchesFilter).toList(growable: false)
+          ..sort(_compareStorageRisk);
     final int fullyAvailableCount = storages
         .where(
           (ClusterStorage storage) =>
@@ -86,15 +86,18 @@ class _StoragePageState extends State<StoragePage> {
     final int availabilityReportedCount = storages
         .where((ClusterStorage storage) => storage.hasAvailabilityTelemetry)
         .length;
-    final bool hasCapacityTelemetry = storages.any(
-      (ClusterStorage storage) =>
-          storage.usedBytes != null && storage.capacityBytes != null,
-    );
-    final int aggregateUsedBytes = storages.fold<int>(
+    final List<ClusterStorage> storagesWithCapacity = storages
+        .where(
+          (ClusterStorage storage) =>
+              storage.usedBytes != null && storage.capacityBytes != null,
+        )
+        .toList(growable: false);
+    final bool hasCapacityTelemetry = storagesWithCapacity.isNotEmpty;
+    final int aggregateUsedBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
     );
-    final int aggregateAvailableBytes = storages.fold<int>(
+    final int aggregateAvailableBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) =>
           total + (storage.availableBytes ?? 0),
@@ -232,6 +235,15 @@ class _StoragePageState extends State<StoragePage> {
           primary: const PveSectionTitle(title: 'Storage pools'),
           secondary: filter,
         ),
+        const SizedBox(height: 8),
+        Text(
+          _storageCountLabel(
+            visibleCount: visibleStorages.length,
+            totalCount: storages.length,
+          ),
+          key: const ValueKey<String>('storage-result-count'),
+          style: PveAppleText.secondary(context),
+        ),
         const SizedBox(height: 16),
         if (storages.isEmpty)
           const PveInsetGroup(
@@ -291,6 +303,22 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.shared => storage.shared,
     _StorageFilter.local => !storage.shared,
   };
+
+  int _compareStorageRisk(ClusterStorage left, ClusterStorage right) {
+    final int riskComparison = _storageRiskRank(
+      left,
+    ).compareTo(_storageRiskRank(right));
+    if (riskComparison != 0) {
+      return riskComparison;
+    }
+    final double leftUsage = left.usageFraction ?? -1;
+    final double rightUsage = right.usageFraction ?? -1;
+    final int usageComparison = rightUsage.compareTo(leftUsage);
+    if (usageComparison != 0) {
+      return usageComparison;
+    }
+    return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+  }
 
   Future<void> _showBackupCenter() async {
     final ProxmoxSession? session = widget.session;
@@ -411,3 +439,34 @@ class _StorageCard extends StatelessWidget {
 }
 
 enum _StorageFilter { all, shared, local }
+
+int _storageRiskRank(ClusterStorage storage) {
+  if (storage.hasAvailabilityTelemetry && !storage.isAvailable) {
+    return 0;
+  }
+  if (storage.isPartiallyAvailable) {
+    return 1;
+  }
+  final double? usage = storage.usageFraction;
+  if (usage != null && usage >= 0.9) {
+    return 2;
+  }
+  if (usage != null && usage >= 0.75) {
+    return 3;
+  }
+  if (!storage.hasAvailabilityTelemetry || usage == null) {
+    return 4;
+  }
+  return 5;
+}
+
+String _storageCountLabel({
+  required int visibleCount,
+  required int totalCount,
+}) {
+  final String noun = totalCount == 1 ? 'pool' : 'pools';
+  if (visibleCount == totalCount) {
+    return 'Showing all $totalCount storage $noun · highest risk first';
+  }
+  return 'Showing $visibleCount of $totalCount storage $noun · highest risk first';
+}

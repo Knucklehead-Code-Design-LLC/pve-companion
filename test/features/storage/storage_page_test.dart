@@ -24,12 +24,20 @@ void main() {
 
     expect(find.text('local'), findsWidgets);
     expect(find.text('backup-nfs'), findsOneWidget);
+    expect(
+      find.text('Showing all 2 storage pools · highest risk first'),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Shared').first);
     await tester.pump();
 
     expect(find.text('local'), findsNothing);
     expect(find.text('backup-nfs'), findsOneWidget);
+    expect(
+      find.text('Showing 1 of 2 storage pools · highest risk first'),
+      findsOneWidget,
+    );
   });
 
   testWidgets('uses storage summary cards on iPad', (

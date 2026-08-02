@@ -4,6 +4,8 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
+import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
+import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 import 'package:pve_companion/features/guests/presentation/guest_list_page.dart';
 
 import '../cluster_overview/datacenter_dashboard_fixture.dart';
@@ -33,12 +35,14 @@ void main() {
 
     expect(find.text('app-prod-01'), findsOneWidget);
     expect(find.text('gh-runner-01'), findsOneWidget);
+    expect(find.text('Showing all 4 guests'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), 'runner');
     await tester.pump();
 
     expect(find.text('app-prod-01'), findsNothing);
     expect(find.text('gh-runner-01'), findsOneWidget);
+    expect(find.text('Showing 1 of 4 guests'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
     await tester.tap(find.text('Stopped').first);
@@ -46,6 +50,67 @@ void main() {
 
     expect(find.text('app-prod-01'), findsNothing);
     expect(find.text('gh-runner-01'), findsOneWidget);
+  });
+
+  testWidgets('keeps templates out of the stopped inventory', (
+    WidgetTester tester,
+  ) async {
+    final ClusterOverviewSnapshot base = healthyDatacenterSnapshot();
+    final ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+      version: base.version,
+      nodes: base.nodes,
+      guests: <PveGuest>[
+        ...base.guests,
+        const PveGuest(
+          vmid: 900,
+          node: 'pve-01',
+          kind: GuestKind.virtualMachine,
+          status: 'stopped',
+          name: 'ubuntu-template',
+          isTemplate: true,
+        ),
+      ],
+      storages: base.storages,
+      tasks: base.tasks,
+    );
+    final controller = await readyDashboardController(snapshot);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: GuestListPage(
+            overviewController: controller,
+            session: const _GuestListSession(),
+            onRefresh: () async {},
+            onGuestPowerAction: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Templates'), findsWidgets);
+    expect(find.text('Showing all 5 guests'), findsOneWidget);
+
+    await tester.tap(find.text('Stopped').first);
+    await tester.pump();
+
+    expect(find.text('gh-runner-01'), findsOneWidget);
+    expect(find.text('ubuntu-template'), findsNothing);
+    expect(find.text('Showing 1 of 5 guests'), findsOneWidget);
+
+    await tester.tap(
+      find.descendant(
+        of: find.byKey(const ValueKey<String>('guest-status-filter')),
+        matching: find.text('Templates'),
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('gh-runner-01'), findsNothing);
+    expect(find.text('ubuntu-template'), findsOneWidget);
+    expect(find.text('Showing 1 of 5 guests'), findsOneWidget);
   });
 
   testWidgets('uses summary metrics and scan-friendly cards on iPad', (
