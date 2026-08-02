@@ -179,7 +179,7 @@ class _GuestConsoleCard extends StatelessWidget {
             child: SizedBox.square(
               dimension: 38,
               child: Icon(
-                CupertinoIcons.command,
+                CupertinoIcons.desktopcomputer,
                 size: 20,
                 color: PveAppleColors.primary(context),
               ),
@@ -190,20 +190,17 @@ class _GuestConsoleCard extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
-                Text(
-                  'Open Proxmox Console',
-                  style: PveAppleText.title3(context),
-                ),
+                Text('Open Guest Console', style: PveAppleText.title3(context)),
                 const SizedBox(height: 2),
                 Text(
-                  'Open the guest’s native noVNC console in your browser without sharing this app’s credentials.',
+                  'Connect to this guest’s interactive console without leaving PVE Companion.',
                   style: PveAppleText.secondary(context),
                 ),
               ],
             ),
           ),
           Icon(
-            CupertinoIcons.arrow_up_right_square,
+            CupertinoIcons.chevron_forward,
             size: 18,
             color: PveAppleColors.secondaryLabel(context),
           ),

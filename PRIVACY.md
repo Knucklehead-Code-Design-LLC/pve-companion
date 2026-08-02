@@ -56,10 +56,11 @@ between your device and the Proxmox VE endpoint you configure. The developer
 does not receive that traffic. Your Proxmox administrator's policies govern
 data held by that server.
 
-When you choose **Open Proxmox Console**, the app opens an HTTPS noVNC route
-in your system browser. The app does not transfer its password, API-token
-secret, session ticket, or CSRF token to the browser; the browser may ask you
-to authenticate to Proxmox separately.
+When you choose **Open Guest Console**, the app connects directly to your
+Proxmox VE endpoint and renders the guest console in the app. The short-lived
+VNC ticket remains in the authenticated in-memory transport, is never exposed
+to the app UI or another process, and is discarded after setup or when the app
+leaves the foreground.
 
 Use HTTPS over a trusted private network or VPN. Do not expose the Proxmox
 management port directly to the public internet.

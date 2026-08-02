@@ -50,10 +50,9 @@ claiming parity before it exists.
 
 ## Milestone 0.3 — console and lifecycle workflows
 
-- [x] Secure browser handoff to a guest's noVNC route without sharing the app's
-  credentials or ticket material.
-- [ ] Embedded VNC/noVNC or SPICE console design, including ticket lifecycle,
-  input adaptation, clipboard behavior, and revocation.
+- [x] In-app VM/LXC VNC console with ticket lifecycle, framebuffer rendering,
+  pointer/keyboard input, clipboard support, and foreground revocation.
+- [ ] SPICE console design and compatibility policy.
 - [ ] Guest create/clone wizard with validation, least-privilege authorization,
   and task progress.
 - [x] Snapshot creation, rollback/deletion confirmation, and on-demand backup

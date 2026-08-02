@@ -20,7 +20,6 @@
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */; };
 		D11111111111111111111111 /* AppleLocalNotificationsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */; };
-		D11111111111111111111113 /* AppleExternalNavigationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */; };
 		8AA6F8B1AD9870C0D3095039 /* PVECompanionWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
@@ -81,7 +80,6 @@
 		1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PVECompanionWidgets.swift; sourceTree = "<group>"; };
 		1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSystemSurfacesPlugin.swift; sourceTree = "<group>"; };
 		D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleLocalNotificationsPlugin.swift; sourceTree = "<group>"; };
-		D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleExternalNavigationPlugin.swift; sourceTree = "<group>"; };
 		2452D0EB6644D509242BEE11 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -197,7 +195,6 @@
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */,
 				D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */,
-				D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -439,7 +436,6 @@
 				7063F12473117F377425C1BD /* DatacenterWatchAttributes.swift in Sources */,
 				83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */,
 				D11111111111111111111111 /* AppleLocalNotificationsPlugin.swift in Sources */,
-				D11111111111111111111113 /* AppleExternalNavigationPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

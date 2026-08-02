@@ -18,8 +18,5 @@ import UIKit
     AppleLocalNotificationsPlugin.register(
       binaryMessenger: engineBridge.applicationRegistrar.messenger()
     )
-    AppleExternalNavigationPlugin.register(
-      binaryMessenger: engineBridge.applicationRegistrar.messenger()
-    )
   }
 }

@@ -1,10 +1,9 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/api/proxmox_session.dart';
-import '../../../core/platform/external_url_launcher.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
-import '../../console/domain/proxmox_console_handoff.dart';
+import '../../console/presentation/guest_console_page.dart';
 import '../application/guest_detail_controller.dart';
 import '../data/proxmox_guest_repository.dart';
 import '../domain/pve_guest.dart';
@@ -18,7 +17,6 @@ Future<void> showGuestDetailSheet(
   required ProxmoxSession session,
   required Future<void> Function() onGuestPowerAction,
   required List<String> backupStorageNames,
-  Uri? consoleEndpoint,
 }) {
   return showPveModalSheet<void>(
     context: context,
@@ -30,7 +28,6 @@ Future<void> showGuestDetailSheet(
             scrollController: scrollController,
             onGuestPowerAction: onGuestPowerAction,
             backupStorageNames: backupStorageNames,
-            consoleEndpoint: consoleEndpoint,
           );
         },
   );
@@ -43,7 +40,6 @@ class _GuestDetailSheet extends StatefulWidget {
     required this.scrollController,
     required this.onGuestPowerAction,
     required this.backupStorageNames,
-    required this.consoleEndpoint,
   });
 
   final PveGuest guest;
@@ -51,7 +47,6 @@ class _GuestDetailSheet extends StatefulWidget {
   final ScrollController scrollController;
   final Future<void> Function() onGuestPowerAction;
   final List<String> backupStorageNames;
-  final Uri? consoleEndpoint;
 
   @override
   State<_GuestDetailSheet> createState() => _GuestDetailSheetState();
@@ -144,7 +139,9 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         onSnapshotAction: _handleSnapshotAction,
         onRunBackup: _runBackup,
         onEditConfiguration: _editConfiguration,
-        onOpenConsole: widget.consoleEndpoint == null ? null : _openConsole,
+        onOpenConsole: widget.session is ProxmoxConsoleSession
+            ? _openConsole
+            : null,
       ),
     };
   }
@@ -301,38 +298,13 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
   }
 
   Future<void> _openConsole() async {
-    final Uri? endpoint = widget.consoleEndpoint;
-    if (endpoint == null) {
+    if (!mounted) {
       return;
     }
-    final Uri uri = ProxmoxConsoleHandoff.uriForGuest(
-      endpoint: endpoint,
+    await showGuestConsolePage(
+      context,
       guest: widget.guest,
-    );
-    bool didOpen = false;
-    try {
-      didOpen = await AppleExternalUrlLauncher().open(uri);
-    } catch (_) {
-      didOpen = false;
-    }
-    if (didOpen || !mounted) {
-      return;
-    }
-    await showCupertinoDialog<void>(
-      context: context,
-      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
-        title: const Text('Couldn’t Open Console'),
-        content: const Text(
-          'PVE Companion could not open your browser. You can open this guest from the Proxmox web interface instead.',
-        ),
-        actions: <Widget>[
-          CupertinoDialogAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(dialogContext).pop(),
-            child: const Text('OK'),
-          ),
-        ],
-      ),
+      session: widget.session,
     );
   }
 }
