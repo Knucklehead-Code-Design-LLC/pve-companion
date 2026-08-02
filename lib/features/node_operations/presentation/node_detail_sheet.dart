@@ -342,6 +342,8 @@ class _NodeStatusCard extends StatelessWidget {
                     Text(
                       details.pveVersion ?? 'Proxmox version not reported',
                       style: PveAppleText.caption(context),
+                      maxLines: 2,
+                      overflow: TextOverflow.ellipsis,
                     ),
                   ],
                 ),
@@ -353,31 +355,44 @@ class _NodeStatusCard extends StatelessWidget {
             ],
           ),
           const SizedBox(height: 18),
-          Wrap(
-            spacing: 26,
-            runSpacing: 16,
-            children: <Widget>[
-              _NodeMetric(
-                label: 'CPU',
-                value: formatPvePercent(details.node.cpuFraction),
-              ),
-              _NodeMetric(
-                label: 'Memory',
-                value:
-                    '${formatPveBytes(details.node.memoryBytes)} / '
-                    '${formatPveBytes(details.node.memoryLimitBytes)}',
-              ),
-              _NodeMetric(
-                label: 'Root disk',
-                value:
-                    '${formatPveBytes(details.node.diskBytes)} / '
-                    '${formatPveBytes(details.node.diskLimitBytes)}',
-              ),
-              _NodeMetric(
-                label: 'Uptime',
-                value: formatPveUptime(details.node.uptimeSeconds),
-              ),
-            ],
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              final bool isCompact = constraints.maxWidth < 520;
+              final double metricWidth = isCompact
+                  ? (constraints.maxWidth - 16) / 2
+                  : 125;
+
+              return Wrap(
+                spacing: isCompact ? 16 : 26,
+                runSpacing: 16,
+                children: <Widget>[
+                  _NodeMetric(
+                    width: metricWidth,
+                    label: 'CPU',
+                    value: formatPvePercent(details.node.cpuFraction),
+                  ),
+                  _NodeMetric(
+                    width: metricWidth,
+                    label: 'Memory',
+                    value:
+                        '${formatPveBytes(details.node.memoryBytes)} / '
+                        '${formatPveBytes(details.node.memoryLimitBytes)}',
+                  ),
+                  _NodeMetric(
+                    width: metricWidth,
+                    label: 'Root disk',
+                    value:
+                        '${formatPveBytes(details.node.diskBytes)} / '
+                        '${formatPveBytes(details.node.diskLimitBytes)}',
+                  ),
+                  _NodeMetric(
+                    width: metricWidth,
+                    label: 'Uptime',
+                    value: formatPveUptime(details.node.uptimeSeconds),
+                  ),
+                ],
+              );
+            },
           ),
         ],
       ),
@@ -566,15 +581,20 @@ class _NodeServicesCard extends StatelessWidget {
 }
 
 class _NodeMetric extends StatelessWidget {
-  const _NodeMetric({required this.label, required this.value});
+  const _NodeMetric({
+    required this.width,
+    required this.label,
+    required this.value,
+  });
 
+  final double width;
   final String label;
   final String value;
 
   @override
   Widget build(BuildContext context) {
     return SizedBox(
-      width: 125,
+      width: width,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
