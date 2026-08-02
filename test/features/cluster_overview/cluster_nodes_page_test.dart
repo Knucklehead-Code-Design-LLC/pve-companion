@@ -3,7 +3,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
+import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/cluster_nodes_page.dart';
+import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 import 'datacenter_dashboard_fixture.dart';
 
@@ -147,6 +149,83 @@ void main() {
     expect(find.text('Sort node inventory'), findsOneWidget);
     expect(find.text('Uptime'), findsOneWidget);
     expect(find.text('Resource use'), findsOneWidget);
+  });
+
+  testWidgets('keeps node selection in a desktop inspector', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light().copyWith(
+          platform: TargetPlatform.macOS,
+        ),
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1440, 900)),
+          child: Scaffold(
+            body: ClusterNodesPage(
+              controller: controller,
+              onRefresh: () async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('desktop-node-inspector-pve-01')),
+      findsOneWidget,
+    );
+    expect(find.text('Hosted guests'), findsWidgets);
+    expect(find.text('Recent activity'), findsOneWidget);
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('node-inventory-pve-02')),
+    );
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey<String>('desktop-node-inspector-pve-02')),
+      findsOneWidget,
+    );
+    expect(find.text('Copy node name'), findsOneWidget);
+  });
+
+  testWidgets('does not present an unreported CPU core count as zero', (
+    WidgetTester tester,
+  ) async {
+    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+      version: PveVersion(version: '9.0'),
+      nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
+      guests: <PveGuest>[],
+      storages: <ClusterStorage>[],
+      tasks: <ClusterTask>[],
+    );
+    final ClusterOverviewController controller = await readyDashboardController(
+      snapshot,
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: ClusterNodesPage(
+            controller: controller,
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('CPU cores not reported'), findsOneWidget);
+    expect(find.textContaining('0 cores'), findsNothing);
   });
 }
 

@@ -1,4 +1,6 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Theme;
+import 'package:flutter/services.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
@@ -43,6 +45,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   final TextEditingController _searchController = TextEditingController();
   _NodeFilter _filter = _NodeFilter.all;
   _NodeInventorySort _sort = _NodeInventorySort.attention;
+  String? _selectedNodeName;
 
   @override
   void dispose() {
@@ -82,6 +85,9 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   Widget _buildContent(BuildContext context, ClusterOverviewSnapshot snapshot) {
     final bool usesExpandedPresentation =
         PveAppleLayout.usesExpandedPresentation(context);
+    final bool usesDesktopInspector =
+        Theme.of(context).platform == TargetPlatform.macOS &&
+        PveAppleLayout.usesWidePresentation(context);
     final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       snapshot,
     );
@@ -226,30 +232,11 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
             ),
           )
         else
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns = constraints.maxWidth >= 760;
-              final double width = twoColumns
-                  ? (constraints.maxWidth - 12) / 2
-                  : constraints.maxWidth;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: visibleNodes
-                    .map(
-                      (DatacenterNodeHealth node) => SizedBox(
-                        width: width,
-                        child: _NodeDetailCard(
-                          node: node,
-                          onTap: canOpenNodeOperations
-                              ? () => _showNode(node)
-                              : null,
-                        ),
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
+          _buildNodeInventory(
+            snapshot: snapshot,
+            visibleNodes: visibleNodes,
+            canOpenNodeOperations: canOpenNodeOperations,
+            usesDesktopInspector: usesDesktopInspector,
           ),
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
@@ -258,6 +245,60 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           NodeInventoryInsights(health: health),
         ],
       ],
+    );
+  }
+
+  Widget _buildNodeInventory({
+    required ClusterOverviewSnapshot snapshot,
+    required List<DatacenterNodeHealth> visibleNodes,
+    required bool canOpenNodeOperations,
+    required bool usesDesktopInspector,
+  }) {
+    final DatacenterNodeHealth selectedNode = visibleNodes.firstWhere(
+      (DatacenterNodeHealth node) => node.node.name == _selectedNodeName,
+      orElse: () => visibleNodes.first,
+    );
+    final Widget cards = LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final bool twoColumns = constraints.maxWidth >= 760;
+        final double width = twoColumns
+            ? (constraints.maxWidth - 12) / 2
+            : constraints.maxWidth;
+        return Wrap(
+          spacing: 12,
+          runSpacing: 12,
+          children: visibleNodes
+              .map(
+                (DatacenterNodeHealth node) => SizedBox(
+                  width: width,
+                  child: _NodeDetailCard(
+                    node: node,
+                    selected:
+                        usesDesktopInspector &&
+                        node.node.name == selectedNode.node.name,
+                    onTap: usesDesktopInspector
+                        ? () =>
+                              setState(() => _selectedNodeName = node.node.name)
+                        : canOpenNodeOperations
+                        ? () => _showNode(node)
+                        : null,
+                  ),
+                ),
+              )
+              .toList(growable: false),
+        );
+      },
+    );
+    if (!usesDesktopInspector) return cards;
+    return PveInspectorLayout(
+      primary: cards,
+      inspector: _NodeInventoryInspector(
+        node: selectedNode,
+        snapshot: snapshot,
+        onOpenDetails: canOpenNodeOperations
+            ? () => _showNode(selectedNode)
+            : null,
+      ),
     );
   }
 
@@ -350,10 +391,15 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
 }
 
 class _NodeDetailCard extends StatelessWidget {
-  const _NodeDetailCard({required this.node, required this.onTap});
+  const _NodeDetailCard({
+    required this.node,
+    required this.onTap,
+    this.selected = false,
+  });
 
   final DatacenterNodeHealth node;
   final VoidCallback? onTap;
+  final bool selected;
 
   @override
   Widget build(BuildContext context) {
@@ -361,61 +407,211 @@ class _NodeDetailCard extends StatelessWidget {
         ? dashboardToneForHealth(node.state)
         : DatacenterDashboardTone.critical;
     final Color accent = dashboardToneColor(context, tone);
-    return PveInsetGroup(
-      key: ValueKey<String>('node-inventory-${node.node.name}'),
-      onTap: onTap,
-      padding: const EdgeInsets.all(18),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: <Widget>[
-          Row(
-            children: <Widget>[
-              DecoratedBox(
-                decoration: BoxDecoration(
-                  color: accent.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(8),
-                ),
-                child: SizedBox.square(
-                  dimension: 34,
-                  child: Icon(
-                    CupertinoIcons.rectangle_stack,
-                    size: 19,
-                    color: accent,
+    return Semantics(
+      selected: selected,
+      label: '${node.node.name}, ${_statusLabel(node)} node',
+      child: PveInsetGroup(
+        key: ValueKey<String>('node-inventory-${node.node.name}'),
+        onTap: onTap,
+        padding: const EdgeInsets.all(18),
+        color: selected
+            ? PveAppleColors.primary(context).withValues(alpha: 0.09)
+            : null,
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: accent.withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: SizedBox.square(
+                    dimension: 34,
+                    child: Icon(
+                      CupertinoIcons.rectangle_stack,
+                      size: 19,
+                      color: accent,
+                    ),
                   ),
                 ),
-              ),
-              const SizedBox(width: 11),
-              Expanded(
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text(node.node.name, style: PveAppleText.title3(context)),
-                    Text(
-                      '${node.node.cpuCores ?? 0} cores · '
-                      '${formatPveUptime(node.node.uptimeSeconds)} uptime',
-                      style: PveAppleText.caption(context),
-                    ),
-                  ],
+                const SizedBox(width: 11),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(node.node.name, style: PveAppleText.title3(context)),
+                      Text(
+                        '${_cpuCoreLabel(node.node.cpuCores)} · '
+                        '${formatPveUptime(node.node.uptimeSeconds)} uptime',
+                        style: PveAppleText.caption(context),
+                      ),
+                    ],
+                  ),
                 ),
-              ),
-              Text(
-                _statusLabel(node),
-                style: PveAppleText.caption(
-                  context,
-                ).copyWith(color: accent, fontWeight: FontWeight.w700),
-              ),
-            ],
-          ),
-          const SizedBox(height: 18),
-          _PressureRow(label: 'CPU', pressure: node.cpu, useBytes: false),
-          const SizedBox(height: 14),
-          _PressureRow(label: 'Memory', pressure: node.memory),
-          const SizedBox(height: 14),
-          _PressureRow(label: 'Root disk', pressure: node.rootDisk),
-        ],
+                Text(
+                  _statusLabel(node),
+                  style: PveAppleText.caption(
+                    context,
+                  ).copyWith(color: accent, fontWeight: FontWeight.w700),
+                ),
+              ],
+            ),
+            const SizedBox(height: 18),
+            _PressureRow(label: 'CPU', pressure: node.cpu, useBytes: false),
+            const SizedBox(height: 14),
+            _PressureRow(label: 'Memory', pressure: node.memory),
+            const SizedBox(height: 14),
+            _PressureRow(label: 'Root disk', pressure: node.rootDisk),
+          ],
+        ),
       ),
     );
   }
+}
+
+class _NodeInventoryInspector extends StatefulWidget {
+  const _NodeInventoryInspector({
+    required this.node,
+    required this.snapshot,
+    this.onOpenDetails,
+  });
+
+  final DatacenterNodeHealth node;
+  final ClusterOverviewSnapshot snapshot;
+  final VoidCallback? onOpenDetails;
+
+  @override
+  State<_NodeInventoryInspector> createState() =>
+      _NodeInventoryInspectorState();
+}
+
+class _NodeInventoryInspectorState extends State<_NodeInventoryInspector> {
+  String? _copiedLabel;
+
+  Future<void> _copy(String value, String label) async {
+    await Clipboard.setData(ClipboardData(text: value));
+    if (mounted) setState(() => _copiedLabel = label);
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final ClusterNode node = widget.node.node;
+    final List<PveGuest> hostedGuests = widget.snapshot.guests
+        .where((PveGuest guest) => guest.node == node.name)
+        .toList(growable: false);
+    final int runningGuests = hostedGuests
+        .where((PveGuest guest) => guest.isRunning)
+        .length;
+    final List<ClusterTask> recentTasks = widget.snapshot.tasks
+        .where((ClusterTask task) => task.node == node.name)
+        .toList(growable: false);
+    return CupertinoContextMenu(
+      actions: <Widget>[
+        CupertinoContextMenuAction(
+          child: const Text('Copy node name'),
+          onPressed: () {
+            Navigator.of(context).pop();
+            _copy(node.name, 'Node name');
+          },
+        ),
+      ],
+      child: PveInsetGroup(
+        key: ValueKey<String>('desktop-node-inspector-${node.name}'),
+        padding: const EdgeInsets.all(18),
+        semanticLabel: 'Node inspector for ${node.name}',
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Text('Selected node', style: PveAppleText.caption(context)),
+            const SizedBox(height: 4),
+            Text(node.name, style: PveAppleText.title2(context)),
+            const SizedBox(height: 6),
+            Text(
+              _statusLabel(widget.node),
+              style: PveAppleText.secondary(context),
+            ),
+            const SizedBox(height: 18),
+            _NodeInspectorValue(
+              label: 'Hosted guests',
+              value: '${hostedGuests.length}',
+            ),
+            _NodeInspectorValue(
+              label: 'Running guests',
+              value: '$runningGuests',
+            ),
+            _NodeInspectorValue(
+              label: 'Recent tasks',
+              value: '${recentTasks.length}',
+            ),
+            _NodeInspectorValue(
+              label: 'CPU cores',
+              value: node.cpuCores == null
+                  ? 'Not reported'
+                  : '${node.cpuCores}',
+            ),
+            _NodeInspectorValue(
+              label: 'Uptime',
+              value: formatPveUptime(node.uptimeSeconds),
+            ),
+            if (hostedGuests.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Text('Hosted guests', style: PveAppleText.title3(context)),
+              const SizedBox(height: 6),
+              for (final PveGuest guest in hostedGuests.take(5))
+                Text(
+                  '${guest.title} · ${guest.isRunning ? 'Running' : _statusLabelForGuest(guest.status)}',
+                  style: PveAppleText.caption(context),
+                ),
+            ],
+            if (recentTasks.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 12),
+              Text('Recent activity', style: PveAppleText.title3(context)),
+              const SizedBox(height: 6),
+              for (final ClusterTask task in recentTasks.take(3))
+                Text(
+                  '${task.type} · ${task.user}',
+                  style: PveAppleText.caption(context),
+                ),
+            ],
+            const SizedBox(height: 12),
+            if (widget.onOpenDetails != null)
+              CupertinoButton.filled(
+                onPressed: widget.onOpenDetails,
+                child: const Text('Open operational details'),
+              ),
+            CupertinoButton(
+              onPressed: () => _copy(node.name, 'Node name'),
+              child: Text(
+                _copiedLabel == 'Node name'
+                    ? 'Node name copied'
+                    : 'Copy node name',
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+class _NodeInspectorValue extends StatelessWidget {
+  const _NodeInspectorValue({required this.label, required this.value});
+
+  final String label;
+  final String value;
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.only(bottom: 8),
+    child: Row(
+      children: <Widget>[
+        Expanded(child: Text(label, style: PveAppleText.caption(context))),
+        Text(value, style: PveAppleText.body(context)),
+      ],
+    ),
+  );
 }
 
 class _PressureRow extends StatelessWidget {
@@ -469,3 +665,11 @@ String _statusLabel(DatacenterNodeHealth node) {
     DatacenterHealthState.critical => 'Critical',
   };
 }
+
+String _statusLabelForGuest(String status) {
+  if (status.isEmpty) return 'Unknown';
+  return '${status[0].toUpperCase()}${status.substring(1)}';
+}
+
+String _cpuCoreLabel(int? cpuCores) =>
+    cpuCores == null ? 'CPU cores not reported' : '$cpuCores cores';

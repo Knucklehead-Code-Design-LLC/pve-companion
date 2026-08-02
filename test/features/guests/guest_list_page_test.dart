@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
+import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 import 'package:pve_companion/features/guests/presentation/guest_list_page.dart';
@@ -190,6 +191,52 @@ void main() {
     expect(find.text('Sort guest inventory'), findsOneWidget);
     expect(find.text('Host'), findsOneWidget);
     expect(find.text('Resource use'), findsOneWidget);
+  });
+
+  testWidgets('uses a persistent desktop inspector while iPad keeps cards', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light().copyWith(
+          platform: TargetPlatform.macOS,
+        ),
+        home: MediaQuery(
+          data: const MediaQueryData(size: Size(1440, 900)),
+          child: Scaffold(
+            body: GuestListPage(
+              overviewController: controller,
+              session: const _GuestListSession(),
+              showsSliverNavigationBar: false,
+              onRefresh: () async {},
+              onGuestPowerAction: () async {},
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('desktop-guest-inspector-101')),
+      findsOneWidget,
+    );
+    expect(find.text('Open operational details'), findsOneWidget);
+
+    await tester.enterText(find.byType(CupertinoSearchTextField), 'runner');
+    await tester.pump();
+
+    expect(
+      find.byKey(const ValueKey<String>('desktop-guest-inspector-102')),
+      findsOneWidget,
+    );
+    expect(find.text('Copy guest ID'), findsOneWidget);
   });
 }
 
