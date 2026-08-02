@@ -86,6 +86,30 @@ void main() {
     debugDefaultTargetPlatformOverride = null;
   });
 
+  testWidgets('keeps macOS commands in overflow beside the narrow sidebar', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(760, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      304,
+    );
+    expect(find.text('Manage Servers'), findsNothing);
+    expect(
+      find.bySemanticsLabel('Workspace actions and settings'),
+      findsOneWidget,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
   testWidgets('uses the expanded connected sidebar on iPad', (
     WidgetTester tester,
   ) async {

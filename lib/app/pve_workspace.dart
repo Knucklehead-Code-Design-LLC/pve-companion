@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 import '../core/api/proxmox_session.dart';
 import '../core/presentation/pve_apple_ui.dart';
@@ -22,6 +23,7 @@ import 'workspace/adaptive_workspace_content.dart';
 import 'workspace/disconnected_workspace.dart';
 import 'workspace/server_menu.dart';
 import 'workspace/workspace_actions_menu.dart';
+import 'workspace/workspace_keyboard_shortcuts.dart';
 import 'workspace/workspace_section.dart';
 import 'workspace/workspace_toolbar.dart';
 
@@ -79,44 +81,49 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       title: 'PVE Companion',
       connected: false,
     );
-    return CupertinoPageScaffold(
-      backgroundColor: PveAppleColors.page(context),
-      navigationBar: session == null ? disconnectedToolbar : null,
-      child: session == null
-          ? DisconnectedWorkspace(
-              profile: selectedProfile,
-              status: profiles.connectionStatus,
-              errorMessage: profiles.errorMessage,
-              onConnect: _connectSelectedProfile,
-              onAddServer: () => showAddConnectionProfileSheet(
-                context,
-                controller: widget.controller,
+    return WorkspaceKeyboardShortcuts(
+      enabled: session != null && defaultTargetPlatform == TargetPlatform.macOS,
+      onRefresh: widget.controller.refreshCluster,
+      onSectionSelected: _selectSection,
+      child: CupertinoPageScaffold(
+        backgroundColor: PveAppleColors.page(context),
+        navigationBar: session == null ? disconnectedToolbar : null,
+        child: session == null
+            ? DisconnectedWorkspace(
+                profile: selectedProfile,
+                status: profiles.connectionStatus,
+                errorMessage: profiles.errorMessage,
+                onConnect: _connectSelectedProfile,
+                onAddServer: () => showAddConnectionProfileSheet(
+                  context,
+                  controller: widget.controller,
+                ),
+              )
+            : AdaptiveWorkspaceContent(
+                section: _section,
+                onSectionChanged: _selectSection,
+                sidebarHeader: ServerMenu(
+                  profiles: profiles.profiles,
+                  selectedProfile: selectedProfile,
+                  onSelected: _connectToProfile,
+                ),
+                wideNavigationBar: _buildToolbar(
+                  context,
+                  title: _section.navigationTitle,
+                  connected: true,
+                  showServerMenu: false,
+                  includeRefreshMenuAction: false,
+                ),
+                onRefresh: widget.controller.refreshCluster,
+                refreshing:
+                    widget.controller.clusterOverview.state ==
+                    ClusterOverviewLoadState.loading,
+                lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
+                refreshErrorMessage:
+                    widget.controller.clusterOverview.errorMessage,
+                pages: _buildPages(session, compact: compact),
               ),
-            )
-          : AdaptiveWorkspaceContent(
-              section: _section,
-              onSectionChanged: _selectSection,
-              sidebarHeader: ServerMenu(
-                profiles: profiles.profiles,
-                selectedProfile: selectedProfile,
-                onSelected: _connectToProfile,
-              ),
-              wideNavigationBar: _buildToolbar(
-                context,
-                title: _section.navigationTitle,
-                connected: true,
-                showServerMenu: false,
-                includeRefreshMenuAction: false,
-              ),
-              onRefresh: widget.controller.refreshCluster,
-              refreshing:
-                  widget.controller.clusterOverview.state ==
-                  ClusterOverviewLoadState.loading,
-              lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
-              refreshErrorMessage:
-                  widget.controller.clusterOverview.errorMessage,
-              pages: _buildPages(session, compact: compact),
-            ),
+      ),
     );
   }
 
