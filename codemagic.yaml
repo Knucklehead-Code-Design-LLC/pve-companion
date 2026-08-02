@@ -1,0 +1,155 @@
+workflows:
+  ios-pr-verify:
+    name: iOS PR verification
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events:
+        - pull_request
+      branch_patterns:
+        - pattern: main
+          include: true
+          source: false
+      cancel_previous_builds: true
+    environment:
+      flutter: 3.44.8
+      xcode: 26.5
+      cocoapods: default
+    scripts:
+      - name: Install Flutter dependencies
+        script: flutter pub get
+      - name: Compile the iOS release app without signing
+        script: flutter build ios --release --no-codesign
+    artifacts:
+      - /tmp/xcodebuild_logs/*.log
+
+  ios-testflight:
+    name: iOS TestFlight
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events:
+        - push
+      branch_patterns:
+        - pattern: main
+          include: true
+      cancel_previous_builds: true
+    integrations:
+      app_store_connect: "Code Magic"
+    environment:
+      ios_signing:
+        certificates:
+          - pve-companion-app-store
+        provisioning_profiles:
+          - pve-companion-ios-app-store-profile
+          - pve-companion-widget-app-store-profile
+      vars:
+        APP_STORE_APPLE_ID: "6797252365"
+      flutter: 3.44.8
+      xcode: 26.5
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+    scripts:
+      - name: Install Flutter dependencies
+        script: flutter pub get
+      - name: Verify formatting, analysis, and tests
+        script: |
+          set -euo pipefail
+          dart format --output=none --set-exit-if-changed lib test tool
+          flutter analyze
+          flutter test
+      - name: Install CocoaPods dependencies
+        script: (cd ios && pod install)
+      - name: Apply App Store signing profiles
+        script: xcode-project use-profiles --project ios/Runner.xcodeproj
+      - name: Build signed IPA with the next App Store build number
+        script: |
+          set -euo pipefail
+          APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
+          test -n "$APP_VERSION"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          case "$LATEST_BUILD_NUMBER" in
+            (''|*[!0-9]*) echo "App Store Connect returned an invalid build number." >&2; exit 1 ;;
+          esac
+          BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          flutter build ipa --release \
+            --build-name="$APP_VERSION" \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+
+  ios-app-store-release:
+    name: iOS App Store release
+    max_build_duration: 120
+    instance_type: mac_mini_m2
+    triggering:
+      events:
+        - tag
+      tag_patterns:
+        - pattern: "v*"
+          include: true
+    integrations:
+      app_store_connect: "Code Magic"
+    environment:
+      ios_signing:
+        certificates:
+          - pve-companion-app-store
+        provisioning_profiles:
+          - pve-companion-ios-app-store-profile
+          - pve-companion-widget-app-store-profile
+      vars:
+        APP_STORE_APPLE_ID: "6797252365"
+      flutter: 3.44.8
+      xcode: 26.5
+      cocoapods: default
+    cache:
+      cache_paths:
+        - $HOME/Library/Caches/CocoaPods
+    scripts:
+      - name: Verify the release tag matches pubspec.yaml
+        script: |
+          set -euo pipefail
+          APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
+          test -n "$APP_VERSION"
+          test "$CM_TAG" = "v$APP_VERSION"
+      - name: Install Flutter dependencies
+        script: flutter pub get
+      - name: Verify formatting, analysis, and tests
+        script: |
+          set -euo pipefail
+          dart format --output=none --set-exit-if-changed lib test tool
+          flutter analyze
+          flutter test
+      - name: Install CocoaPods dependencies
+        script: (cd ios && pod install)
+      - name: Apply App Store signing profiles
+        script: xcode-project use-profiles --project ios/Runner.xcodeproj
+      - name: Build signed IPA with the next App Store build number
+        script: |
+          set -euo pipefail
+          APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          case "$LATEST_BUILD_NUMBER" in
+            (''|*[!0-9]*) echo "App Store Connect returned an invalid build number." >&2; exit 1 ;;
+          esac
+          BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          flutter build ipa --release \
+            --build-name="$APP_VERSION" \
+            --build-number="$BUILD_NUMBER" \
+            --export-options-plist=/Users/builder/export_options.plist
+    artifacts:
+      - build/ios/ipa/*.ipa
+      - /tmp/xcodebuild_logs/*.log
+    publishing:
+      app_store_connect:
+        auth: integration
+        submit_to_app_store: true
+        release_type: MANUAL
+        copyright: "2026 Knucklehead Code & Design LLC"

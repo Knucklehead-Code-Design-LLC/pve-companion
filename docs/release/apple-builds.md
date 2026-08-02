@@ -44,6 +44,31 @@ the Live Activities capability. Both targets must use the publishing team and
 matching version/build numbers. The checked-in privacy manifests declare the
 App Group UserDefaults reason `1C8F.1`.
 
+## Codemagic delivery
+
+[`codemagic.yaml`](../../codemagic.yaml) is the release configuration for the
+Knucklehead Code & Design LLC Codemagic team. The signing material is kept in
+that team's Code signing identities rather than in the repository: one managed
+Apple Distribution certificate plus separate App Store profiles for the app
+and the widget extension.
+
+- `ios-pr-verify` runs for pull requests targeting `main`. It builds an
+  unsigned iOS release app and has no signing or App Store Connect material,
+  so pull requests from public forks cannot access release credentials.
+- `ios-testflight` runs after a push to `main`. It runs the full verification
+  suite, builds a signed IPA with the next App Store Connect build number, and
+  uploads it to TestFlight.
+- `ios-app-store-release` runs for a newly created `v*` tag. The tag must
+  exactly match the marketing version in `pubspec.yaml`, such as `v0.1.0`.
+  It uploads the IPA and submits the version to App Store review. Apple keeps
+  the approved version as a manual App Store release.
+
+Create a GitHub release by creating its new `vX.Y.Z` tag. Creating a release
+around an existing tag does not emit a fresh tag event, so it does not start a
+new Codemagic release build. The team App Store Connect integration must retain
+an API key with the App Manager role. Never add API keys, certificates,
+provisioning profiles, or their private keys to the repository.
+
 ## Deterministic dashboard preview
 
 Before a release, inspect both dashboard health states without entering a
@@ -84,6 +109,6 @@ store copy and URLs live in [app-store-metadata.md](app-store-metadata.md), and
 validated screenshot assets live under
 [`docs/app-store/screenshots`](../app-store/screenshots/README.md).
 
-GitHub Actions intentionally does not perform Apple builds by default: hosted
-macOS runners are more expensive, and unsigned simulator builds are practical
-on a maintainer Mac.
+GitHub Actions remains the low-cost Linux format, analysis, and test path.
+Codemagic owns the Apple-specific unsigned iOS pull-request compilation,
+TestFlight upload, and App Store submission.
