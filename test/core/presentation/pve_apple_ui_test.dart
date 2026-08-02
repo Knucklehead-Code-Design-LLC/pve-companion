@@ -152,6 +152,33 @@ void main() {
     expect(tester.getSemantics(find.text('Attention')).label, 'Attention');
   });
 
+  testWidgets('section headers stack their action with large compact text', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(350, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: MediaQuery(
+          data: MediaQueryData(textScaler: TextScaler.linear(2)),
+          child: CupertinoPageScaffold(
+            child: PveSectionHeader(
+              title: 'Recent reported activity',
+              actionLabel: 'View tasks',
+              actionSemanticsLabel: 'View all tasks',
+              onAction: _ignoreAction,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Recent reported activity'), findsOneWidget);
+    expect(find.text('View tasks'), findsOneWidget);
+  });
+
   testWidgets('desktop inspector layouts show primary content beside details', (
     WidgetTester tester,
   ) async {
@@ -177,3 +204,5 @@ void main() {
 }
 
 void _ignoreSegment(int? _) {}
+
+void _ignoreAction() {}

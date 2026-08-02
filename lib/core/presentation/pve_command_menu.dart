@@ -70,6 +70,7 @@ class _PveCommandMenuButtonState<T> extends State<PveCommandMenuButton<T>> {
         child: CupertinoButton(
           padding: widget.padding,
           minimumSize: widget.minimumSize,
+          focusColor: PveAppleColors.primary(context).withValues(alpha: 0.55),
           onPressed: _showMenu,
           child: widget.child,
         ),

@@ -25,17 +25,20 @@ class DatacenterOperationalSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final int stoppedGuests =
         health.workload.totalGuests - health.workload.runningGuests;
-    final int reportingStorageCount = snapshot.storages
-        .where((ClusterStorage storage) => storage.capacityBytes != null)
-        .length;
-    final int storageUsedBytes = snapshot.storages.fold<int>(
+    final List<ClusterStorage> storagesWithCapacity = snapshot.storages
+        .where(
+          (ClusterStorage storage) =>
+              storage.usedBytes != null && storage.capacityBytes != null,
+        )
+        .toList(growable: false);
+    final int reportingStorageCount = storagesWithCapacity.length;
+    final int storageUsedBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
-    final int storageCapacityBytes = snapshot.storages.fold<int>(
+    final int storageCapacityBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) =>
-          total + (storage.capacityBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.capacityBytes!,
     );
 
     return PveAdaptiveCardGrid(
@@ -141,7 +144,11 @@ class DatacenterOperationalSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
-                        label: 'Current storage used',
+                        label: reportingStorageCount == 0
+                            ? 'Current storage used'
+                            : 'Current storage used '
+                                  '($reportingStorageCount/'
+                                  '${snapshot.storages.length} reporting)',
                         value: reportingStorageCount == 0
                             ? 'Not reported'
                             : '${formatPveBytes(storageUsedBytes)} / '

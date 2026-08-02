@@ -116,6 +116,45 @@ void main() {
     expect(find.text('Showing 1 of 5 guests'), findsOneWidget);
   });
 
+  testWidgets('does not present unreported guest vCPU allocation as zero', (
+    WidgetTester tester,
+  ) async {
+    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+      version: PveVersion(version: '9.0'),
+      nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
+      guests: <PveGuest>[
+        PveGuest(
+          vmid: 101,
+          node: 'pve-01',
+          kind: GuestKind.virtualMachine,
+          status: 'running',
+          name: 'app-01',
+        ),
+      ],
+      storages: <ClusterStorage>[],
+      tasks: <ClusterTask>[],
+    );
+    final controller = await readyDashboardController(snapshot);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: GuestListPage(
+            overviewController: controller,
+            session: const _GuestListSession(),
+            onRefresh: () async {},
+            onGuestPowerAction: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.textContaining('vCPU allocation not reported'), findsOneWidget);
+    expect(find.textContaining('0 vCPU assigned'), findsNothing);
+  });
+
   testWidgets('uses summary metrics and scan-friendly cards on iPad', (
     WidgetTester tester,
   ) async {

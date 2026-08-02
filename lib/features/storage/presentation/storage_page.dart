@@ -95,12 +95,11 @@ class _StoragePageState extends State<StoragePage> {
     final bool hasCapacityTelemetry = storagesWithCapacity.isNotEmpty;
     final int aggregateUsedBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
     final int aggregateAvailableBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) =>
-          total + (storage.availableBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.availableBytes!,
     );
     final List<ClusterStorage> backupDestinations = storages
         .where(_supportsBackup)

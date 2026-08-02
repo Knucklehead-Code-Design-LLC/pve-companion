@@ -243,6 +243,7 @@ void main() {
 
     expect(find.text('CPU cores reported'), findsOneWidget);
     expect(find.text('No nodes report CPU cores'), findsOneWidget);
+    expect(find.text('CPU core allocation not reported'), findsOneWidget);
   });
 }
 

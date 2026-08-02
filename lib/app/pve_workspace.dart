@@ -542,7 +542,7 @@ class _WorkspaceContextInspector extends StatelessWidget {
           Text('Keyboard shortcuts', style: PveAppleText.caption(context)),
           const SizedBox(height: 4),
           Text(
-            '⌘R refresh · ⌘K commands · ⌘1–5 sections',
+            '⌘R refresh · ⌘K commands · ⌘1–5 sections · Esc dismisses',
             style: PveAppleText.caption(context),
           ),
         ],

@@ -562,23 +562,43 @@ class PveSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasAction = actionLabel != null && onAction != null;
+    final Widget titleWidget = PveSectionTitle(title: title);
+    final Widget action = Semantics(
+      button: true,
+      label: actionSemanticsLabel,
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: const Size(44, 36),
+        onPressed: onAction,
+        child: Text(actionLabel ?? ''),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: Row(
-        children: <Widget>[
-          Expanded(child: PveSectionTitle(title: title)),
-          if (actionLabel != null && onAction != null)
-            Semantics(
-              button: true,
-              label: actionSemanticsLabel,
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                minimumSize: const Size(44, 36),
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          if (!hasAction) return titleWidget;
+          final bool stacksAction =
+              constraints.maxWidth < 420 ||
+              MediaQuery.textScalerOf(context).scale(14) >= 20;
+          if (stacksAction) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                titleWidget,
+                const SizedBox(height: 2),
+                Align(alignment: Alignment.centerRight, child: action),
+              ],
+            );
+          }
+          return Row(
+            children: <Widget>[
+              Expanded(child: titleWidget),
+              action,
+            ],
+          );
+        },
       ),
     );
   }
