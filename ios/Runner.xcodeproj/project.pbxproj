@@ -7,15 +7,25 @@
 	objects = {
 
 /* Begin PBXBuildFile section */
+		08A322A16F3787ED24FC1BA0 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = 0D9CACE7B603BDAC18167B47 /* PrivacyInfo.xcprivacy */; };
 		1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */ = {isa = PBXBuildFile; fileRef = 1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */; };
+		1C2524F72F017E3EC62B29AA /* DatacenterSurfaceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */; };
 		331C808B294A63AB00263BE5 /* RunnerTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 331C807B294A618700263BE5 /* RunnerTests.swift */; };
 		3B3967161E833CAA004F5970 /* AppFrameworkInfo.plist in Resources */ = {isa = PBXBuildFile; fileRef = 3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */; };
+		4089DD448192477029873403 /* Foundation.framework in Frameworks */ = {isa = PBXBuildFile; fileRef = 2452D0EB6644D509242BEE11 /* Foundation.framework */; };
+		43D509FD2E7ED39BEA369514 /* DatacenterWatchAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6A21BE53BCE60CA53D97F3 /* DatacenterWatchAttributes.swift */; };
+		58768D2BC1C6B9F96D0663C1 /* PVECompanionWidgets.appex in Embed Foundation Extensions */ = {isa = PBXBuildFile; fileRef = 07445B0967E7444BB90A5580 /* PVECompanionWidgets.appex */; settings = {ATTRIBUTES = (RemoveHeadersOnCopy, ); }; };
+		7063F12473117F377425C1BD /* DatacenterWatchAttributes.swift in Sources */ = {isa = PBXBuildFile; fileRef = 3B6A21BE53BCE60CA53D97F3 /* DatacenterWatchAttributes.swift */; };
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
+		83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */; };
+		8AA6F8B1AD9870C0D3095039 /* PVECompanionWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A11000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A11000000000000000000002 /* PrivacyInfo.xcprivacy */; };
+		AD7A6FED841F004D8061B76A /* DatacenterSurfaceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */; };
+		BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -25,6 +35,13 @@
 			proxyType = 1;
 			remoteGlobalIDString = 97C146ED1CF9000F007C117D;
 			remoteInfo = Runner;
+		};
+		4C01BFB09AD2C6977E70D642 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = 97C146E61CF9000F007C117D /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 52F0FF88FA9173C5D7288AC6;
+			remoteInfo = PVECompanionWidgets;
 		};
 /* End PBXContainerItemProxy section */
 
@@ -39,14 +56,32 @@
 			name = "Embed Frameworks";
 			runOnlyForDeploymentPostprocessing = 0;
 		};
+		AAB5848A12A47A40C8D427C5 /* Embed Foundation Extensions */ = {
+			isa = PBXCopyFilesBuildPhase;
+			buildActionMask = 2147483647;
+			dstPath = "";
+			dstSubfolderSpec = 13;
+			files = (
+				58768D2BC1C6B9F96D0663C1 /* PVECompanionWidgets.appex in Embed Foundation Extensions */,
+			);
+			name = "Embed Foundation Extensions";
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 /* End PBXCopyFilesBuildPhase section */
 
 /* Begin PBXFileReference section */
+		03404809E6BCB42D4F47C8DE /* PVECompanionWidgets.entitlements */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.entitlements; path = PVECompanionWidgets.entitlements; sourceTree = "<group>"; };
+		07445B0967E7444BB90A5580 /* PVECompanionWidgets.appex */ = {isa = PBXFileReference; explicitFileType = "wrapper.app-extension"; includeInIndex = 0; path = PVECompanionWidgets.appex; sourceTree = BUILT_PRODUCTS_DIR; };
+		0D9CACE7B603BDAC18167B47 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; includeInIndex = 1; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
 		1498D2321E8E86230040F4C2 /* GeneratedPluginRegistrant.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = GeneratedPluginRegistrant.h; sourceTree = "<group>"; };
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
+		1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PVECompanionWidgets.swift; sourceTree = "<group>"; };
+		1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSystemSurfacesPlugin.swift; sourceTree = "<group>"; };
+		2452D0EB6644D509242BEE11 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
 		3B3967151E833CAA004F5970 /* AppFrameworkInfo.plist */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = text.plist.xml; name = AppFrameworkInfo.plist; path = Flutter/AppFrameworkInfo.plist; sourceTree = "<group>"; };
+		3B6A21BE53BCE60CA53D97F3 /* DatacenterWatchAttributes.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterWatchAttributes.swift; sourceTree = "<group>"; };
 		74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.c.h; path = "Runner-Bridging-Header.h"; sourceTree = "<group>"; };
 		74858FAE1ED2DC5600515810 /* AppDelegate.swift */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.swift; path = AppDelegate.swift; sourceTree = "<group>"; };
 		78E0A7A72DC9AD7400C4905E /* FlutterGeneratedPluginSwiftPackage */ = {isa = PBXFileReference; lastKnownFileType = wrapper; name = FlutterGeneratedPluginSwiftPackage; path = Flutter/ephemeral/Packages/FlutterGeneratedPluginSwiftPackage; sourceTree = "<group>"; };
@@ -58,7 +93,10 @@
 		97C146FD1CF9000F007C117D /* Assets.xcassets */ = {isa = PBXFileReference; lastKnownFileType = folder.assetcatalog; path = Assets.xcassets; sourceTree = "<group>"; };
 		97C147001CF9000F007C117D /* Base */ = {isa = PBXFileReference; lastKnownFileType = file.storyboard; name = Base; path = Base.lproj/LaunchScreen.storyboard; sourceTree = "<group>"; };
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterWatchLiveActivity.swift; sourceTree = "<group>"; };
 		A11000000000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		C4149F85D7799DD2868100B2 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
+		F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterSurfaceSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -66,6 +104,14 @@
 			isa = PBXFrameworksBuildPhase;
 			buildActionMask = 2147483647;
 			files = (
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		6498517438709DC45FEEBECD /* Frameworks */ = {
+			isa = PBXFrameworksBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				4089DD448192477029873403 /* Foundation.framework in Frameworks */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -88,6 +134,14 @@
 			path = RunnerTests;
 			sourceTree = "<group>";
 		};
+		5CAE77EA99C8C4D1D07E8D54 /* Frameworks */ = {
+			isa = PBXGroup;
+			children = (
+				9BE1D6CE092A41B1759888C0 /* iOS */,
+			);
+			name = Frameworks;
+			sourceTree = "<group>";
+		};
 		9740EEB11CF90186004384FC /* Flutter */ = {
 			isa = PBXGroup;
 			children = (
@@ -107,6 +161,9 @@
 				97C146F01CF9000F007C117D /* Runner */,
 				97C146EF1CF9000F007C117D /* Products */,
 				331C8082294A63A400263BE5 /* RunnerTests */,
+				5CAE77EA99C8C4D1D07E8D54 /* Frameworks */,
+				CE77B261767AF89C30F8AF7B /* PVECompanionWidgets */,
+				A1A5ACE1F76EE461B64532F6 /* Shared */,
 			);
 			sourceTree = "<group>";
 		};
@@ -115,6 +172,7 @@
 			children = (
 				97C146EE1CF9000F007C117D /* Runner.app */,
 				331C8081294A63A400263BE5 /* RunnerTests.xctest */,
+				07445B0967E7444BB90A5580 /* PVECompanionWidgets.appex */,
 			);
 			name = Products;
 			sourceTree = "<group>";
@@ -131,8 +189,40 @@
 				1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */,
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
+				1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */,
 			);
 			path = Runner;
+			sourceTree = "<group>";
+		};
+		9BE1D6CE092A41B1759888C0 /* iOS */ = {
+			isa = PBXGroup;
+			children = (
+				2452D0EB6644D509242BEE11 /* Foundation.framework */,
+			);
+			name = iOS;
+			sourceTree = "<group>";
+		};
+		A1A5ACE1F76EE461B64532F6 /* Shared */ = {
+			isa = PBXGroup;
+			children = (
+				F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */,
+				3B6A21BE53BCE60CA53D97F3 /* DatacenterWatchAttributes.swift */,
+			);
+			name = Shared;
+			path = Shared;
+			sourceTree = "<group>";
+		};
+		CE77B261767AF89C30F8AF7B /* PVECompanionWidgets */ = {
+			isa = PBXGroup;
+			children = (
+				1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */,
+				97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */,
+				0D9CACE7B603BDAC18167B47 /* PrivacyInfo.xcprivacy */,
+				C4149F85D7799DD2868100B2 /* Info.plist */,
+				03404809E6BCB42D4F47C8DE /* PVECompanionWidgets.entitlements */,
+			);
+			name = PVECompanionWidgets;
+			path = PVECompanionWidgets;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -156,10 +246,28 @@
 			productReference = 331C8081294A63A400263BE5 /* RunnerTests.xctest */;
 			productType = "com.apple.product-type.bundle.unit-test";
 		};
+		52F0FF88FA9173C5D7288AC6 /* PVECompanionWidgets */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 32F4F6D9A8A019551DDB4239 /* Build configuration list for PBXNativeTarget "PVECompanionWidgets" */;
+			buildPhases = (
+				2FAFF5F01BC86B23D6393BB6 /* Sources */,
+				6498517438709DC45FEEBECD /* Frameworks */,
+				9D45701F51A9562E10590EBE /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = PVECompanionWidgets;
+			productName = PVECompanionWidgets;
+			productReference = 07445B0967E7444BB90A5580 /* PVECompanionWidgets.appex */;
+			productType = "com.apple.product-type.app-extension";
+		};
 		97C146ED1CF9000F007C117D /* Runner */ = {
 			isa = PBXNativeTarget;
 			buildConfigurationList = 97C147051CF9000F007C117D /* Build configuration list for PBXNativeTarget "Runner" */;
 			buildPhases = (
+				AAB5848A12A47A40C8D427C5 /* Embed Foundation Extensions */,
 				9740EEB61CF901F6004384FC /* Run Script */,
 				97C146EA1CF9000F007C117D /* Sources */,
 				97C146EB1CF9000F007C117D /* Frameworks */,
@@ -170,6 +278,7 @@
 			buildRules = (
 			);
 			dependencies = (
+				97599E86F4E34487FA29C868 /* PBXTargetDependency */,
 			);
 			name = Runner;
 			packageProductDependencies = (
@@ -192,6 +301,10 @@
 					331C8080294A63A400263BE5 = {
 						CreatedOnToolsVersion = 14.0;
 						TestTargetID = 97C146ED1CF9000F007C117D;
+					};
+					52F0FF88FA9173C5D7288AC6 = {
+						CreatedOnToolsVersion = 26.0;
+						ProvisioningStyle = Automatic;
 					};
 					97C146ED1CF9000F007C117D = {
 						CreatedOnToolsVersion = 7.3.1;
@@ -217,6 +330,7 @@
 			targets = (
 				97C146ED1CF9000F007C117D /* Runner */,
 				331C8080294A63A400263BE5 /* RunnerTests */,
+				52F0FF88FA9173C5D7288AC6 /* PVECompanionWidgets */,
 			);
 		};
 /* End PBXProject section */
@@ -238,6 +352,14 @@
 				97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */,
 				97C146FC1CF9000F007C117D /* Main.storyboard in Resources */,
 				A11000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		9D45701F51A9562E10590EBE /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				08A322A16F3787ED24FC1BA0 /* PrivacyInfo.xcprivacy in Resources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -278,6 +400,17 @@
 /* End PBXShellScriptBuildPhase section */
 
 /* Begin PBXSourcesBuildPhase section */
+		2FAFF5F01BC86B23D6393BB6 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				8AA6F8B1AD9870C0D3095039 /* PVECompanionWidgets.swift in Sources */,
+				BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */,
+				1C2524F72F017E3EC62B29AA /* DatacenterSurfaceSnapshot.swift in Sources */,
+				43D509FD2E7ED39BEA369514 /* DatacenterWatchAttributes.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
 		331C807D294A63A400263BE5 /* Sources */ = {
 			isa = PBXSourcesBuildPhase;
 			buildActionMask = 2147483647;
@@ -292,6 +425,9 @@
 			files = (
 				74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */,
 				1498D2341E8E89220040F4C2 /* GeneratedPluginRegistrant.m in Sources */,
+				AD7A6FED841F004D8061B76A /* DatacenterSurfaceSnapshot.swift in Sources */,
+				7063F12473117F377425C1BD /* DatacenterWatchAttributes.swift in Sources */,
+				83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -302,6 +438,12 @@
 			isa = PBXTargetDependency;
 			target = 97C146ED1CF9000F007C117D /* Runner */;
 			targetProxy = 331C8085294A63A400263BE5 /* PBXContainerItemProxy */;
+		};
+		97599E86F4E34487FA29C868 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			name = PVECompanionWidgets;
+			target = 52F0FF88FA9173C5D7288AC6 /* PVECompanionWidgets */;
+			targetProxy = 4C01BFB09AD2C6977E70D642 /* PBXContainerItemProxy */;
 		};
 /* End PBXTargetDependency section */
 
@@ -325,6 +467,36 @@
 /* End PBXVariantGroup section */
 
 /* Begin XCBuildConfiguration section */
+		069697139DD3FA831D440D17 /* Profile */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Profile;
+		};
 		249021D3217E4FDB00AE95B9 /* Profile */ = {
 			isa = XCBuildConfiguration;
 			buildSettings = {
@@ -445,6 +617,36 @@
 				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/Runner.app/$(BUNDLE_EXECUTABLE_FOLDER_PATH)/Runner";
 			};
 			name = Profile;
+		};
+		3FE2D4A7DFD3AA34011A4CA6 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+				VALIDATE_PRODUCT = YES;
+			};
+			name = Release;
 		};
 		97C147031CF9000F007C117D /* Debug */ = {
 			isa = XCBuildConfiguration;
@@ -602,9 +804,48 @@
 			};
 			name = Release;
 		};
+		A912D595C851AF9E5015DE4B /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				APPLICATION_EXTENSION_API_ONLY = YES;
+				CLANG_ENABLE_OBJC_WEAK = NO;
+				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
+				CODE_SIGN_STYLE = Automatic;
+				CURRENT_PROJECT_VERSION = 1;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
+				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/Frameworks",
+					"@executable_path/../../Frameworks",
+				);
+				MARKETING_VERSION = 0.1.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = iphoneos;
+				SKIP_INSTALL = YES;
+				SUPPORTED_PLATFORMS = "iphoneos iphonesimulator";
+				SUPPORTS_MACCATALYST = NO;
+				SWIFT_EMIT_LOC_STRINGS = YES;
+				SWIFT_VERSION = 5.0;
+				TARGETED_DEVICE_FAMILY = "1,2";
+			};
+			name = Debug;
+		};
 /* End XCBuildConfiguration section */
 
 /* Begin XCConfigurationList section */
+		32F4F6D9A8A019551DDB4239 /* Build configuration list for PBXNativeTarget "PVECompanionWidgets" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3FE2D4A7DFD3AA34011A4CA6 /* Release */,
+				A912D595C851AF9E5015DE4B /* Debug */,
+				069697139DD3FA831D440D17 /* Profile */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Release;
+		};
 		331C8087294A63A400263BE5 /* Build configuration list for PBXNativeTarget "RunnerTests" */ = {
 			isa = XCConfigurationList;
 			buildConfigurations = (

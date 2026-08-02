@@ -6,9 +6,9 @@ server and contain no real hostnames, IP addresses, users, or credentials.
 
 | Folder | Required canvas | Current files |
 | --- | --- | --- |
-| `en-US/iphone-6.9` | 1320 × 2868 | Overview, guests, nodes |
-| `en-US/ipad-13` | 2064 × 2752 | Overview, guests, nodes |
-| `en-US/mac` | 1280 × 800 | Overview, guests, nodes |
+| `en-US/iphone-6.9` | 1320 × 2868 | Overview, guests, nodes, storage, tasks |
+| `en-US/ipad-13` | 2064 × 2752 | Overview, guests, nodes, storage, tasks |
+| `en-US/mac` | 1280 × 800 | Overview, guests, nodes, storage, tasks |
 
 All submitted files are JPEGs without alpha. The preview fixture must reflect
 real shipping behavior; do not add controls or claims that are unavailable in
@@ -24,8 +24,9 @@ tool/capture_ios_store_screenshots.sh \
   <ipad-13-simulator-udid>
 ```
 
-The helper launches `tool/store_screenshot_preview.dart` once per scene and
-waits for the first stable frame before using `simctl` to capture JPEG output.
+The helper clean-boots each simulator to reset stale rotation, launches
+`tool/store_screenshot_preview.dart` once per scene, and waits for the first
+stable frame before using `simctl` to capture JPEG output.
 Use `sips` to verify pixel dimensions and the absence of alpha before upload.
 
 ## Mac capture

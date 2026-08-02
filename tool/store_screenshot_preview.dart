@@ -1,10 +1,14 @@
-import 'package:flutter/cupertino.dart' show CupertinoTheme;
+import 'package:flutter/cupertino.dart'
+    show CupertinoPageScaffold, CupertinoTheme;
 import 'package:flutter/material.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
+import 'package:pve_companion/app/workspace/server_menu.dart';
+import 'package:pve_companion/app/workspace/workspace_actions_menu.dart';
 import 'package:pve_companion/app/workspace/workspace_section.dart';
 import 'package:pve_companion/app/workspace/workspace_toolbar.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
+import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
@@ -81,6 +85,7 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
 
   @override
   Widget build(BuildContext context) {
+    final bool compact = MediaQuery.sizeOf(context).width < 760;
     return RepaintBoundary(
       key: ValueKey<String>(
         'store-screenshot-capture-${widget.initialSection.name}',
@@ -93,49 +98,77 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
           data: PveCompanionTheme.cupertino(Brightness.light),
           child: child!,
         ),
-        home: Scaffold(
-          body: SafeArea(
-            bottom: false,
-            child: Column(
-              children: <Widget>[
-                WorkspaceToolbar(
-                  profiles: <ConnectionProfile>[_profile],
-                  selectedProfile: _profile,
-                  connected: true,
-                  onConnectToProfile: (_) {},
-                  onRefresh: () {},
-                  onDisconnect: () {},
-                  onManageServers: () {},
-                  onAbout: () {},
-                ),
-                Expanded(
-                  child: AdaptiveWorkspaceContent(
-                    section: _section,
-                    onSectionChanged: (WorkspaceSection section) {
-                      setState(() => _section = section);
-                    },
-                    pages: <Widget>[
-                      ClusterOverviewPage(
-                        controller: widget.controller,
-                        onRefresh: () async {},
-                        onViewGuests: () => _select(WorkspaceSection.guests),
-                        onViewNodes: () => _select(WorkspaceSection.nodes),
-                        onViewStorage: () => _select(WorkspaceSection.storage),
-                        onViewTasks: () => _select(WorkspaceSection.tasks),
-                      ),
-                      GuestListPage(
-                        overviewController: widget.controller,
-                        session: widget.session,
-                        onGuestPowerAction: () async {},
-                      ),
-                      ClusterNodesPage(controller: widget.controller),
-                      StoragePage(controller: widget.controller),
-                      TasksPage(controller: widget.controller),
-                    ],
-                  ),
-                ),
-              ],
+        home: CupertinoPageScaffold(
+          backgroundColor: PveAppleColors.page(context),
+          child: AdaptiveWorkspaceContent(
+            section: _section,
+            onSectionChanged: (WorkspaceSection section) {
+              setState(() => _section = section);
+            },
+            sidebarHeader: ServerMenu(
+              profiles: <ConnectionProfile>[_profile],
+              selectedProfile: _profile,
+              onSelected: (_) {},
             ),
+            wideNavigationBar: WorkspaceToolbar(
+              profiles: <ConnectionProfile>[_profile],
+              selectedProfile: _profile,
+              title: _section.navigationTitle,
+              connected: true,
+              showServerMenu: false,
+              includeRefreshMenuAction: false,
+              onConnectToProfile: (_) {},
+              onRefresh: () {},
+              onDisconnect: () {},
+              onManageServers: () {},
+              onAbout: () {},
+            ),
+            onRefresh: () async {},
+            refreshing: false,
+            lastUpdatedAt: DateTime.now(),
+            pages: <Widget>[
+              ClusterOverviewPage(
+                controller: widget.controller,
+                showsSliverNavigationBar: compact,
+                navigationLeading: compact ? _compactLeading() : null,
+                navigationTrailing: compact ? _compactTrailing() : null,
+                onRefresh: () async {},
+                onViewGuests: () => _select(WorkspaceSection.guests),
+                onViewNodes: () => _select(WorkspaceSection.nodes),
+                onViewStorage: () => _select(WorkspaceSection.storage),
+                onViewTasks: () => _select(WorkspaceSection.tasks),
+              ),
+              GuestListPage(
+                overviewController: widget.controller,
+                session: widget.session,
+                showsSliverNavigationBar: compact,
+                navigationLeading: compact ? _compactLeading() : null,
+                navigationTrailing: compact ? _compactTrailing() : null,
+                onRefresh: () async {},
+                onGuestPowerAction: () async {},
+              ),
+              ClusterNodesPage(
+                controller: widget.controller,
+                showsSliverNavigationBar: compact,
+                navigationLeading: compact ? _compactLeading() : null,
+                navigationTrailing: compact ? _compactTrailing() : null,
+                onRefresh: () async {},
+              ),
+              StoragePage(
+                controller: widget.controller,
+                showsSliverNavigationBar: compact,
+                navigationLeading: compact ? _compactLeading() : null,
+                navigationTrailing: compact ? _compactTrailing() : null,
+                onRefresh: () async {},
+              ),
+              TasksPage(
+                controller: widget.controller,
+                showsSliverNavigationBar: compact,
+                navigationLeading: compact ? _compactLeading() : null,
+                navigationTrailing: compact ? _compactTrailing() : null,
+                onRefresh: () async {},
+              ),
+            ],
           ),
         ),
       ),
@@ -144,6 +177,25 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
 
   void _select(WorkspaceSection section) {
     setState(() => _section = section);
+  }
+
+  Widget _compactLeading() {
+    return ServerMenu(
+      profiles: <ConnectionProfile>[_profile],
+      selectedProfile: _profile,
+      onSelected: (_) {},
+      compact: true,
+    );
+  }
+
+  Widget _compactTrailing() {
+    return WorkspaceActionsMenu(
+      connected: true,
+      onRefresh: () {},
+      onDisconnect: () {},
+      onManageServers: () {},
+      onAbout: () {},
+    );
   }
 }
 

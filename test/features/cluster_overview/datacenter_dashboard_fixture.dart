@@ -1,3 +1,4 @@
+import 'package:pve_companion/core/api/proxmox_api_exception.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
@@ -23,6 +24,26 @@ Future<ClusterOverviewController> readyDashboardController(
   return controller;
 }
 
+Future<ClusterOverviewController> staleDashboardController(
+  ClusterOverviewSnapshot snapshot,
+) async {
+  final ClusterOverviewController controller = ClusterOverviewController(
+    _FailingAfterSnapshotRepository(snapshot),
+  );
+  const _DashboardFixtureSession session = _DashboardFixtureSession();
+  await controller.refresh(session);
+  await controller.refresh(session);
+  return controller;
+}
+
+Future<ClusterOverviewController> failedDashboardController() async {
+  final ClusterOverviewController controller = ClusterOverviewController(
+    const _FailingDashboardRepository(),
+  );
+  await controller.refresh(const _DashboardFixtureSession());
+  return controller;
+}
+
 class _StaticDashboardRepository implements ClusterOverviewRepository {
   const _StaticDashboardRepository(this.snapshot);
 
@@ -31,6 +52,31 @@ class _StaticDashboardRepository implements ClusterOverviewRepository {
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
     return snapshot;
+  }
+}
+
+class _FailingAfterSnapshotRepository implements ClusterOverviewRepository {
+  _FailingAfterSnapshotRepository(this.snapshot);
+
+  final ClusterOverviewSnapshot snapshot;
+  bool _returnedSnapshot = false;
+
+  @override
+  Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
+    if (!_returnedSnapshot) {
+      _returnedSnapshot = true;
+      return snapshot;
+    }
+    throw const ProxmoxNetworkException('Refresh failed.');
+  }
+}
+
+class _FailingDashboardRepository implements ClusterOverviewRepository {
+  const _FailingDashboardRepository();
+
+  @override
+  Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
+    throw const ProxmoxNetworkException('Initial load failed.');
   }
 }
 

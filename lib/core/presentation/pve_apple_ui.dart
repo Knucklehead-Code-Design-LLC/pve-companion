@@ -1,6 +1,12 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Divider;
 
+abstract final class PveAppleLayout {
+  static bool usesExpandedPresentation(BuildContext context) {
+    return MediaQuery.sizeOf(context).width >= 760;
+  }
+}
+
 abstract final class PveAppleColors {
   static const Color accent = Color(0xFF087E8B);
   static const Color accentDark = Color(0xFF55D6DF);
@@ -86,6 +92,242 @@ abstract final class PveAppleText {
   );
 }
 
+class PvePrimaryScrollView extends StatelessWidget {
+  const PvePrimaryScrollView({
+    super.key,
+    required this.title,
+    required this.slivers,
+    this.navigationLeading,
+    this.navigationTrailing,
+    this.onRefresh,
+    this.showsSliverNavigationBar = true,
+    this.scrollViewKey,
+  });
+
+  final String title;
+  final List<Widget> slivers;
+  final Widget? navigationLeading;
+  final Widget? navigationTrailing;
+  final Future<void> Function()? onRefresh;
+  final bool showsSliverNavigationBar;
+  final Key? scrollViewKey;
+
+  @override
+  Widget build(BuildContext context) {
+    return CustomScrollView(
+      key: scrollViewKey,
+      physics: const AlwaysScrollableScrollPhysics(),
+      slivers: <Widget>[
+        if (showsSliverNavigationBar)
+          CupertinoSliverNavigationBar(
+            transitionBetweenRoutes: false,
+            stretch: true,
+            largeTitle: Text(title),
+            leading: navigationLeading,
+            trailing: navigationTrailing,
+          ),
+        if (onRefresh != null)
+          CupertinoSliverRefreshControl(onRefresh: onRefresh),
+        ...slivers,
+      ],
+    );
+  }
+}
+
+class PveCenteredSliver extends StatelessWidget {
+  const PveCenteredSliver({
+    super.key,
+    required this.child,
+    this.maxWidth = 1360,
+    this.padding = const EdgeInsets.fromLTRB(16, 12, 16, 28),
+  });
+
+  final Widget child;
+  final double maxWidth;
+  final EdgeInsetsGeometry padding;
+
+  @override
+  Widget build(BuildContext context) {
+    return SliverPadding(
+      padding: padding,
+      sliver: SliverToBoxAdapter(
+        child: Center(
+          child: ConstrainedBox(
+            constraints: BoxConstraints(maxWidth: maxWidth),
+            child: child,
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
+  const PveSlidingSegmentedControl({
+    super.key,
+    required this.groupValue,
+    required this.children,
+    required this.onValueChanged,
+  });
+
+  final T groupValue;
+  final Map<T, Widget> children;
+  final ValueChanged<T?> onValueChanged;
+
+  @override
+  Widget build(BuildContext context) {
+    return DefaultTextStyle(
+      style: CupertinoTheme.of(context).textTheme.textStyle.copyWith(
+        color: PveAppleColors.label(context),
+        fontSize: 13.5,
+        fontWeight: FontWeight.w500,
+      ),
+      child: CupertinoSlidingSegmentedControl<T>(
+        groupValue: groupValue,
+        children: children,
+        onValueChanged: onValueChanged,
+      ),
+    );
+  }
+}
+
+class PveWideControlBar extends StatelessWidget {
+  const PveWideControlBar({
+    super.key,
+    required this.primary,
+    required this.secondary,
+    this.secondaryWidth = 360,
+  });
+
+  final Widget primary;
+  final Widget secondary;
+  final double secondaryWidth;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (constraints.maxWidth < 700) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[primary, const SizedBox(height: 12), secondary],
+          );
+        }
+        return Row(
+          children: <Widget>[
+            Expanded(child: primary),
+            const SizedBox(width: 12),
+            SizedBox(width: secondaryWidth, child: secondary),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class PveMetricStripItem {
+  const PveMetricStripItem({
+    required this.label,
+    required this.value,
+    required this.icon,
+    this.color,
+  });
+
+  final String label;
+  final String value;
+  final IconData icon;
+  final Color? color;
+}
+
+class PveMetricStrip extends StatelessWidget {
+  const PveMetricStrip({super.key, required this.items});
+
+  final List<PveMetricStripItem> items;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          if (constraints.maxWidth < 700) {
+            final double cellWidth = constraints.maxWidth / 2;
+            return Wrap(
+              runSpacing: 14,
+              children: items
+                  .map(
+                    (PveMetricStripItem item) => SizedBox(
+                      width: cellWidth,
+                      child: _PveMetricStripCell(item: item),
+                    ),
+                  )
+                  .toList(growable: false),
+            );
+          }
+          return Row(
+            children: <Widget>[
+              for (int index = 0; index < items.length; index++) ...<Widget>[
+                if (index > 0)
+                  Container(
+                    width: 0.5,
+                    height: 38,
+                    color: PveAppleColors.separator(
+                      context,
+                    ).withValues(alpha: 0.65),
+                  ),
+                Expanded(child: _PveMetricStripCell(item: items[index])),
+              ],
+            ],
+          );
+        },
+      ),
+    );
+  }
+}
+
+class _PveMetricStripCell extends StatelessWidget {
+  const _PveMetricStripCell({required this.item});
+
+  final PveMetricStripItem item;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = item.color ?? PveAppleColors.primary(context);
+    return Semantics(
+      excludeSemantics: true,
+      label: '${item.label}: ${item.value}',
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(
+          children: <Widget>[
+            DecoratedBox(
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.11),
+                borderRadius: BorderRadius.circular(9),
+              ),
+              child: SizedBox.square(
+                dimension: 34,
+                child: Icon(item.icon, size: 18, color: color),
+              ),
+            ),
+            const SizedBox(width: 10),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text(item.value, style: PveAppleText.title3(context)),
+                  const SizedBox(height: 1),
+                  Text(item.label, style: PveAppleText.caption(context)),
+                ],
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class PvePageHeader extends StatelessWidget {
   const PvePageHeader({
     super.key,
@@ -151,7 +393,7 @@ class PveSectionHeader extends StatelessWidget {
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
       child: Row(
         children: <Widget>[
-          Expanded(child: Text(title, style: PveAppleText.title2(context))),
+          Expanded(child: PveSectionTitle(title: title)),
           if (actionLabel != null && onAction != null)
             Semantics(
               button: true,
@@ -165,6 +407,20 @@ class PveSectionHeader extends StatelessWidget {
             ),
         ],
       ),
+    );
+  }
+}
+
+class PveSectionTitle extends StatelessWidget {
+  const PveSectionTitle({super.key, required this.title});
+
+  final String title;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      header: true,
+      child: Text(title, style: PveAppleText.title2(context)),
     );
   }
 }
@@ -188,27 +444,38 @@ class PveInsetGroup extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final BorderRadius borderRadius = BorderRadius.circular(14);
-    Widget content = DecoratedBox(
-      decoration: BoxDecoration(
-        color: color ?? PveAppleColors.surface(context),
-        borderRadius: borderRadius,
-        border: Border.all(
-          color: PveAppleColors.separator(context).withValues(alpha: 0.35),
-          width: 0.5,
-        ),
+    final Color backgroundColor = color ?? PveAppleColors.surface(context);
+    final BoxDecoration decoration = BoxDecoration(
+      color: onTap == null ? backgroundColor : null,
+      borderRadius: borderRadius,
+      border: Border.all(
+        color: PveAppleColors.separator(context).withValues(alpha: 0.35),
+        width: 0.5,
       ),
-      child: padding == null ? child : Padding(padding: padding!, child: child),
     );
+    Widget content;
     if (onTap != null) {
-      content = CupertinoButton(
-        padding: EdgeInsets.zero,
-        borderRadius: borderRadius,
-        pressedOpacity: 0.72,
-        onPressed: onTap,
-        child: DefaultTextStyle.merge(
-          style: TextStyle(color: PveAppleColors.label(context)),
-          child: content,
+      content = DecoratedBox(
+        decoration: decoration,
+        child: CupertinoButton(
+          color: backgroundColor,
+          padding: padding ?? EdgeInsets.zero,
+          alignment: Alignment.centerLeft,
+          borderRadius: borderRadius,
+          pressedOpacity: 0.72,
+          onPressed: onTap,
+          child: DefaultTextStyle.merge(
+            style: TextStyle(color: PveAppleColors.label(context)),
+            child: child,
+          ),
         ),
+      );
+    } else {
+      content = DecoratedBox(
+        decoration: decoration,
+        child: padding == null
+            ? child
+            : Padding(padding: padding!, child: child),
       );
     }
     return Semantics(
@@ -355,8 +622,14 @@ class PveProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final double? normalizedValue =
+        value != null && value!.isFinite && value! >= 0
+        ? value!.clamp(0, 1).toDouble()
+        : null;
     return Semantics(
-      value: value == null ? 'Not reported' : '${(value! * 100).round()}%',
+      value: normalizedValue == null
+          ? 'Not reported'
+          : '${(normalizedValue * 100).round()}%',
       child: ClipRRect(
         borderRadius: BorderRadius.circular(3),
         child: SizedBox(
@@ -365,10 +638,10 @@ class PveProgressBar extends StatelessWidget {
             fit: StackFit.expand,
             children: <Widget>[
               ColoredBox(color: color.withValues(alpha: 0.16)),
-              if (value != null)
+              if (normalizedValue != null)
                 FractionallySizedBox(
                   alignment: Alignment.centerLeft,
-                  widthFactor: value!.clamp(0, 1),
+                  widthFactor: normalizedValue,
                   child: ColoredBox(color: color),
                 ),
             ],
@@ -441,10 +714,13 @@ class PveEmptyState extends StatelessWidget {
             children: <Widget>[
               Icon(icon, size: 40, color: color),
               const SizedBox(height: 16),
-              Text(
-                title,
-                textAlign: TextAlign.center,
-                style: PveAppleText.title2(context),
+              Semantics(
+                header: true,
+                child: Text(
+                  title,
+                  textAlign: TextAlign.center,
+                  style: PveAppleText.title2(context),
+                ),
               ),
               const SizedBox(height: 8),
               Text(

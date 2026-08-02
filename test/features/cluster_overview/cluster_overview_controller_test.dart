@@ -15,17 +15,24 @@ void main() {
     );
     final _FakeSession session = _FakeSession();
 
-    final Future<void> firstRefresh = controller.refresh(session);
-    final Future<void> secondRefresh = controller.refresh(session);
+    final Future<ClusterOverviewSnapshot?> firstRefresh = controller.refresh(
+      session,
+    );
+    final Future<ClusterOverviewSnapshot?> secondRefresh = controller.refresh(
+      session,
+    );
     repository.requests[0].complete(_snapshot('old'));
-    await firstRefresh;
+    expect(await firstRefresh, isNull);
     expect(controller.snapshot, isNull);
 
     repository.requests[1].complete(_snapshot('new'));
-    await secondRefresh;
+    expect((await secondRefresh)?.version.version, 'new');
 
     expect(controller.snapshot?.version.version, 'new');
     expect(controller.state, ClusterOverviewLoadState.ready);
+    expect(controller.lastUpdatedAt, isNotNull);
+    controller.clear();
+    expect(controller.lastUpdatedAt, isNull);
     controller.dispose();
   });
 }

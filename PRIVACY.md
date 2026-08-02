@@ -22,6 +22,20 @@ your device. If you choose **Remember credentials**, the password or API token
 secret is stored in Apple Keychain. Password-session tickets and CSRF values
 remain in memory for the current app session.
 
+When the app receives a datacenter snapshot, it stores a sanitized aggregate
+summary in an Apple App Group shared only with the PVE Companion widget
+extension. The summary contains a health state and counts for issues, online
+nodes, running guests, and tasks. It does not contain
+the server URL, hostname, IP address, username, password, token secret,
+authentication ticket, CSRF token, or guest and node names.
+
+Home Screen and Lock Screen widgets display the last stored summary. If you
+explicitly start a four-hour Datacenter Watch, Apple may display the same
+aggregate information as a Live Activity on the Lock Screen, in the Dynamic
+Island on supported iPhones, and in other system locations Apple supports.
+Visible system surfaces can be seen by someone with physical access to your
+device. Datacenter Watch can be ended from the app.
+
 You can remove stored profile metadata and its associated Keychain credential
 by deleting the server profile in the app. Deleting the app also removes its
 app container; Keychain behavior is controlled by Apple and the operating

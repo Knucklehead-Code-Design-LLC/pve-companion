@@ -102,12 +102,12 @@ class ConnectionProfilesController extends ChangeNotifier {
       _selectedProfileId = savedProfiles.selectedProfileId;
       _loadState = ConnectionProfilesLoadState.ready;
       _notify();
-    } catch (error) {
+    } catch (_) {
       if (_isDisposed) {
         return;
       }
       _loadState = ConnectionProfilesLoadState.failed;
-      _errorMessage = 'Saved connections could not be read: $error';
+      _errorMessage = 'Saved connections could not be read.';
       _notify();
     }
   }
@@ -138,9 +138,14 @@ class ConnectionProfilesController extends ChangeNotifier {
   Future<ConnectionAttemptResult> connectProfile(
     ConnectionProfile profile,
   ) async {
-    final ConnectionCredentials? credentials = await _credentialStore.read(
-      profile,
-    );
+    ConnectionCredentials? credentials;
+    try {
+      credentials = await _credentialStore.read(profile);
+    } catch (_) {
+      return const ConnectionAttemptResult.failed(
+        'Credentials could not be read from the local Keychain.',
+      );
+    }
     if (credentials == null) {
       return const ConnectionAttemptResult.failed(
         'Credentials are unavailable in the local Keychain. Add this server again.',
@@ -190,6 +195,7 @@ class ConnectionProfilesController extends ChangeNotifier {
 
   void disconnect() {
     _operationEpoch += 1;
+    _operationInFlight = false;
     _activeSession?.close();
     _activeSession = null;
     _connectionStatus = ConnectionStatus.disconnected;

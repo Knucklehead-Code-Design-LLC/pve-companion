@@ -65,30 +65,27 @@ class ConnectionProfilesWelcomeScreen extends StatelessWidget {
                     ),
                   ),
                   const SizedBox(height: 28),
-                  PveInsetGroup(
-                    child: Column(
-                      children: const <Widget>[
-                        _WelcomeFeature(
-                          icon: CupertinoIcons.heart_fill,
-                          title: 'See what needs attention',
-                          message: 'Health and pressure are summarized first.',
-                        ),
-                        PveRowSeparator(),
-                        _WelcomeFeature(
-                          icon: CupertinoIcons.lock_shield_fill,
-                          title: 'Keep access private',
-                          message:
-                              'HTTPS is required and saved secrets use Apple Keychain.',
-                        ),
-                        PveRowSeparator(),
-                        _WelcomeFeature(
-                          icon: CupertinoIcons.device_phone_portrait,
-                          title: 'Built for Apple devices',
-                          message:
-                              'One clear experience on iPhone, iPad, and Mac.',
-                        ),
-                      ],
-                    ),
+                  CupertinoListSection.insetGrouped(
+                    margin: EdgeInsets.zero,
+                    children: const <Widget>[
+                      _WelcomeFeature(
+                        icon: CupertinoIcons.heart_fill,
+                        title: 'See what needs attention',
+                        message: 'Health and pressure are summarized first.',
+                      ),
+                      _WelcomeFeature(
+                        icon: CupertinoIcons.lock_shield_fill,
+                        title: 'Keep access private',
+                        message:
+                            'HTTPS is required and saved secrets use Apple Keychain.',
+                      ),
+                      _WelcomeFeature(
+                        icon: CupertinoIcons.device_phone_portrait,
+                        title: 'Built for Apple devices',
+                        message:
+                            'One clear experience on iPhone, iPad, and Mac.',
+                      ),
+                    ],
                   ),
                   const SizedBox(height: 24),
                   SizedBox(
@@ -131,7 +128,7 @@ class _WelcomeFeature extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return PveListRow(
+    return CupertinoListTile(
       leading: Icon(icon),
       title: Text(title),
       subtitle: Text(message),

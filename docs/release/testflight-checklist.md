@@ -10,6 +10,11 @@ app.
 - [ ] Confirm the legal entity that should own PVE Companion and select its
       Apple Developer team in Xcode.
 - [ ] Register `com.knuckleheadcodedesign.pvecompanion` as an explicit App ID.
+- [ ] Register `com.knuckleheadcodedesign.pvecompanion.widgets` as the WidgetKit
+      extension App ID.
+- [ ] Register the App Group
+      `group.com.knuckleheadcodedesign.pvecompanion`, enable it for both App
+      IDs, and enable Live Activities for the main App ID.
 - [ ] Create the App Store Connect app using the metadata in
       [app-store-metadata.md](app-store-metadata.md).
 - [ ] Complete agreements, banking/tax status if applicable, trader status,
@@ -27,7 +32,7 @@ dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
 tool/capture_macos_store_screenshots.sh
-flutter build ios --simulator --no-codesign
+flutter build ios --simulator
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
   -configuration Release -derivedDataPath /tmp/pve-companion-macos-release \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
@@ -39,16 +44,24 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 - [ ] Verify profile deletion removes the profile and its remembered secret.
 - [ ] Exercise overview, every drill-down, and guest power confirmations on an
       iPhone, iPad, and Mac.
+- [ ] Add each supported Home/Lock Screen widget family on iPhone and iPad;
+      verify placeholder, populated, stale, tinted, dark, and Always-On
+      appearances.
+- [ ] Start, update, open, and end Datacenter Watch on a Dynamic
+      Island-capable physical iPhone. Verify Lock Screen, compact, minimal, and
+      expanded presentations contain no sensitive identifiers.
 - [ ] Confirm all screenshot files meet the dimensions documented in
       [the App Store screenshot guide](../app-store/screenshots/README.md).
-- [ ] Review the built archive for `PrivacyInfo.xcprivacy`, app icons, version,
+- [ ] Review the built archive for both privacy manifests, the `1C8F.1` App
+      Group UserDefaults reason, app icons, matching host/extension versions,
       build number, and `ITSAppUsesNonExemptEncryption = false`.
 
 ## Archive and upload
 
 1. Open `ios/Runner.xcworkspace` in Xcode.
-2. Select the publishing team for the Runner target and allow Xcode to manage
-   the distribution profile. Keep team identifiers out of the repository.
+2. Select the publishing team for both Runner and PVECompanionWidgets and
+   allow Xcode to manage their distribution profiles. Confirm both targets use
+   the registered App Group. Keep team identifiers out of the repository.
 3. Select **Any iOS Device (arm64)** and choose **Product → Archive**.
 4. In Organizer, run **Validate App**, resolve all errors, then choose
    **Distribute App → App Store Connect → Upload**.

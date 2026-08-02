@@ -15,6 +15,7 @@ class ClusterOverviewController extends ChangeNotifier {
   ClusterOverviewLoadState _state = ClusterOverviewLoadState.idle;
   ClusterOverviewSnapshot? _snapshot;
   String? _errorMessage;
+  DateTime? _lastUpdatedAt;
   int _requestEpoch = 0;
   bool _isDisposed = false;
 
@@ -24,7 +25,9 @@ class ClusterOverviewController extends ChangeNotifier {
 
   String? get errorMessage => _errorMessage;
 
-  Future<void> refresh(ProxmoxSession session) async {
+  DateTime? get lastUpdatedAt => _lastUpdatedAt;
+
+  Future<ClusterOverviewSnapshot?> refresh(ProxmoxSession session) async {
     final int requestEpoch = ++_requestEpoch;
     _state = ClusterOverviewLoadState.loading;
     _errorMessage = null;
@@ -33,18 +36,22 @@ class ClusterOverviewController extends ChangeNotifier {
     try {
       final ClusterOverviewSnapshot snapshot = await _repository.load(session);
       if (_isStale(requestEpoch)) {
-        return;
+        return null;
       }
       _snapshot = snapshot;
+      _lastUpdatedAt = DateTime.now();
       _state = ClusterOverviewLoadState.ready;
       _notify();
+      return snapshot;
     } on ProxmoxApiException catch (error) {
       _setFailure(requestEpoch, error.message);
+      return null;
     } catch (_) {
       _setFailure(
         requestEpoch,
         'Cluster data could not be loaded. Check the connection and retry.',
       );
+      return null;
     }
   }
 
@@ -53,6 +60,7 @@ class ClusterOverviewController extends ChangeNotifier {
     _state = ClusterOverviewLoadState.idle;
     _snapshot = null;
     _errorMessage = null;
+    _lastUpdatedAt = null;
     _notify();
   }
 

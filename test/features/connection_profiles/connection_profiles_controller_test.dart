@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/api/proxmox_api_exception.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
@@ -132,6 +134,69 @@ void main() {
       controller.dispose();
     },
   );
+
+  test(
+    'disconnect cancels an in-flight connection without staying busy',
+    () async {
+      final _ControlledConnectionRepository connectionRepository =
+          _ControlledConnectionRepository();
+      final ConnectionProfilesController controller =
+          ConnectionProfilesController(
+            profileRepository: _MemoryProfileRepository(),
+            credentialStore: _MemoryCredentialStore(),
+            connectionRepository: connectionRepository,
+          );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+
+      final Future<ConnectionAttemptResult> attempt = controller.saveAndConnect(
+        profile: _passwordProfile(),
+        credentials: const ConnectionCredentials.password('session-only'),
+        persistCredentials: false,
+      );
+      await Future<void>.delayed(Duration.zero);
+      expect(controller.isBusy, isTrue);
+
+      controller.disconnect();
+      expect(controller.isBusy, isFalse);
+
+      final _FakeSession staleSession = _FakeSession();
+      connectionRepository.request.complete(staleSession);
+      expect((await attempt).kind, ConnectionAttemptKind.busy);
+      expect(staleSession.closeCount, 1);
+      expect(controller.activeSession, isNull);
+    },
+  );
+
+  test('turns a Keychain read failure into a safe connection result', () async {
+    final ConnectionProfile profile = _passwordProfile();
+    final _MemoryProfileRepository profileRepository =
+        _MemoryProfileRepository()
+          ..saved = SavedConnectionProfiles(
+            profiles: <ConnectionProfile>[profile],
+            selectedProfileId: profile.id,
+          );
+    final ConnectionProfilesController controller =
+        ConnectionProfilesController(
+          profileRepository: profileRepository,
+          credentialStore: _MemoryCredentialStore(
+            readError: StateError('sensitive Keychain implementation detail'),
+          ),
+          connectionRepository: _FakeConnectionRepository(),
+        );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+
+    final ConnectionAttemptResult result = await controller
+        .connectSelectedProfile();
+
+    expect(result.kind, ConnectionAttemptKind.failed);
+    expect(
+      result.message,
+      'Credentials could not be read from the local Keychain.',
+    );
+    expect(result.message, isNot(contains('sensitive')));
+  });
 }
 
 ConnectionProfile _passwordProfile() {
@@ -171,8 +236,11 @@ class _MemoryProfileRepository implements ConnectionProfileRepository {
 }
 
 class _MemoryCredentialStore implements ConnectionCredentialStore {
+  _MemoryCredentialStore({this.readError});
+
   final Map<String, ConnectionCredentials> _credentials =
       <String, ConnectionCredentials>{};
+  final Object? readError;
 
   String? readSecret(String profileId) => _credentials[profileId]?.secret;
 
@@ -183,12 +251,28 @@ class _MemoryCredentialStore implements ConnectionCredentialStore {
 
   @override
   Future<ConnectionCredentials?> read(ConnectionProfile profile) async {
+    final Object? configuredError = readError;
+    if (configuredError != null) {
+      throw configuredError;
+    }
     return _credentials[profile.id];
   }
 
   @override
   Future<void> save(String profileId, ConnectionCredentials credentials) async {
     _credentials[profileId] = credentials;
+  }
+}
+
+class _ControlledConnectionRepository implements ProxmoxConnectionRepository {
+  final Completer<ProxmoxSession> request = Completer<ProxmoxSession>();
+
+  @override
+  Future<ProxmoxSession> authenticate(
+    ConnectionProfile profile,
+    ConnectionCredentials credentials,
+  ) {
+    return request.future;
   }
 }
 

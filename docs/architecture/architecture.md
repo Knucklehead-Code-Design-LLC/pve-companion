@@ -10,13 +10,14 @@ domain, data, application, and presentation code.
 | Feature | Owns |
 | --- | --- |
 | `connection_profiles` | Server profile rules, secure credential boundary, profile persistence, sign-in state, and add/manage-server UI. |
-| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
+| `cluster_overview` | Cluster/node/storage/task models, strict response decoding, merged storage telemetry, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
 | `guests` | VM/LXC models, safe configuration projection, power command behavior, detail state, and guest UI. |
 | `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
+| `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
 | `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
-| `core/presentation` | Apple-first colors, typography, inset groups, list rows, progress, status, section, and state primitives shared across features. |
+| `core/presentation` | Apple-first colors, typography, value formatting, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
 
 Dependencies flow in one direction:
 
@@ -30,9 +31,37 @@ behavior. Repositories map a feature's API data to its domain types. The HTTP
 service owns request encoding, authentication headers, TLS pinning, and strict
 envelope validation; UI code never assembles requests.
 
+Cluster refreshes return the exact snapshot accepted by the controller. A
+superseded request or failed refresh returns no publishable snapshot, so Apple
+system surfaces cannot receive stale data from an out-of-order response. After
+an initial load succeeds, a later refresh failure retains the last snapshot and
+surfaces a retryable, non-destructive error in the workspace.
+
 `ChangeNotifier`/`Listenable` from Flutter SDK provide the small amount of
 long-lived state required here. There is no provider/state-management package,
 generic service locator, speculative shared `utils`, or code generation.
+
+## Apple system surfaces
+
+`system_surfaces` converts a loaded cluster snapshot into a deliberately small
+aggregate model. The projection includes only health and counts; it excludes
+server endpoints, host and guest names, users, credentials, tickets, and CSRF
+values. `PveCompanionController` publishes that model after a successful
+cluster refresh.
+
+One Flutter method channel forwards the model to native iOS code. The native
+host writes JSON to the private
+`group.com.knuckleheadcodedesign.pvecompanion` App Group and asks WidgetKit to
+reload its timeline. The SwiftUI extension owns Home Screen, Lock Screen, and
+Live Activity rendering. No Flutter engine or third-party widget package runs
+inside the extension.
+
+Widgets display the latest app-provided snapshot and make its age visible.
+They do not promise real-time status. Datacenter Watch is a user-started,
+four-hour ActivityKit session for a defined maintenance or incident window;
+it updates when the app refreshes and supports Lock Screen plus compact,
+minimal, and expanded Dynamic Island presentations. A future remote-update
+service would require an explicit APNs design and privacy review.
 
 ## Dashboard derivation
 
@@ -50,8 +79,14 @@ or network connection.
   Health evaluates each reporting node; cluster capacity remains explicit
   about its aggregation (CPU = highest reported node, byte metrics = complete
   known-node totals).
-- Missing or incomplete values stay unreported. Configured storage is
-  inventory because the current endpoint does not provide utilization.
+- Missing or incomplete values stay unreported. Storage configuration from
+  `/storage` is merged with per-node telemetry from
+  `/cluster/resources?type=storage`. Shared capacity is de-duplicated across
+  nodes, while local capacity is summed. Accounts that may read configuration
+  but lack resource-telemetry permission still receive the configured pool
+  inventory. The UI distinguishes fully available, partially available,
+  unavailable, and unreported pools; availability is never inferred from
+  configuration alone.
 - Presentation is split by dashboard responsibility (health, capacity and
   workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
   dashboard widgets receive callbacks rather than depending on app navigation.
@@ -96,6 +131,28 @@ never depends on color alone. Feature presentation remains feature-owned;
 the shared layer contains only primitives used across several domains. A
 Material app host remains as Flutter infrastructure for compatibility, but
 the visible interaction system is Cupertino-first on iPhone, iPad, and Mac.
+
+Each compact destination owns one `CustomScrollView` headed by a
+`CupertinoSliverNavigationBar`. The large title collapses into the pinned bar,
+and `CupertinoSliverRefreshControl` participates in the same scroll view. This
+avoids a fixed navigation title competing with a second content title. The
+wide shell moves server identity into the sidebar and gives the detail pane one
+compact navigation bar, so iPad and Mac retain the same hierarchy without
+simulating an oversized iPhone layout.
+
+iPad and Mac presentation use glanceable metric strips, paired insight cards,
+inline controls, and two-column inventory cards. iPhone preserves the same
+information but moves actionable inventories ahead of secondary analysis. The
+wide connected-status footer owns the labeled refresh action so the title bar
+stays focused on location and workspace commands. These remain presentation
+decisions: domain state, filters, and actions stay owned by their feature.
+
+Inventory pages use Flutter's Cupertino search fields, sliding segmented
+controls, list sections, list tiles, form sections, sheets, alerts, and dynamic
+system colors. Revealed commands use an anchored menu; action sheets remain
+reserved for choices related to an action, and sheets remain scoped tasks.
+The complete surface and state contract lives in
+[`docs/design/interface-inventory.md`](../design/interface-inventory.md).
 
 ## Dependency audit
 

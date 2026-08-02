@@ -27,8 +27,16 @@ parity:
   operational problems first, then capacity, workload, nodes, and recent
   reported activity. Stopped guests remain workload inventory, not incidents.
 - Apple-native navigation and interaction patterns: stable tabs on iPhone,
-  a persistent sidebar on iPad and Mac, inset grouped data, Cupertino sheets,
-  clear confirmations, Dynamic Type support, and system light/dark appearance.
+  collapsible sliver titles and pull-to-refresh, a persistent sidebar on iPad
+  and Mac, real navigation bars, anchored command menus, Cupertino search and
+  filters, inset grouped data, scoped sheets, clear confirmations, Dynamic
+  Type support, and system light/dark appearance.
+- Privacy-safe WidgetKit views for the iPhone and iPad Home Screen and Lock
+  Screen. Widgets show the last snapshot the app received; they never store or
+  display a server URL, hostname, username, credential, ticket, or CSRF token.
+- An optional four-hour **Datacenter Watch** Live Activity for maintenance and
+  incident windows. It appears on the Lock Screen and, on supported iPhones,
+  in the Dynamic Island, and updates whenever the app refreshes the cluster.
 - Drill-down navigation for nodes, guest inventory, configured storage, and
   recent tasks.
 - VM/LXC details plus confirmed, non-force start, shutdown, and reboot
@@ -55,9 +63,15 @@ port `8006` directly to the public internet.
   the current app session.
 - Configuration details are allow-listed before display so secrets are not
   casually surfaced in the guest detail view.
+- A sanitized aggregate snapshot is stored in the app's private Apple App
+  Group so the WidgetKit extension can render it. Datacenter Watch is started
+  only by the user and shows aggregate health/counts on visible system
+  surfaces.
 
 Read the [architecture and dependency audit](docs/architecture/architecture.md)
 before contributing authentication, network, or certificate changes.
+Use the [interface inventory](docs/design/interface-inventory.md) when
+reviewing a UI change or qualifying an Apple-platform release.
 Read the public [privacy policy](PRIVACY.md) for the developer's data-handling
 commitments.
 
@@ -68,6 +82,8 @@ flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
 flutter analyze
 flutter test
+xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
+  -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test
 ```
 
 For a deterministic, local-only visual review of the Overview dashboard, run
@@ -113,9 +129,9 @@ complete values. Health checks every reporting node so a hot node cannot be
 masked by a low cluster average. Reported CPU, memory, or root-disk pressure
 is warning at **75% or above** and critical at **90% or above**.
 
-“No reported issues.” means the snapshot contains no derived issue; it does
-not claim that every possible metric was reported. Missing or incomplete
-telemetry remains explicitly unreported.
+“All systems operational” means the latest snapshot contains no derived issue;
+it does not claim that every possible metric was reported. Missing or
+incomplete telemetry remains explicitly unreported.
 
 Configured storage is shown as inventory only in this milestone. The existing
 API view does not report its utilization, so the dashboard does not invent it.
@@ -126,7 +142,7 @@ compile-only check intentionally disables signing because Keychain Sharing
 requires a real development certificate for an installable app:
 
 ```sh
-flutter build ios --simulator --no-codesign
+flutter build ios --simulator
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
   -configuration Release -derivedDataPath /tmp/pve-companion-macos-build \
   CODE_SIGNING_ALLOWED=NO CODE_SIGNING_REQUIRED=NO build
@@ -139,7 +155,9 @@ format, analysis, and tests on an Ubuntu runner only.
 ## Project design
 
 The project uses feature-owned folders and an explicit dependency direction:
-widget → controller → repository → HTTP service. It uses four direct
+widget → controller → repository → HTTP service. The WidgetKit and ActivityKit
+extension is native SwiftUI and communicates through one dependency-free
+platform channel and an App Group. The Flutter app uses four direct
 third-party packages only: Apple’s official Cupertino icon font, vetted
 SHA-256 support, Keychain storage, and non-secret preference storage. The
 full rationale is in the

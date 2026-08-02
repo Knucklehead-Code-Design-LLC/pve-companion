@@ -23,6 +23,8 @@ void main() {
     'overview': '01-datacenter-overview.png',
     'guests': '02-guest-inventory.png',
     'nodes': '03-node-health.png',
+    'storage': '04-storage-inventory.png',
+    'tasks': '05-recent-tasks.png',
   }.entries) {
     testWidgets('renders the ${scene.key} Mac App Store preview', (
       WidgetTester tester,

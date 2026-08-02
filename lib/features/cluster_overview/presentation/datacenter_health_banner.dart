@@ -18,79 +18,82 @@ class DatacenterHealthBanner extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final DatacenterDashboardTone tone = dashboardToneForHealth(health.state);
-    final Color foreground = dashboardToneOnSurfaceColor(context, tone);
+    final Color accent = dashboardToneColor(context, tone);
     return PveInsetGroup(
-      color: dashboardToneSurfaceColor(context, tone),
-      padding: const EdgeInsets.all(20),
+      onTap: onViewNodes,
+      semanticLabel:
+          'Datacenter health. ${_healthTitle(health)}. '
+          '${_healthSummary(health)}',
+      padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
         children: <Widget>[
           Row(
-            crossAxisAlignment: CrossAxisAlignment.start,
             children: <Widget>[
               Semantics(
-                label: 'Datacenter health: ${health.headline}',
+                label: 'Datacenter health: ${_healthTitle(health)}',
                 child: ExcludeSemantics(
-                  child: Icon(
-                    dashboardToneIcon(tone),
-                    color: foreground,
-                    size: 30,
+                  child: DecoratedBox(
+                    decoration: BoxDecoration(
+                      color: accent.withValues(alpha: 0.13),
+                      shape: BoxShape.circle,
+                    ),
+                    child: SizedBox.square(
+                      dimension: 38,
+                      child: Icon(
+                        dashboardToneIcon(tone),
+                        color: accent,
+                        size: 22,
+                      ),
+                    ),
                   ),
                 ),
               ),
-              const SizedBox(width: 14),
+              const SizedBox(width: 12),
               Expanded(
                 child: Column(
                   crossAxisAlignment: CrossAxisAlignment.start,
                   children: <Widget>[
                     Text(
-                      health.headline,
-                      style: PveAppleText.title2(context).copyWith(
-                        color: foreground,
-                        fontWeight: FontWeight.w700,
-                      ),
+                      _healthTitle(health),
+                      style: PveAppleText.title3(context),
                     ),
-                    const SizedBox(height: 4),
+                    const SizedBox(height: 2),
                     Text(
                       _healthSummary(health),
-                      style: PveAppleText.secondary(
-                        context,
-                      ).copyWith(color: foreground),
+                      style: PveAppleText.secondary(context),
                     ),
                   ],
                 ),
               ),
+              const SizedBox(width: 8),
+              Icon(
+                CupertinoIcons.chevron_forward,
+                size: 14,
+                color: PveAppleColors.secondaryLabel(context),
+              ),
             ],
           ),
-          const SizedBox(height: 16),
-          if (health.issues.isEmpty)
-            Text(
-              'No offline nodes, failed recent reported tasks, or elevated '
-              'reported node pressure.',
-              style: PveAppleText.body(context).copyWith(color: foreground),
-            )
-          else
-            ...health.issues.map(
-              (DatacenterHealthIssue issue) => Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: _HealthIssueLine(issue: issue),
+          if (health.issues.isNotEmpty) ...<Widget>[
+            const SizedBox(height: 14),
+            ...health.issues
+                .take(2)
+                .map(
+                  (DatacenterHealthIssue issue) => Padding(
+                    padding: const EdgeInsets.only(left: 50, bottom: 7),
+                    child: _HealthIssueLine(issue: issue),
+                  ),
+                ),
+            if (health.issues.length > 2)
+              Padding(
+                padding: const EdgeInsets.only(left: 50),
+                child: Text(
+                  '${health.issues.length - 2} more reported '
+                  '${health.issues.length - 2 == 1 ? 'issue' : 'issues'}',
+                  style: PveAppleText.caption(context),
+                ),
               ),
-            ),
-          const SizedBox(height: 4),
-          Align(
-            alignment: Alignment.centerRight,
-            child: CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-              onPressed: onViewNodes,
-              child: const Row(
-                children: <Widget>[
-                  Expanded(child: Text('View Nodes', textAlign: TextAlign.end)),
-                  SizedBox(width: 5),
-                  Icon(CupertinoIcons.chevron_forward, size: 14),
-                ],
-              ),
-            ),
-          ),
+          ],
         ],
       ),
     );
@@ -132,9 +135,16 @@ class _HealthIssueLine extends StatelessWidget {
 
 String _healthSummary(DatacenterHealth health) {
   final int runningTaskCount = health.tasks.runningTaskCount;
-  if (runningTaskCount == 0) {
-    return 'Current cluster status from the latest reported snapshot.';
-  }
-  return '$runningTaskCount ${runningTaskCount == 1 ? 'task is' : 'tasks are'} '
-      'currently in progress.';
+  final int onlineNodes = health.nodes.length - health.offlineNodeCount;
+  final String taskSummary = runningTaskCount == 0
+      ? 'no active tasks'
+      : '$runningTaskCount active ${runningTaskCount == 1 ? 'task' : 'tasks'}';
+  return '$onlineNodes/${health.nodes.length} nodes online · '
+      '${health.workload.runningGuests} guests running · $taskSummary';
 }
+
+String _healthTitle(DatacenterHealth health) => switch (health.state) {
+  DatacenterHealthState.healthy => 'All systems operational',
+  DatacenterHealthState.warning => 'Attention recommended',
+  DatacenterHealthState.critical => 'Action required',
+};

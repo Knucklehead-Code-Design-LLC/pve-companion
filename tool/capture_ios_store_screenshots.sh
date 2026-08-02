@@ -13,9 +13,13 @@ ipad_udid="$2"
 capture_device() {
   device_udid="$1"
   output_directory="$2"
+  rotation_degrees="$3"
 
   mkdir -p "$output_directory"
-  xcrun simctl boot "$device_udid" 2>/dev/null || true
+  # A clean boot resets stale simulator rotation so App Store canvases remain
+  # deterministic across repeated capture sessions.
+  xcrun simctl shutdown "$device_udid" 2>/dev/null || true
+  xcrun simctl boot "$device_udid"
   xcrun simctl bootstatus "$device_udid" -b
   xcrun simctl status_bar "$device_udid" override \
     --time '9:41' \
@@ -24,11 +28,15 @@ capture_device() {
     --wifiBars 3
 
   capture_scene "$device_udid" "$output_directory" overview \
-    01-datacenter-overview.jpg
+    01-datacenter-overview.jpg "$rotation_degrees"
   capture_scene "$device_udid" "$output_directory" guests \
-    02-guest-inventory.jpg
+    02-guest-inventory.jpg "$rotation_degrees"
   capture_scene "$device_udid" "$output_directory" nodes \
-    03-node-health.jpg
+    03-node-health.jpg "$rotation_degrees"
+  capture_scene "$device_udid" "$output_directory" storage \
+    04-storage-inventory.jpg "$rotation_degrees"
+  capture_scene "$device_udid" "$output_directory" tasks \
+    05-recent-tasks.jpg "$rotation_degrees"
 }
 
 capture_scene() {
@@ -36,6 +44,7 @@ capture_scene() {
   output_directory="$2"
   scene="$3"
   filename="$4"
+  rotation_degrees="$5"
 
   flutter run \
     -d "$device_udid" \
@@ -43,13 +52,17 @@ capture_scene() {
     --dart-define="SCREENSHOT_SCENE=$scene" \
     --no-resident \
     --no-pub
-  sleep 2
+  sleep 3
   xcrun simctl io "$device_udid" screenshot \
     --type=jpeg \
     "$output_directory/$filename"
+  if [ "$rotation_degrees" -ne 0 ]; then
+    sips --rotate "$rotation_degrees" \
+      "$output_directory/$filename" >/dev/null
+  fi
 }
 
 capture_device "$iphone_udid" \
-  docs/app-store/screenshots/en-US/iphone-6.9
+  docs/app-store/screenshots/en-US/iphone-6.9 0
 capture_device "$ipad_udid" \
-  docs/app-store/screenshots/en-US/ipad-13
+  docs/app-store/screenshots/en-US/ipad-13 0

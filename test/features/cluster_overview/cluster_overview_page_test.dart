@@ -26,22 +26,24 @@ void main() {
       await tester.pump();
 
       expect(find.text('Datacenter'), findsOneWidget);
-      expect(find.text('No reported issues.'), findsOneWidget);
+      expect(find.text('All systems operational'), findsOneWidget);
       expect(
-        find.byKey(const ValueKey<String>('dashboard-capacity-stacked')),
+        find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
         findsOneWidget,
       );
       expect(
-        find.byKey(const ValueKey<String>('dashboard-capacity-two-columns')),
-        findsNothing,
+        find.byKey(const ValueKey<String>('dashboard-workload-composition')),
+        findsOneWidget,
       );
-      expect(find.text('3 / 4 running'), findsOneWidget);
+      expect(find.text('3/4'), findsOneWidget);
 
-      await tester.drag(
-        find.byKey(const ValueKey<String>('datacenter-dashboard')),
-        const Offset(0, -900),
+      await tester.scrollUntilVisible(
+        find.text('View Guests'),
+        160,
+        scrollable: find.byType(Scrollable).first,
       );
-      await tester.pump();
+      await tester.pumpAndSettle();
+      await tester.ensureVisible(find.text('View Guests'));
       await tester.tap(find.text('View Guests'));
       expect(guestDrillDownCount, 1);
     },
@@ -60,22 +62,18 @@ void main() {
     await tester.pumpWidget(_DashboardTestApp(controller: controller));
     await tester.pump();
 
-    expect(find.text('Critical attention needed'), findsOneWidget);
+    expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
-    expect(find.text('Peak CPU use'), findsOneWidget);
-    expect(find.text('Cluster memory use'), findsOneWidget);
-    expect(find.text('Cluster root disk use'), findsOneWidget);
+    expect(find.text('Peak CPU'), findsOneWidget);
+    expect(find.text('Memory'), findsWidgets);
+    expect(find.text('Root disk'), findsWidgets);
     expect(
-      find.text('53% cluster total · 2/3 nodes reporting'),
+      find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
       findsOneWidget,
     );
     expect(
-      find.byKey(const ValueKey<String>('dashboard-capacity-two-columns')),
-      findsOneWidget,
-    );
-    expect(
-      find.byKey(const ValueKey<String>('dashboard-storage-inventory-wide')),
+      find.byKey(const ValueKey<String>('dashboard-workload-composition')),
       findsOneWidget,
     );
     expect(
@@ -85,8 +83,18 @@ void main() {
     expect(find.text('Failed'), findsOneWidget);
     expect(find.text('Running'), findsOneWidget);
     expect(
-      tester.getTopLeft(find.text('edge-a')).dx,
-      lessThan(tester.getTopLeft(find.text('compute-a')).dx),
+      tester
+          .getTopLeft(
+            find.byKey(const ValueKey<String>('dashboard-node-edge-a')),
+          )
+          .dx,
+      lessThan(
+        tester
+            .getTopLeft(
+              find.byKey(const ValueKey<String>('dashboard-node-compute-a')),
+            )
+            .dx,
+      ),
     );
   });
 
@@ -110,7 +118,7 @@ void main() {
 
     expect(tester.takeException(), isNull);
     expect(find.text('Datacenter'), findsOneWidget);
-    expect(find.text('No reported issues.'), findsOneWidget);
+    expect(find.text('All systems operational'), findsOneWidget);
   });
 
   testWidgets('keeps the wide command center usable with larger text', (
@@ -132,7 +140,7 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('View Storage'), findsOneWidget);
+    expect(find.text('Operational Summary'), findsOneWidget);
     expect(find.text('Nodes'), findsOneWidget);
   });
 
@@ -161,7 +169,7 @@ void main() {
     );
     await tester.pump();
 
-    await tester.tap(find.text('View Nodes'));
+    await tester.tap(find.text('All systems operational'));
     await tester.tap(find.text('View Guests'));
     await tester.tap(find.text('View Storage'));
     await tester.drag(
@@ -175,6 +183,21 @@ void main() {
     expect(nodeDrillDownCount, 1);
     expect(storageDrillDownCount, 1);
     expect(taskDrillDownCount, 1);
+  });
+
+  testWidgets('keeps stale data visible after a refresh failure', (
+    WidgetTester tester,
+  ) async {
+    final ClusterOverviewController controller = await staleDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_DashboardTestApp(controller: controller));
+
+    expect(find.text('All systems operational'), findsOneWidget);
+    expect(find.text('Refresh failed.'), findsOneWidget);
+    expect(find.text('Datacenter unavailable'), findsNothing);
   });
 }
 

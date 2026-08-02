@@ -40,6 +40,8 @@ Core version 0.1 features:
 - Read-only storage and task views
 - Apple-native tabs, sidebar, sheets, and adaptive layouts for iPhone, iPad,
   and Mac
+- Home and Lock Screen widgets for last-known datacenter health
+- Optional four-hour Datacenter Watch on the Lock Screen and Dynamic Island
 - No ads, analytics, tracking, or developer-operated cloud service
 
 PVE Companion connects directly to the Proxmox VE server you configure. Use a
@@ -59,7 +61,8 @@ owners.
 
 Initial TestFlight release with secure server profiles, an Apple-first
 datacenter command center, guest inventory and power actions, node health,
-storage inventory, and recent task activity across iPhone, iPad, and Mac.
+storage inventory, recent task activity, Home and Lock Screen widgets, and an
+optional Datacenter Watch Live Activity across iPhone, iPad, and Mac.
 
 ## App privacy answer baseline
 

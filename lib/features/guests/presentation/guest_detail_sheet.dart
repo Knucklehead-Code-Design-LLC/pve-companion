@@ -72,7 +72,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
         middle: Text(widget.guest.title),
-        leading: CupertinoButton(
+        trailing: CupertinoButton(
           padding: EdgeInsets.zero,
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Done'),
@@ -87,14 +87,8 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
               child: ConstrainedBox(
                 constraints: const BoxConstraints(maxWidth: 760),
                 child: Padding(
-                  padding: const EdgeInsets.fromLTRB(20, 18, 20, 0),
-                  child: Column(
-                    children: <Widget>[
-                      GuestTitleBar(guest: widget.guest),
-                      const SizedBox(height: 18),
-                      Expanded(child: _buildContent(context)),
-                    ],
-                  ),
+                  padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
+                  child: _buildContent(context),
                 ),
               ),
             );

@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/datacenter_health.dart';
-import 'cluster_overview_format.dart';
 import 'datacenter_dashboard_section_header.dart';
 import 'datacenter_dashboard_visuals.dart';
 
@@ -97,6 +96,7 @@ class _DatacenterNodeCard extends StatelessWidget {
       button: true,
       label: 'View node ${node.node.name}. $statusLabel.',
       child: PveInsetGroup(
+        key: ValueKey<String>('dashboard-node-${node.node.name}'),
         onTap: onTap,
         padding: const EdgeInsets.all(18),
         child: Column(
@@ -154,7 +154,10 @@ class _NodePressureRow extends StatelessWidget {
     final DatacenterDashboardTone tone = dashboardToneForPressure(
       reportedPressure,
     );
-    final String value = _nodePressureValue(reportedPressure, useBytes);
+    final String value = datacenterPressureValueLabel(
+      reportedPressure,
+      includeByteTotals: useBytes,
+    );
     final bool usesLargeText = MediaQuery.textScalerOf(context).scale(12) >= 20;
     return Semantics(
       label: '$label: $value, ${dashboardPressureLabel(reportedPressure)}',
@@ -209,15 +212,4 @@ String _nodeStatusLabel(DatacenterNodeHealth node) {
     DatacenterHealthState.warning => 'Online · attention',
     DatacenterHealthState.critical => 'Online · critical pressure',
   };
-}
-
-String _nodePressureValue(DatacenterPressureMetric? pressure, bool useBytes) {
-  if (pressure == null) {
-    return 'Not reported';
-  }
-  if (useBytes && pressure.hasByteTotals) {
-    return '${formatPveBytes(pressure.usedBytes)} / '
-        '${formatPveBytes(pressure.capacityBytes)}';
-  }
-  return formatPvePercent(pressure.fraction);
 }
