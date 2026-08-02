@@ -62,7 +62,7 @@ workflows:
           set -euo pipefail
           APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
           test -n "$APP_VERSION"
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>&1)"
           if [[ "$LATEST_BUILD_NUMBER" == "Did not find latest build for app "* ]]; then
             LATEST_BUILD_NUMBER=0
           fi
@@ -125,7 +125,7 @@ workflows:
         script: |
           set -euo pipefail
           APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID")"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>&1)"
           if [[ "$LATEST_BUILD_NUMBER" == "Did not find latest build for app "* ]]; then
             LATEST_BUILD_NUMBER=0
           fi
