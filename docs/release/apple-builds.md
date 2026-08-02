@@ -52,6 +52,10 @@ that team's Code signing identities rather than in the repository: one managed
 Apple Distribution certificate plus separate App Store profiles for the app
 and the widget extension.
 
+The iOS project uses Flutter's Swift Package Manager integration, not
+CocoaPods. The workflows therefore do not run `pod install` or require a
+`Podfile`.
+
 - `ios-pr-verify` runs for pull requests targeting `main`. It builds an
   unsigned iOS release app and has no signing or App Store Connect material,
   so pull requests from public forks cannot access release credentials.
