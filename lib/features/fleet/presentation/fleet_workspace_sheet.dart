@@ -59,14 +59,13 @@ class _FleetWorkspaceSheetState extends State<_FleetWorkspaceSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
+              label: 'Refresh datacenter portfolio',
               onPressed:
                   widget.controller.state == FleetOverviewLoadState.loading
                   ? null
                   : widget.controller.refresh,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
             ),
             CupertinoButton(
               padding: EdgeInsets.zero,

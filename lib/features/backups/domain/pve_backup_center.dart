@@ -62,14 +62,66 @@ class PveBackupCenterSnapshot {
     required this.schedules,
     required this.records,
     required this.recentTasks,
+    this.scheduleDataState = PveBackupDataState.available,
+    this.recordDataState = PveBackupDataState.available,
   });
 
   final List<PveBackupDestination> destinations;
   final List<PveBackupSchedule> schedules;
   final List<PveBackupRecord> records;
   final List<ClusterTask> recentTasks;
+  final PveBackupDataState scheduleDataState;
+  final PveBackupDataState recordDataState;
 
   int get failedRecentTaskCount => recentTasks
       .where((ClusterTask task) => task.state == ClusterTaskState.failed)
       .length;
+
+  PveBackupReadiness get readiness {
+    if (destinations.isEmpty) return PveBackupReadiness.noDestination;
+    if (scheduleDataState == PveBackupDataState.permissionLimited) {
+      return PveBackupReadiness.configurationUnreadable;
+    }
+    if (scheduleDataState == PveBackupDataState.unavailable ||
+        scheduleDataState == PveBackupDataState.partiallyAvailable) {
+      return PveBackupReadiness.configurationUnavailable;
+    }
+    if (schedules.isEmpty &&
+        scheduleDataState == PveBackupDataState.available) {
+      return PveBackupReadiness.noSchedule;
+    }
+    if (recordDataState == PveBackupDataState.permissionLimited) {
+      return PveBackupReadiness.copiesUnreadable;
+    }
+    if (recordDataState == PveBackupDataState.unavailable) {
+      return PveBackupReadiness.copiesUnavailable;
+    }
+    if (recordDataState == PveBackupDataState.partiallyAvailable) {
+      return PveBackupReadiness.copiesPartiallyReported;
+    }
+    if (records.isNotEmpty) return PveBackupReadiness.copiesReported;
+    return PveBackupReadiness.copiesNotReported;
+  }
+}
+
+enum PveBackupDataState {
+  available,
+  partiallyAvailable,
+  unavailable,
+  permissionLimited,
+  notConfigured,
+}
+
+/// A concise statement of what Backup Center can verify from currently
+/// reported data. It intentionally does not make a restore-readiness claim.
+enum PveBackupReadiness {
+  noDestination,
+  configurationUnreadable,
+  configurationUnavailable,
+  noSchedule,
+  copiesUnreadable,
+  copiesUnavailable,
+  copiesPartiallyReported,
+  copiesReported,
+  copiesNotReported,
 }

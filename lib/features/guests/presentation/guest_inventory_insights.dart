@@ -26,8 +26,8 @@ class GuestInventoryInsights extends StatelessWidget {
                   label: 'Average active CPU',
                   value: formatPvePercent(summary.averageRunningCpu),
                   progress: summary.averageRunningCpu,
-                  color: PveAppleColors.primary(context),
-                  detail: '${summary.cpuCores} vCPU assigned',
+                  color: _pressureColor(context, summary.averageRunningCpu),
+                  detail: _cpuReportingDetail(summary, guests.length),
                 ),
                 const SizedBox(height: 16),
                 PveResourceMeter(
@@ -125,6 +125,18 @@ class GuestInventoryInsights extends StatelessWidget {
       ],
     );
   }
+
+  String _cpuReportingDetail(_GuestResourceSummary summary, int workloadCount) {
+    final String currentUse = summary.runningCount == 0
+        ? 'No workloads are currently reported running'
+        : '${summary.runningCpuReportingCount}/${summary.runningCount} '
+              'running workloads report CPU';
+    final String allocation = summary.cpuCores == null
+        ? 'vCPU allocation not reported'
+        : '${summary.cpuCores} vCPU assigned across '
+              '${summary.cpuCoreReportingCount}/$workloadCount workloads';
+    return '$currentUse · $allocation';
+  }
 }
 
 class _GuestResourceSummary {
@@ -134,7 +146,9 @@ class _GuestResourceSummary {
     required this.containerCount,
     required this.nodeCount,
     required this.cpuCores,
+    required this.cpuCoreReportingCount,
     required this.averageRunningCpu,
+    required this.runningCpuReportingCount,
     required this.memoryUsedBytes,
     required this.memoryCapacityBytes,
     required this.memoryReportingCount,
@@ -147,6 +161,7 @@ class _GuestResourceSummary {
     int runningCount = 0;
     int virtualMachineCount = 0;
     int cpuCores = 0;
+    int cpuCoreReportingCount = 0;
     double runningCpuTotal = 0;
     int runningCpuCount = 0;
     int memoryUsedBytes = 0;
@@ -159,7 +174,11 @@ class _GuestResourceSummary {
 
     for (final PveGuest guest in guests) {
       nodes.add(guest.node);
-      cpuCores += guest.cpuCores ?? 0;
+      final int? guestCpuCores = guest.cpuCores;
+      if (guestCpuCores != null && guestCpuCores >= 0) {
+        cpuCores += guestCpuCores;
+        cpuCoreReportingCount += 1;
+      }
       if (guest.kind == GuestKind.virtualMachine) {
         virtualMachineCount += 1;
       }
@@ -198,10 +217,12 @@ class _GuestResourceSummary {
       virtualMachineCount: virtualMachineCount,
       containerCount: guests.length - virtualMachineCount,
       nodeCount: nodes.length,
-      cpuCores: cpuCores,
+      cpuCores: cpuCoreReportingCount == 0 ? null : cpuCores,
+      cpuCoreReportingCount: cpuCoreReportingCount,
       averageRunningCpu: runningCpuCount == 0
           ? null
           : runningCpuTotal / runningCpuCount,
+      runningCpuReportingCount: runningCpuCount,
       memoryUsedBytes: memoryReportingCount == 0 ? null : memoryUsedBytes,
       memoryCapacityBytes: memoryReportingCount == 0
           ? null
@@ -217,8 +238,10 @@ class _GuestResourceSummary {
   final int virtualMachineCount;
   final int containerCount;
   final int nodeCount;
-  final int cpuCores;
+  final int? cpuCores;
+  final int cpuCoreReportingCount;
   final double? averageRunningCpu;
+  final int runningCpuReportingCount;
   final int? memoryUsedBytes;
   final int? memoryCapacityBytes;
   final int memoryReportingCount;

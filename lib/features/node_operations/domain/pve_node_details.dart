@@ -2,9 +2,22 @@ import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 
 /// The overview data used to open an operational node detail surface.
 class PveNodeDetailsSeed {
-  const PveNodeDetailsSeed(this.node);
+  const PveNodeDetailsSeed(
+    this.node, {
+    this.hostedGuestCount = 0,
+    this.runningHostedGuestCount = 0,
+    this.clusterOnlineNodeCount = 0,
+    this.recentTaskCount = 0,
+  });
 
   final ClusterNode node;
+  final int hostedGuestCount;
+  final int runningHostedGuestCount;
+  final int clusterOnlineNodeCount;
+  final int recentTaskCount;
+
+  bool get isLastKnownOnlineNode =>
+      node.isOnline && clusterOnlineNodeCount <= 1;
 }
 
 enum PveNodePowerAction {

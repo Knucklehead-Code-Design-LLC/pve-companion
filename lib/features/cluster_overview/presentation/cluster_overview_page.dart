@@ -70,6 +70,7 @@ class ClusterOverviewPage extends StatelessWidget {
       onViewStorage: onViewStorage,
       onViewTasks: onViewTasks,
       refreshErrorMessage: controller.errorMessage,
+      resourceHistory: controller.resourceHistory,
     );
   }
 }

@@ -5,6 +5,8 @@ import 'package:pve_companion/core/api/proxmox_session.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
+import 'package:pve_companion/features/cluster_overview/domain/datacenter_resource_history.dart';
+import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('discards a stale refresh after a newer refresh starts', () async {
@@ -35,6 +37,58 @@ void main() {
     expect(controller.lastUpdatedAt, isNull);
     controller.dispose();
   });
+
+  test(
+    'keeps a bounded local resource history and clears it with the session',
+    () async {
+      final ClusterOverviewController controller = ClusterOverviewController(
+        _SequencedClusterRepository(),
+      );
+      final _FakeSession session = _FakeSession();
+
+      for (int index = 0; index < 25; index += 1) {
+        await controller.refresh(session);
+      }
+
+      expect(controller.resourceHistory, hasLength(24));
+      expect(controller.resourceHistory.last.cpuFraction, 0.5);
+      expect(controller.resourceHistory.last.memoryFraction, 0.5);
+      expect(controller.resourceHistory.last.storageFraction, 0.5);
+      controller.clear();
+      expect(controller.resourceHistory, isEmpty);
+      controller.dispose();
+    },
+  );
+
+  test(
+    'does not turn unavailable resource telemetry into zero utilization',
+    () {
+      const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+        version: PveVersion(version: 'test'),
+        nodes: <ClusterNode>[ClusterNode(name: 'node-a', status: 'online')],
+        guests: <PveGuest>[],
+        storages: <ClusterStorage>[
+          ClusterStorage(
+            name: 'local',
+            type: 'dir',
+            content: 'images',
+            shared: false,
+          ),
+        ],
+        tasks: <ClusterTask>[],
+      );
+
+      final DatacenterResourceSample sample =
+          DatacenterResourceSample.fromSnapshot(
+            snapshot,
+            capturedAt: DateTime.utc(2026, 8, 2),
+          );
+
+      expect(sample.memoryFraction, isNull);
+      expect(sample.diskFraction, isNull);
+      expect(sample.storageFraction, isNull);
+    },
+  );
 }
 
 ClusterOverviewSnapshot _snapshot(String version) {
@@ -57,6 +111,44 @@ class _ControlledClusterRepository implements ClusterOverviewRepository {
         Completer<ClusterOverviewSnapshot>();
     requests.add(request);
     return request.future;
+  }
+}
+
+class _SequencedClusterRepository implements ClusterOverviewRepository {
+  @override
+  Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
+    return ClusterOverviewSnapshot(
+      version: const PveVersion(version: 'test'),
+      nodes: const <ClusterNode>[
+        ClusterNode(
+          name: 'node-a',
+          status: 'online',
+          cpuFraction: 0.5,
+          memoryBytes: 50,
+          memoryLimitBytes: 100,
+          diskBytes: 25,
+          diskLimitBytes: 100,
+        ),
+      ],
+      guests: const [],
+      storages: const <ClusterStorage>[
+        ClusterStorage(
+          name: 'local',
+          type: 'dir',
+          content: 'images',
+          shared: false,
+          resources: <ClusterStorageResource>[
+            ClusterStorageResource(
+              node: 'node-a',
+              status: 'available',
+              usedBytes: 50,
+              capacityBytes: 100,
+            ),
+          ],
+        ),
+      ],
+      tasks: const [],
+    );
   }
 }
 

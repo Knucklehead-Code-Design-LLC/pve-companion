@@ -54,73 +54,306 @@ class GuestDetailContent extends StatelessWidget {
           ),
         ),
         const SizedBox(height: 10),
-        _GuestStatusCard(runtime: details.runtime, guest: guest),
-        if (!guest.isTemplate && onOpenConsole != null) ...<Widget>[
-          const SizedBox(height: 12),
-          _GuestConsoleCard(onOpenConsole: onOpenConsole!),
-        ],
-        if (controller.activeTask != null) ...<Widget>[
-          const SizedBox(height: 12),
-          ProxmoxTaskStatusCard(task: controller.activeTask!),
-        ],
-        if (controller.errorMessage != null) ...<Widget>[
-          const SizedBox(height: 10),
-          _GuestInlineError(message: controller.errorMessage!),
-        ],
-        const SizedBox(height: 24),
-        const PveSectionTitle(title: 'Power'),
-        const SizedBox(height: 8),
-        _GuestPowerControls(
+        _GuestDetailColumns(
+          guest: guest,
+          details: details,
+          controller: controller,
+          controlsDisabled: controlsDisabled,
+          backupStorageNames: backupStorageNames,
+          onPowerAction: onPowerAction,
+          onCreateSnapshot: onCreateSnapshot,
+          onSnapshotAction: onSnapshotAction,
+          onRunBackup: onRunBackup,
+          onEditConfiguration: onEditConfiguration,
+          onOpenConsole: onOpenConsole,
+        ),
+      ],
+    );
+  }
+}
+
+class _GuestDetailColumns extends StatelessWidget {
+  const _GuestDetailColumns({
+    required this.guest,
+    required this.details,
+    required this.controller,
+    required this.controlsDisabled,
+    required this.backupStorageNames,
+    required this.onPowerAction,
+    required this.onCreateSnapshot,
+    required this.onSnapshotAction,
+    required this.onRunBackup,
+    required this.onEditConfiguration,
+    required this.onOpenConsole,
+  });
+
+  final PveGuest guest;
+  final PveGuestDetails details;
+  final GuestDetailController controller;
+  final bool controlsDisabled;
+  final List<String> backupStorageNames;
+  final Future<void> Function(GuestPowerAction action) onPowerAction;
+  final Future<void> Function() onCreateSnapshot;
+  final Future<void> Function(PveGuestSnapshot, GuestSnapshotAction)
+  onSnapshotAction;
+  final Future<void> Function() onRunBackup;
+  final Future<void> Function() onEditConfiguration;
+  final Future<void> Function()? onOpenConsole;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> primarySections = <Widget>[
+      _GuestStatusCard(runtime: details.runtime, guest: guest),
+      if (!guest.isTemplate && onOpenConsole != null)
+        _GuestConsoleCard(onOpenConsole: onOpenConsole!),
+      if (controller.activeTask != null)
+        ProxmoxTaskStatusCard(task: controller.activeTask!),
+      if (controller.errorMessage != null)
+        _GuestInlineError(message: controller.errorMessage!),
+      if (guest.isTemplate)
+        const _GuestTemplateNotice()
+      else
+        _GuestPowerSection(
           guest: guest,
           runningAction: controller.runningAction,
           disabled: controlsDisabled,
           onPowerAction: onPowerAction,
         ),
-        if (guest.isTemplate) ...<Widget>[
-          const SizedBox(height: 8),
-          Text(
-            'Templates are read-only and cannot be powered on or off.',
-            style: PveAppleText.secondary(context),
+      _GuestSnapshotsSection(
+        snapshots: details.snapshots,
+        enabled: !controlsDisabled,
+        onCreateSnapshot: onCreateSnapshot,
+        onSnapshotAction: onSnapshotAction,
+      ),
+    ];
+    final List<Widget> secondarySections = <Widget>[
+      _GuestBackupSection(
+        destinationCount: backupStorageNames.length,
+        enabled: !controlsDisabled,
+        onRunBackup: onRunBackup,
+      ),
+      _GuestConfigurationSection(
+        configuration: details.configuration,
+        enabled: !controlsDisabled,
+        onEditConfiguration: onEditConfiguration,
+      ),
+      _GuestActivitySection(tasks: details.recentTasks),
+    ];
+
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (constraints.maxWidth < 760) {
+          return _DetailSectionColumn(
+            sections: <Widget>[...primarySections, ...secondarySections],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(child: _DetailSectionColumn(sections: primarySections)),
+            const SizedBox(width: 24),
+            Expanded(child: _DetailSectionColumn(sections: secondarySections)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _DetailSectionColumn extends StatelessWidget {
+  const _DetailSectionColumn({required this.sections});
+
+  final List<Widget> sections;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (int index = 0; index < sections.length; index++) ...<Widget>[
+          if (index > 0) const SizedBox(height: 24),
+          sections[index],
+        ],
+      ],
+    );
+  }
+}
+
+class _GuestPowerSection extends StatelessWidget {
+  const _GuestPowerSection({
+    required this.guest,
+    required this.runningAction,
+    required this.disabled,
+    required this.onPowerAction,
+  });
+
+  final PveGuest guest;
+  final GuestPowerAction? runningAction;
+  final bool disabled;
+  final Future<void> Function(GuestPowerAction action) onPowerAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const PveSectionTitle(title: 'Guest power'),
+        const SizedBox(height: 8),
+        _GuestPowerControls(
+          guest: guest,
+          runningAction: runningAction,
+          disabled: disabled,
+          onPowerAction: onPowerAction,
+        ),
+      ],
+    );
+  }
+}
+
+class _GuestTemplateNotice extends StatelessWidget {
+  const _GuestTemplateNotice();
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(
+            CupertinoIcons.doc_on_doc,
+            size: 20,
+            color: PveAppleColors.secondaryLabel(context),
+          ),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Template', style: PveAppleText.title3(context)),
+                const SizedBox(height: 2),
+                Text(
+                  'Templates are read-only. Power controls and the interactive console are unavailable.',
+                  style: PveAppleText.secondary(context),
+                ),
+              ],
+            ),
           ),
         ],
-        const SizedBox(height: 24),
+      ),
+    );
+  }
+}
+
+class _GuestSnapshotsSection extends StatelessWidget {
+  const _GuestSnapshotsSection({
+    required this.snapshots,
+    required this.enabled,
+    required this.onCreateSnapshot,
+    required this.onSnapshotAction,
+  });
+
+  final List<PveGuestSnapshot> snapshots;
+  final bool enabled;
+  final Future<void> Function() onCreateSnapshot;
+  final Future<void> Function(PveGuestSnapshot, GuestSnapshotAction)
+  onSnapshotAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         PveSectionHeader(
           title: 'Snapshots',
           actionLabel: 'New',
           actionSemanticsLabel: 'Create a new snapshot',
-          onAction: controlsDisabled ? null : () => onCreateSnapshot(),
+          onAction: enabled ? () => onCreateSnapshot() : null,
         ),
         _GuestSnapshotsCard(
-          snapshots: details.snapshots,
-          enabled: !controlsDisabled,
+          snapshots: snapshots,
+          enabled: enabled,
           onAction: onSnapshotAction,
         ),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _GuestBackupSection extends StatelessWidget {
+  const _GuestBackupSection({
+    required this.destinationCount,
+    required this.enabled,
+    required this.onRunBackup,
+  });
+
+  final int destinationCount;
+  final bool enabled;
+  final Future<void> Function() onRunBackup;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasDestination = destinationCount > 0;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         PveSectionHeader(
           title: 'Backup',
           actionLabel: 'Back Up Now',
           actionSemanticsLabel: 'Run a guest backup',
-          onAction: controlsDisabled || backupStorageNames.isEmpty
-              ? null
-              : () => onRunBackup(),
+          onAction: enabled && hasDestination ? () => onRunBackup() : null,
         ),
         _GuestBackupCard(
-          destinationCount: backupStorageNames.length,
-          enabled: !controlsDisabled,
+          destinationCount: destinationCount,
+          enabled: enabled,
           onRunBackup: onRunBackup,
         ),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _GuestConfigurationSection extends StatelessWidget {
+  const _GuestConfigurationSection({
+    required this.configuration,
+    required this.enabled,
+    required this.onEditConfiguration,
+  });
+
+  final Map<String, String> configuration;
+  final bool enabled;
+  final Future<void> Function() onEditConfiguration;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         PveSectionHeader(
           title: 'Configuration',
           actionLabel: 'Edit',
           actionSemanticsLabel: 'Edit safe guest configuration',
-          onAction: controlsDisabled ? null : () => onEditConfiguration(),
+          onAction: enabled ? () => onEditConfiguration() : null,
         ),
-        _GuestConfigurationCard(configuration: details.configuration),
-        const SizedBox(height: 24),
+        _GuestConfigurationCard(configuration: configuration),
+      ],
+    );
+  }
+}
+
+class _GuestActivitySection extends StatelessWidget {
+  const _GuestActivitySection({required this.tasks});
+
+  final List<PveGuestTask> tasks;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         const PveSectionTitle(title: 'Recent guest activity'),
         const SizedBox(height: 8),
-        _GuestRecentTasksCard(tasks: details.recentTasks),
+        _GuestRecentTasksCard(tasks: tasks),
       ],
     );
   }
@@ -168,6 +401,8 @@ class _GuestConsoleCard extends StatelessWidget {
   Widget build(BuildContext context) {
     return PveInsetGroup(
       onTap: onOpenConsole,
+      semanticLabel: 'Open the guest console',
+      color: PveAppleColors.primary(context).withValues(alpha: 0.1),
       padding: const EdgeInsets.all(16),
       child: Row(
         children: <Widget>[
@@ -225,56 +460,42 @@ class _GuestPowerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<GuestPowerAction> directActions = guest.isRunning
-        ? <GuestPowerAction>[GuestPowerAction.shutdown, GuestPowerAction.reboot]
-        : <GuestPowerAction>[GuestPowerAction.start];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: <Widget>[
-        for (final GuestPowerAction action in directActions)
-          _GuestPowerButton(
-            action: action,
-            runningAction: runningAction,
-            enabled: !disabled,
-            filled: action == GuestPowerAction.start,
-            onPressed: () => onPowerAction(action),
-          ),
-        if (guest.isRunning)
-          CupertinoButton.tinted(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            minimumSize: const Size(44, 44),
-            onPressed: disabled ? null : () => _showMorePowerActions(context),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(CupertinoIcons.ellipsis_circle, size: 17),
-                SizedBox(width: 7),
-                Text('More'),
-              ],
-            ),
-          ),
-      ],
+    return CupertinoButton.tinted(
+      key: const ValueKey<String>('guest-power-menu'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      minimumSize: const Size(44, 44),
+      onPressed: disabled ? null : () => _showPowerActions(context),
+      child: _PowerActionLabel(
+        action: guest.isRunning
+            ? GuestPowerAction.shutdown
+            : GuestPowerAction.start,
+        runningAction: runningAction,
+        label: 'Power',
+      ),
     );
   }
 
-  Future<void> _showMorePowerActions(BuildContext context) async {
-    final List<GuestPowerAction> actions = <GuestPowerAction>[
-      GuestPowerAction.stop,
-      if (GuestPowerAction.reset.supports(guest)) GuestPowerAction.reset,
-    ];
+  Future<void> _showPowerActions(BuildContext context) async {
+    final List<GuestPowerAction> actions = guest.isRunning
+        ? <GuestPowerAction>[
+            GuestPowerAction.shutdown,
+            GuestPowerAction.reboot,
+            GuestPowerAction.stop,
+            if (GuestPowerAction.reset.supports(guest)) GuestPowerAction.reset,
+          ]
+        : <GuestPowerAction>[GuestPowerAction.start];
     final GuestPowerAction?
     selection = await showCupertinoModalPopup<GuestPowerAction>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
-        title: const Text('More power actions'),
+        title: const Text('Power actions'),
         message: const Text(
-          'Force actions can interrupt writes and active users. Use them only when a guest cannot shut down normally.',
+          'Normal actions are confirmed before they run. Force actions can interrupt writes and active users.',
         ),
         actions: actions
             .map(
               (GuestPowerAction action) => CupertinoActionSheetAction(
-                isDestructiveAction: true,
+                isDestructiveAction: action.isPotentiallyDisruptive,
                 onPressed: () => Navigator.of(popupContext).pop(action),
                 child: Text(action.label),
               ),
@@ -289,45 +510,6 @@ class _GuestPowerControls extends StatelessWidget {
     if (selection != null) {
       await onPowerAction(selection);
     }
-  }
-}
-
-class _GuestPowerButton extends StatelessWidget {
-  const _GuestPowerButton({
-    required this.action,
-    required this.runningAction,
-    required this.enabled,
-    required this.filled,
-    required this.onPressed,
-  });
-
-  final GuestPowerAction action;
-  final GuestPowerAction? runningAction;
-  final bool enabled;
-  final bool filled;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget child = _PowerActionLabel(
-      action: action,
-      runningAction: runningAction,
-      label: action.label,
-    );
-    if (filled) {
-      return CupertinoButton.filled(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        minimumSize: const Size(44, 44),
-        onPressed: enabled ? onPressed : null,
-        child: child,
-      );
-    }
-    return CupertinoButton.tinted(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      minimumSize: const Size(44, 44),
-      onPressed: enabled ? onPressed : null,
-      child: child,
-    );
   }
 }
 
@@ -385,11 +567,10 @@ class _SnapshotRow extends StatelessWidget {
       leading: const Icon(CupertinoIcons.camera),
       title: Text(snapshot.name),
       subtitle: Text(_snapshotSubtitle(snapshot)),
-      trailing: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-        minimumSize: const Size(44, 34),
+      trailing: PveIconAction(
+        icon: CupertinoIcons.ellipsis_circle,
+        label: 'Snapshot actions for ${snapshot.name}',
         onPressed: enabled ? () => _showActions(context) : null,
-        child: const Icon(CupertinoIcons.ellipsis_circle, size: 20),
       ),
     );
   }
@@ -483,11 +664,10 @@ class _GuestBackupCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-            minimumSize: const Size(44, 38),
+          PveIconAction(
+            icon: CupertinoIcons.play_circle,
+            label: 'Run guest backup',
             onPressed: enabled && hasDestination ? onRunBackup : null,
-            child: const Icon(CupertinoIcons.play_circle, size: 21),
           ),
         ],
       ),

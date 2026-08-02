@@ -210,6 +210,35 @@ class ClusterTask {
   }
 
   bool get isRunning => state == ClusterTaskState.running;
+
+  /// A running non-interactive operation is surfaced more prominently after
+  /// this age. Interactive console sessions are deliberately excluded.
+  bool get isLongRunning {
+    final DateTime? startedAt = this.startedAt;
+    if (!isRunning || isInteractiveSession || startedAt == null) return false;
+    return DateTime.now().difference(startedAt) >= const Duration(minutes: 30);
+  }
+
+  /// Proxmox reports interactive connections as long-running tasks. They are
+  /// sessions, not necessarily work that needs an operator's attention.
+  bool get isInteractiveSession {
+    final String normalizedType = type.trim().toLowerCase();
+    return normalizedType.contains('console') ||
+        normalizedType.contains('vnc') ||
+        normalizedType.contains('shell') ||
+        normalizedType.contains('termproxy');
+  }
+
+  /// Returns a guest ID only when the server-provided UPID contains one in
+  /// its documented worker-id position. A task type alone is not enough to
+  /// attribute work to a guest.
+  int? get guestVmid {
+    final List<String> parts = upid.split(':');
+    if (parts.length < 8 || parts.first != 'UPID') {
+      return null;
+    }
+    return int.tryParse(parts[6]);
+  }
 }
 
 int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {

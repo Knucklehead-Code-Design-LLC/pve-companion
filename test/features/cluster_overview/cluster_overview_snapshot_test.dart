@@ -60,4 +60,42 @@ void main() {
     expect(failed.state, ClusterTaskState.failed);
     expect(running.state, ClusterTaskState.running);
   });
+
+  test('recognizes long-running interactive task types as sessions', () {
+    const ClusterTask console = ClusterTask(
+      upid: 'console',
+      node: 'pve-01',
+      type: 'vncproxy',
+      user: 'root@pam',
+      status: 'running',
+    );
+    const ClusterTask backup = ClusterTask(
+      upid: 'backup',
+      node: 'pve-01',
+      type: 'backup',
+      user: 'root@pam',
+      status: 'running',
+    );
+
+    expect(console.isInteractiveSession, isTrue);
+    expect(backup.isInteractiveSession, isFalse);
+  });
+
+  test('derives a guest ID only from a valid server UPID worker ID', () {
+    const ClusterTask guestTask = ClusterTask(
+      upid: 'UPID:pve-01:00000001:00000001:00000001:vzdump:101:root@pam:',
+      node: 'pve-01',
+      type: 'vzdump',
+      user: 'root@pam',
+    );
+    const ClusterTask unattributedTask = ClusterTask(
+      upid: 'UPID:running',
+      node: 'pve-01',
+      type: 'backup',
+      user: 'root@pam',
+    );
+
+    expect(guestTask.guestVmid, 101);
+    expect(unattributedTask.guestVmid, isNull);
+  });
 }

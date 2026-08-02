@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Tooltip;
 
 import '../../core/presentation/pve_apple_ui.dart';
 import '../../core/presentation/pve_command_menu.dart';
@@ -38,12 +39,12 @@ class WorkspaceActionsMenu extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return PveCommandMenuButton<_WorkspaceAction>(
-      semanticLabel: 'More datacenter actions',
+      semanticLabel: 'Workspace actions and settings',
       items: <PveCommandMenuItem<_WorkspaceAction>>[
         if (connected && includeRefreshAction)
           const PveCommandMenuItem<_WorkspaceAction>(
             value: _WorkspaceAction.refresh,
-            label: 'Refresh Datacenter',
+            label: 'Refresh data',
             icon: CupertinoIcons.refresh,
           ),
         if (connected && liveActivitiesAvailable && !datacenterWatchActive)
@@ -62,46 +63,49 @@ class WorkspaceActionsMenu extends StatelessWidget {
           ),
         const PveCommandMenuItem<_WorkspaceAction>(
           value: _WorkspaceAction.manageServers,
-          label: 'Manage Servers',
+          label: 'Manage servers',
           icon: CupertinoIcons.rectangle_stack_badge_plus,
         ),
         if (onViewFleet != null)
           const PveCommandMenuItem<_WorkspaceAction>(
             value: _WorkspaceAction.viewFleet,
-            label: 'Datacenter Portfolio',
+            label: 'Datacenter portfolio',
             icon: CupertinoIcons.rectangle_stack_badge_person_crop,
           ),
         if (onManageNotifications != null)
           const PveCommandMenuItem<_WorkspaceAction>(
             value: _WorkspaceAction.manageNotifications,
-            label: 'Notifications',
+            label: 'Notification settings',
             icon: CupertinoIcons.bell,
           ),
         if (connected && onClusterAdministration != null)
           const PveCommandMenuItem<_WorkspaceAction>(
             value: _WorkspaceAction.clusterAdministration,
-            label: 'Cluster Administration',
+            label: 'Cluster administration',
             icon: CupertinoIcons.shield_lefthalf_fill,
           ),
         const PveCommandMenuItem<_WorkspaceAction>(
           value: _WorkspaceAction.about,
-          label: 'About & Privacy',
+          label: 'About PVE Companion',
           icon: CupertinoIcons.info_circle,
         ),
         if (connected)
           const PveCommandMenuItem<_WorkspaceAction>(
             value: _WorkspaceAction.disconnect,
-            label: 'Disconnect',
+            label: 'Disconnect server',
             icon: CupertinoIcons.arrow_right_square,
             destructive: true,
             startsNewSection: true,
           ),
       ],
       onSelected: _performAction,
-      child: Icon(
-        CupertinoIcons.ellipsis,
-        size: 21,
-        color: PveAppleColors.primary(context),
+      child: Tooltip(
+        message: 'Workspace actions and settings',
+        child: Icon(
+          CupertinoIcons.ellipsis,
+          size: 21,
+          color: PveAppleColors.primary(context),
+        ),
       ),
     );
   }

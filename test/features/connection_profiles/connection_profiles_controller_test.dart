@@ -47,6 +47,13 @@ void main() {
         isNot(contains('do-not-persist-in-json')),
       );
       expect(credentialStore.readSecret(profile.id), 'do-not-persist-in-json');
+      final ConnectionProfile savedProfile =
+          profileRepository.saved.profiles.single;
+      expect(savedProfile.lastConnectedAt, isNotNull);
+      expect(
+        controller.statusForProfile(savedProfile),
+        ConnectionStatus.connected,
+      );
       controller.dispose();
     },
   );
@@ -196,6 +203,37 @@ void main() {
       'Credentials could not be read from the local Keychain.',
     );
     expect(result.message, isNot(contains('sensitive')));
+  });
+
+  test('retains profile-specific failure state for a saved server', () async {
+    final ConnectionProfile profile = _passwordProfile();
+    final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
+    await credentialStore.save(
+      profile.id,
+      const ConnectionCredentials.password('saved-only-in-keychain'),
+    );
+    final ConnectionProfilesController controller =
+        ConnectionProfilesController(
+          profileRepository: _MemoryProfileRepository()
+            ..saved = SavedConnectionProfiles(
+              profiles: <ConnectionProfile>[profile],
+              selectedProfileId: profile.id,
+            ),
+          credentialStore: credentialStore,
+          connectionRepository: _FakeConnectionRepository(
+            failure: const ProxmoxUnauthorizedException('Access denied.'),
+          ),
+        );
+    addTearDown(controller.dispose);
+    await controller.initialize();
+
+    final ConnectionAttemptResult result = await controller.connectProfile(
+      profile,
+    );
+
+    expect(result.kind, ConnectionAttemptKind.failed);
+    expect(controller.statusForProfile(profile), ConnectionStatus.failed);
+    expect(controller.failureMessageForProfile(profile), 'Access denied.');
   });
 }
 

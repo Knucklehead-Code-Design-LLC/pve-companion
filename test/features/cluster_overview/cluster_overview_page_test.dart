@@ -2,7 +2,9 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
+import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/cluster_overview_page.dart';
+import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 import 'datacenter_dashboard_fixture.dart';
 
@@ -27,6 +29,7 @@ void main() {
 
       expect(find.text('Datacenter'), findsOneWidget);
       expect(find.text('All systems operational'), findsOneWidget);
+      expect(find.text('No active incidents'), findsNothing);
       expect(
         find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
         findsOneWidget,
@@ -65,9 +68,11 @@ void main() {
     expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
-    expect(find.text('Peak CPU'), findsOneWidget);
-    expect(find.text('Memory'), findsWidgets);
-    expect(find.text('Root disk'), findsWidgets);
+    expect(find.text('Peak CPU now'), findsOneWidget);
+    expect(find.text('Memory allocated now'), findsOneWidget);
+    expect(find.text('Root disk allocated now'), findsOneWidget);
+    expect(find.textContaining('Highest reported node'), findsOneWidget);
+    expect(find.textContaining('Combined reported capacity'), findsNWidgets(2));
     expect(
       find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
       findsOneWidget,
@@ -117,7 +122,7 @@ void main() {
     );
     await tester.pump();
 
-    expect(find.text('Incident Center'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
     await tester.tap(find.textContaining('compute-a CPU is'));
 
     expect(nodeDrillDownCount, 1);
@@ -166,7 +171,7 @@ void main() {
     await tester.pump();
 
     expect(tester.takeException(), isNull);
-    expect(find.text('Incident Center'), findsOneWidget);
+    expect(find.text('Needs attention'), findsOneWidget);
   });
 
   testWidgets('keeps the wide command center usable with larger text', (
@@ -246,6 +251,48 @@ void main() {
     expect(find.text('All systems operational'), findsOneWidget);
     expect(find.text('Refresh failed.'), findsOneWidget);
     expect(find.text('Datacenter unavailable'), findsNothing);
+  });
+
+  testWidgets('states the coverage behind combined storage use', (
+    WidgetTester tester,
+  ) async {
+    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+      version: PveVersion(version: '9.0'),
+      nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
+      guests: <PveGuest>[],
+      storages: <ClusterStorage>[
+        ClusterStorage(
+          name: 'reported',
+          type: 'dir',
+          content: 'images',
+          shared: false,
+          resources: <ClusterStorageResource>[
+            ClusterStorageResource(
+              node: 'pve-01',
+              status: 'available',
+              usedBytes: 10,
+              capacityBytes: 100,
+            ),
+          ],
+        ),
+        ClusterStorage(
+          name: 'unreported',
+          type: 'dir',
+          content: 'images',
+          shared: false,
+          resources: <ClusterStorageResource>[
+            ClusterStorageResource(node: 'pve-01', status: 'available'),
+          ],
+        ),
+      ],
+      tasks: <ClusterTask>[],
+    );
+    final controller = await readyDashboardController(snapshot);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_DashboardTestApp(controller: controller));
+
+    expect(find.text('Current storage used (1/2 reporting)'), findsOneWidget);
   });
 }
 

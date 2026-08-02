@@ -1,11 +1,13 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
 import 'package:pve_companion/app/workspace/workspace_section.dart';
 import 'package:pve_companion/app/workspace/workspace_toolbar.dart';
+import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 
 void main() {
   testWidgets('uses stable tabs in a compact window', (
@@ -41,6 +43,73 @@ void main() {
     await tester.pump();
 
     expect(find.text('Page: Storage'), findsOneWidget);
+  });
+
+  test('selects compact, regular, and wide workspace navigation layouts', () {
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.compactBreakpoint - 1),
+      WorkspaceLayoutSize.compact,
+    );
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.compactBreakpoint),
+      WorkspaceLayoutSize.regular,
+    );
+    expect(
+      WorkspaceLayout.forWidth(WorkspaceLayout.wideBreakpoint),
+      WorkspaceLayoutSize.wide,
+    );
+  });
+
+  testWidgets('widens the macOS sidebar as the workspace grows', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      304,
+    );
+    expect(find.text('Refresh data'), findsOneWidget);
+
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    await tester.pump();
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      320,
+    );
+    debugDefaultTargetPlatformOverride = null;
+  });
+
+  testWidgets('keeps macOS commands in overflow beside the narrow sidebar', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
+    addTearDown(() => debugDefaultTargetPlatformOverride = null);
+    await tester.binding.setSurfaceSize(const Size(760, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(
+      tester
+          .getSize(find.byKey(const ValueKey<String>('workspace-sidebar')))
+          .width,
+      304,
+    );
+    expect(find.text('Manage Servers'), findsNothing);
+    expect(
+      find.bySemanticsLabel('Workspace actions and settings'),
+      findsOneWidget,
+    );
+    debugDefaultTargetPlatformOverride = null;
   });
 
   testWidgets('uses the expanded connected sidebar on iPad', (
@@ -82,7 +151,7 @@ void main() {
     expect(find.text('Tasks'), findsOneWidget);
   });
 
-  testWidgets('shows the current last-updated age', (
+  testWidgets('shows the current last-updated age with an exact hover label', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1024, 768));
@@ -92,7 +161,12 @@ void main() {
     );
 
     await tester.pumpWidget(_NavigationHarness(lastUpdatedAt: updatedAt));
-    expect(find.text('Updated 2m ago'), findsOneWidget);
+    expect(find.text('Data refreshed 2m ago'), findsOneWidget);
+    final String freshnessLabel = tester
+        .getSemantics(find.byType(PveFreshnessLabel))
+        .label;
+    expect(freshnessLabel, startsWith('Data refreshed at '));
+    expect(find.byTooltip(freshnessLabel), findsOneWidget);
   });
 
   testWidgets('discloses a failed refresh in the connection footer', (
@@ -106,20 +180,139 @@ void main() {
     );
 
     expect(find.text('Connected'), findsOneWidget);
-    expect(find.text('Refresh failed'), findsOneWidget);
+    expect(find.text('Data refresh failed'), findsOneWidget);
+    expect(find.bySemanticsLabel('Data refresh failed'), findsOneWidget);
+  });
+
+  testWidgets('keeps attention and workspace actions visible in the sidebar', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(
+        sidebarActions: <WorkspaceSidebarAction>[
+          WorkspaceSidebarAction(
+            label: 'Needs attention',
+            icon: CupertinoIcons.bell,
+            onPressed: _noop,
+            badgeCount: 2,
+          ),
+          WorkspaceSidebarAction(
+            label: 'Manage servers',
+            icon: CupertinoIcons.rectangle_stack_badge_plus,
+            onPressed: _noop,
+          ),
+        ],
+      ),
+    );
+
+    expect(find.text('Needs attention'), findsOneWidget);
+    expect(find.text('Manage servers'), findsOneWidget);
+    expect(
+      find.bySemanticsLabel(
+        'Needs attention, 2 datacenter incidents need attention',
+      ),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('keeps workspace settings in the sidebar footer', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(
+        footerActions: <WorkspaceSidebarAction>[
+          WorkspaceSidebarAction(
+            label: PveActionLabels.workspaceSettings,
+            icon: CupertinoIcons.gear_alt,
+            onPressed: _noop,
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('workspace-footer-actions')),
+      findsOneWidget,
+    );
+    expect(find.text(PveActionLabels.workspaceSettings), findsOneWidget);
+  });
+
+  testWidgets('reserves a persistent wide inspector only when supplied', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(desktopInspector: Text('Selected guest')),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('workspace-desktop-inspector')),
+      findsOneWidget,
+    );
+    expect(find.text('Selected guest'), findsOneWidget);
+  });
+
+  testWidgets('moves through sidebar destinations with arrow keys', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(const _NavigationHarness());
+    await tester.sendKeyEvent(LogicalKeyboardKey.arrowDown);
+    await tester.pump();
+
+    expect(find.text('Page: Guests'), findsOneWidget);
+  });
+
+  testWidgets('gives the compact refresh control an accessible tooltip', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(find.byTooltip('Refresh data'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(
+            find.byKey(const ValueKey<String>('workspace-footer-refresh')),
+          )
+          .label,
+      'Refresh data',
+    );
+    debugDefaultTargetPlatformOverride = null;
   });
 }
+
+void _noop() {}
 
 class _NavigationHarness extends StatefulWidget {
   const _NavigationHarness({
     this.textScaler = TextScaler.noScaling,
     this.lastUpdatedAt,
     this.refreshErrorMessage,
+    this.sidebarActions = const <WorkspaceSidebarAction>[],
+    this.footerActions = const <WorkspaceSidebarAction>[],
+    this.desktopInspector,
   });
 
   final TextScaler textScaler;
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
+  final List<WorkspaceSidebarAction> sidebarActions;
+  final List<WorkspaceSidebarAction> footerActions;
+  final Widget? desktopInspector;
 
   @override
   State<_NavigationHarness> createState() => _NavigationHarnessState();
@@ -167,6 +360,9 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
           refreshing: false,
           lastUpdatedAt: widget.lastUpdatedAt ?? DateTime.now(),
           refreshErrorMessage: widget.refreshErrorMessage,
+          sidebarActions: widget.sidebarActions,
+          footerActions: widget.footerActions,
+          desktopInspector: widget.desktopInspector,
         ),
       ),
     );

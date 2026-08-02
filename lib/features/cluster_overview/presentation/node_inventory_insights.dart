@@ -25,11 +25,16 @@ class NodeInventoryInsights extends StatelessWidget {
         )
         .length;
     final int offlineCount = health.offlineNodeCount;
-    final int totalCores = health.nodes.fold<int>(
-      0,
-      (int total, DatacenterNodeHealth node) =>
-          total + (node.node.cpuCores ?? 0),
-    );
+    final List<DatacenterNodeHealth> nodesWithCpuCores = health.nodes
+        .where((DatacenterNodeHealth node) => node.node.cpuCores != null)
+        .toList(growable: false);
+    final int? totalCores = nodesWithCpuCores.isEmpty
+        ? null
+        : nodesWithCpuCores.fold<int>(
+            0,
+            (int total, DatacenterNodeHealth node) =>
+                total + node.node.cpuCores!,
+          );
 
     return PveAdaptiveCardGrid(
       children: <Widget>[
@@ -63,7 +68,10 @@ class NodeInventoryInsights extends StatelessWidget {
           key: const ValueKey<String>('node-availability'),
           child: PveInsightCard(
             title: 'Node availability',
-            subtitle: '$totalCores CPU cores across the cluster',
+            subtitle: totalCores == null
+                ? 'CPU core allocation not reported'
+                : '$totalCores CPU cores reported by '
+                      '${nodesWithCpuCores.length}/${health.nodes.length} nodes',
             child: Row(
               children: <Widget>[
                 PveRingChart(

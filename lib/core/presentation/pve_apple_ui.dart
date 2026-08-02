@@ -1,10 +1,27 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/material.dart' show Divider;
+import 'package:flutter/material.dart' show Divider, Tooltip;
 
 abstract final class PveAppleLayout {
+  /// Named layout tiers keep desktop and tablet behavior consistent across pages.
+  static const double compactBreakpoint = 760;
+  static const double wideBreakpoint = 1280;
+
+  /// A shared threshold for horizontal control bars whose controls otherwise
+  /// become too narrow to scan or operate comfortably.
+  static const double controlBarStackBreakpoint = 700;
+
   static bool usesExpandedPresentation(BuildContext context) {
-    return MediaQuery.sizeOf(context).width >= 760;
+    return MediaQuery.sizeOf(context).width >= compactBreakpoint;
   }
+
+  static bool usesWidePresentation(BuildContext context) =>
+      MediaQuery.sizeOf(context).width >= wideBreakpoint;
+
+  static bool usesExpandedWidth(double width) => width >= compactBreakpoint;
+
+  static bool usesWideWidth(double width) => width >= wideBreakpoint;
 }
 
 abstract final class PveAppleColors {
@@ -81,15 +98,153 @@ abstract final class PveAppleText {
         height: 1.35,
       );
 
-  static TextStyle secondary(BuildContext context) => body(
-    context,
-  ).copyWith(color: PveAppleColors.secondaryLabel(context), fontSize: 14);
+  static TextStyle secondary(BuildContext context) => body(context).copyWith(
+    color: PveAppleColors.secondaryLabel(context),
+    fontSize: PveAppleLayout.usesExpandedPresentation(context) ? 14.5 : 14,
+    height: 1.4,
+  );
 
   static TextStyle caption(BuildContext context) => body(context).copyWith(
     color: PveAppleColors.secondaryLabel(context),
-    fontSize: 12,
+    fontSize: PveAppleLayout.usesExpandedPresentation(context) ? 12.5 : 12,
     fontWeight: FontWeight.w500,
+    height: 1.3,
   );
+}
+
+/// Shared, descriptive labels for actions that recur throughout the app.
+abstract final class PveActionLabels {
+  static const String refresh = 'Refresh data';
+  static const String close = 'Close';
+  static const String retry = 'Try again';
+  static const String viewAll = 'View all';
+  static const String workspaceSettings = 'Workspace settings';
+}
+
+/// A consistently sized icon action with both a spoken label and desktop tooltip.
+class PveIconAction extends StatelessWidget {
+  const PveIconAction({
+    super.key,
+    required this.icon,
+    required this.label,
+    required this.onPressed,
+    this.isDestructive = false,
+  });
+
+  final IconData icon;
+  final String label;
+  final VoidCallback? onPressed;
+  final bool isDestructive;
+
+  @override
+  Widget build(BuildContext context) {
+    final Color color = isDestructive
+        ? PveAppleColors.destructive(context)
+        : PveAppleColors.primary(context);
+    return Semantics(
+      button: true,
+      enabled: onPressed != null,
+      label: label,
+      child: Tooltip(
+        message: label,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(44, 44),
+          focusColor: PveAppleColors.primary(context).withValues(alpha: 0.55),
+          onPressed: onPressed,
+          child: Icon(icon, color: color),
+        ),
+      ),
+    );
+  }
+}
+
+/// Shows relative freshness visually while always exposing the exact time.
+class PveFreshnessLabel extends StatefulWidget {
+  const PveFreshnessLabel({
+    super.key,
+    required this.refreshedAt,
+    this.prefix = 'Data refreshed',
+  });
+
+  final DateTime refreshedAt;
+  final String prefix;
+
+  @override
+  State<PveFreshnessLabel> createState() => _PveFreshnessLabelState();
+}
+
+class _PveFreshnessLabelState extends State<PveFreshnessLabel> {
+  Timer? _updateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleUpdate();
+  }
+
+  @override
+  void didUpdateWidget(PveFreshnessLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshedAt != widget.refreshedAt) {
+      _scheduleUpdate();
+    }
+  }
+
+  @override
+  void dispose() {
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleUpdate() {
+    _updateTimer?.cancel();
+    final Duration age = DateTime.now().difference(widget.refreshedAt);
+    final Duration delay;
+    if (age.isNegative || age.inMinutes < 1) {
+      delay = const Duration(seconds: 1);
+    } else if (age.inHours < 1) {
+      delay = Duration(seconds: 60 - age.inSeconds.remainder(60));
+    } else {
+      delay = Duration(minutes: 60 - age.inMinutes.remainder(60));
+    }
+    _updateTimer = Timer(delay, () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleUpdate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final DateTime localTime = widget.refreshedAt.toLocal();
+    final String clock =
+        '${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}';
+    final String date = '${localTime.month}/${localTime.day}/${localTime.year}';
+    final Duration age = DateTime.now().difference(widget.refreshedAt);
+    final String relative = _relativeAge(age);
+    final String exact = '${widget.prefix} at $date, $clock';
+    return Semantics(
+      label: exact,
+      child: Tooltip(
+        message: exact,
+        child: ExcludeSemantics(
+          child: Text(
+            '${widget.prefix} $relative',
+            style: PveAppleText.caption(context),
+          ),
+        ),
+      ),
+    );
+  }
+
+  String _relativeAge(Duration age) {
+    if (age.isNegative || age.inSeconds < 10) return 'just now';
+    if (age.inMinutes < 1) return '${age.inSeconds}s ago';
+    if (age.inHours < 1) return '${age.inMinutes}m ago';
+    if (age.inDays < 1) return '${age.inHours}h ago';
+    return '${age.inDays}d ago';
+  }
 }
 
 class PvePrimaryScrollView extends StatelessWidget {
@@ -168,11 +323,13 @@ class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
     required this.groupValue,
     required this.children,
     required this.onValueChanged,
+    this.semanticLabels,
   });
 
   final T groupValue;
   final Map<T, Widget> children;
   final ValueChanged<T?> onValueChanged;
+  final Map<T, String>? semanticLabels;
 
   @override
   Widget build(BuildContext context) {
@@ -184,7 +341,17 @@ class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
       ),
       child: CupertinoSlidingSegmentedControl<T>(
         groupValue: groupValue,
-        children: children,
+        children: <T, Widget>{
+          for (final MapEntry<T, Widget> entry in children.entries)
+            entry.key: Semantics(
+              button: true,
+              selected: entry.key == groupValue,
+              label: semanticLabels?[entry.key],
+              child: semanticLabels?[entry.key] == null
+                  ? entry.value
+                  : ExcludeSemantics(child: entry.value),
+            ),
+        },
         onValueChanged: onValueChanged,
       ),
     );
@@ -207,7 +374,7 @@ class PveWideControlBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        if (constraints.maxWidth < 700) {
+        if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[primary, const SizedBox(height: 12), secondary],
@@ -231,12 +398,16 @@ class PveMetricStripItem {
     required this.value,
     required this.icon,
     this.color,
+    this.scope,
   });
 
   final String label;
   final String value;
   final IconData icon;
   final Color? color;
+
+  /// Clarifies the population behind a metric, for example "across 3 nodes".
+  final String? scope;
 }
 
 class PveMetricStrip extends StatelessWidget {
@@ -250,7 +421,7 @@ class PveMetricStrip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          if (constraints.maxWidth < 700) {
+          if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
             final double cellWidth = constraints.maxWidth / 2;
             return Wrap(
               runSpacing: 14,
@@ -295,7 +466,11 @@ class _PveMetricStripCell extends StatelessWidget {
     final Color color = item.color ?? PveAppleColors.primary(context);
     return Semantics(
       excludeSemantics: true,
-      label: '${item.label}: ${item.value}',
+      label: <String>[
+        item.label,
+        item.value,
+        if (item.scope != null) item.scope!,
+      ].join(': '),
       child: Padding(
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
@@ -312,6 +487,8 @@ class _PveMetricStripCell extends StatelessWidget {
                   Text(item.value, style: PveAppleText.title3(context)),
                   const SizedBox(height: 1),
                   Text(item.label, style: PveAppleText.caption(context)),
+                  if (item.scope != null)
+                    Text(item.scope!, style: PveAppleText.caption(context)),
                 ],
               ),
             ),
@@ -338,7 +515,7 @@ class PvePageHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Row(
+    final Widget header = Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         Expanded(
@@ -364,6 +541,8 @@ class PvePageHeader extends StatelessWidget {
         if (trailing != null) ...<Widget>[const SizedBox(width: 16), trailing!],
       ],
     );
+    if (!PveAppleLayout.usesExpandedPresentation(context)) return header;
+    return Align(alignment: Alignment.centerLeft, child: header);
   }
 }
 
@@ -383,23 +562,43 @@ class PveSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool hasAction = actionLabel != null && onAction != null;
+    final Widget titleWidget = PveSectionTitle(title: title);
+    final Widget action = Semantics(
+      button: true,
+      label: actionSemanticsLabel,
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+        minimumSize: const Size(44, 36),
+        onPressed: onAction,
+        child: Text(actionLabel ?? ''),
+      ),
+    );
     return Padding(
       padding: const EdgeInsets.fromLTRB(4, 0, 4, 8),
-      child: Row(
-        children: <Widget>[
-          Expanded(child: PveSectionTitle(title: title)),
-          if (actionLabel != null && onAction != null)
-            Semantics(
-              button: true,
-              label: actionSemanticsLabel,
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-                minimumSize: const Size(44, 36),
-                onPressed: onAction,
-                child: Text(actionLabel!),
-              ),
-            ),
-        ],
+      child: LayoutBuilder(
+        builder: (BuildContext context, BoxConstraints constraints) {
+          if (!hasAction) return titleWidget;
+          final bool stacksAction =
+              constraints.maxWidth < 420 ||
+              MediaQuery.textScalerOf(context).scale(14) >= 20;
+          if (stacksAction) {
+            return Column(
+              crossAxisAlignment: CrossAxisAlignment.stretch,
+              children: <Widget>[
+                titleWidget,
+                const SizedBox(height: 2),
+                Align(alignment: Alignment.centerRight, child: action),
+              ],
+            );
+          }
+          return Row(
+            children: <Widget>[
+              Expanded(child: titleWidget),
+              action,
+            ],
+          );
+        },
       ),
     );
   }
@@ -437,15 +636,18 @@ class PveInsetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BorderRadius borderRadius = BorderRadius.circular(14);
+    final bool desktop = PveAppleLayout.usesExpandedPresentation(context);
+    final BorderRadius borderRadius = BorderRadius.circular(desktop ? 12 : 14);
     final Color backgroundColor = color ?? PveAppleColors.surface(context);
     final BoxDecoration decoration = BoxDecoration(
       color: onTap == null ? backgroundColor : null,
       borderRadius: borderRadius,
-      border: Border.all(
-        color: PveAppleColors.separator(context).withValues(alpha: 0.35),
-        width: 0.5,
-      ),
+      border: desktop && onTap == null && color == null
+          ? null
+          : Border.all(
+              color: PveAppleColors.separator(context).withValues(alpha: 0.35),
+              width: 0.5,
+            ),
     );
     Widget content;
     if (onTap != null) {
@@ -457,6 +659,7 @@ class PveInsetGroup extends StatelessWidget {
           alignment: Alignment.centerLeft,
           borderRadius: borderRadius,
           pressedOpacity: 0.72,
+          focusColor: PveAppleColors.primary(context).withValues(alpha: 0.55),
           onPressed: onTap,
           child: DefaultTextStyle.merge(
             style: PveAppleText.body(context),
@@ -600,24 +803,44 @@ class PveRowSeparator extends StatelessWidget {
 }
 
 class PveStatusPill extends StatelessWidget {
-  const PveStatusPill({super.key, required this.label, required this.color});
+  const PveStatusPill({
+    super.key,
+    required this.label,
+    required this.color,
+    this.icon,
+    this.semanticLabel,
+  });
 
   final String label;
   final Color color;
+  final IconData? icon;
+  final String? semanticLabel;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.13),
-        borderRadius: BorderRadius.circular(999),
-      ),
-      child: Text(
-        label,
-        style: PveAppleText.caption(
-          context,
-        ).copyWith(color: color, fontWeight: FontWeight.w700),
+    return Semantics(
+      label: semanticLabel ?? label,
+      child: Container(
+        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 4),
+        decoration: BoxDecoration(
+          color: color.withValues(alpha: 0.13),
+          borderRadius: BorderRadius.circular(999),
+        ),
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            if (icon != null) ...<Widget>[
+              Icon(icon, size: 12, color: color),
+              const SizedBox(width: 4),
+            ],
+            Text(
+              label,
+              style: PveAppleText.caption(
+                context,
+              ).copyWith(color: color, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
       ),
     );
   }
@@ -656,6 +879,168 @@ class PveProgressBar extends StatelessWidget {
             ],
           ),
         ),
+      ),
+    );
+  }
+}
+
+/// A desktop-first two-pane composition for a list/table and its inspector.
+class PveInspectorLayout extends StatelessWidget {
+  const PveInspectorLayout({
+    super.key,
+    required this.primary,
+    required this.inspector,
+    this.inspectorWidth = 360,
+    this.spacing = 20,
+  });
+
+  final Widget primary;
+  final Widget inspector;
+  final double inspectorWidth;
+  final double spacing;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (!PveAppleLayout.usesExpandedWidth(constraints.maxWidth)) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              primary,
+              SizedBox(height: spacing),
+              inspector,
+            ],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(child: primary),
+            SizedBox(width: spacing),
+            SizedBox(width: inspectorWidth, child: inspector),
+          ],
+        );
+      },
+    );
+  }
+}
+
+/// A simple, accessible table shell for information-dense desktop screens.
+class PveDataTable extends StatelessWidget {
+  const PveDataTable({
+    super.key,
+    required this.columns,
+    required this.rows,
+    this.emptyState,
+  });
+
+  final List<String> columns;
+  final List<List<Widget>> rows;
+  final Widget? emptyState;
+
+  @override
+  Widget build(BuildContext context) {
+    assert(
+      rows.every((List<Widget> row) => row.length == columns.length),
+      'Every table row must contain one cell per column.',
+    );
+    if (rows.isEmpty && emptyState != null) return emptyState!;
+    return Semantics(
+      label: '${rows.length} row data table',
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 640),
+          child: Column(
+            children: <Widget>[
+              _PveDataTableRow(
+                header: true,
+                children: columns
+                    .map(
+                      (String label) => Semantics(
+                        header: true,
+                        child: Text(
+                          label,
+                          style: PveAppleText.caption(context),
+                        ),
+                      ),
+                    )
+                    .toList(growable: false),
+              ),
+              for (final List<Widget> row in rows)
+                _PveDataTableRow(children: row),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PveDataTableRow extends StatelessWidget {
+  const _PveDataTableRow({required this.children, this.header = false});
+
+  final List<Widget> children;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) {
+    return DecoratedBox(
+      decoration: BoxDecoration(
+        color: header ? PveAppleColors.surface(context) : null,
+        border: Border(
+          bottom: BorderSide(
+            color: PveAppleColors.separator(context).withValues(alpha: 0.5),
+            width: 0.5,
+          ),
+        ),
+      ),
+      child: Row(
+        children: <Widget>[
+          for (final Widget child in children)
+            Expanded(
+              child: Padding(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 11,
+                ),
+                child: DefaultTextStyle.merge(
+                  style: header
+                      ? PveAppleText.caption(context)
+                      : PveAppleText.body(context),
+                  child: child,
+                ),
+              ),
+            ),
+        ],
+      ),
+    );
+  }
+}
+
+class PveDangerAction extends StatelessWidget {
+  const PveDangerAction({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.explanation,
+  });
+
+  final String label;
+  final VoidCallback? onPressed;
+  final String? explanation;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: explanation == null ? label : '$label. $explanation',
+      child: CupertinoButton(
+        color: PveAppleColors.destructive(context),
+        onPressed: onPressed,
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+        child: Text(label),
       ),
     );
   }
@@ -713,38 +1098,43 @@ class PveEmptyState extends StatelessWidget {
     final Color color = destructive
         ? PveAppleColors.destructive(context)
         : PveAppleColors.primary(context);
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 420),
-        child: Padding(
-          padding: const EdgeInsets.all(28),
-          child: Column(
-            mainAxisSize: MainAxisSize.min,
-            children: <Widget>[
-              Icon(icon, size: 40, color: color),
-              const SizedBox(height: 16),
-              Semantics(
-                header: true,
-                child: Text(
-                  title,
+    return Semantics(
+      container: true,
+      liveRegion: true,
+      label: destructive ? 'Attention: $title. $message' : '$title. $message',
+      child: Center(
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(maxWidth: 420),
+          child: Padding(
+            padding: const EdgeInsets.all(28),
+            child: Column(
+              mainAxisSize: MainAxisSize.min,
+              children: <Widget>[
+                Icon(icon, size: 40, color: color),
+                const SizedBox(height: 16),
+                Semantics(
+                  header: true,
+                  child: Text(
+                    title,
+                    textAlign: TextAlign.center,
+                    style: PveAppleText.title2(context),
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  message,
                   textAlign: TextAlign.center,
-                  style: PveAppleText.title2(context),
+                  style: PveAppleText.secondary(context),
                 ),
-              ),
-              const SizedBox(height: 8),
-              Text(
-                message,
-                textAlign: TextAlign.center,
-                style: PveAppleText.secondary(context),
-              ),
-              if (actionLabel != null && onAction != null) ...<Widget>[
-                const SizedBox(height: 20),
-                CupertinoButton.filled(
-                  onPressed: onAction,
-                  child: Text(actionLabel!),
-                ),
+                if (actionLabel != null && onAction != null) ...<Widget>[
+                  const SizedBox(height: 20),
+                  CupertinoButton.filled(
+                    onPressed: onAction,
+                    child: Text(actionLabel!),
+                  ),
+                ],
               ],
-            ],
+            ),
           ),
         ),
       ),

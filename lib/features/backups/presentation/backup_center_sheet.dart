@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
@@ -70,11 +71,10 @@ class _BackupCenterSheetState extends State<_BackupCenterSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
+              label: 'Refresh backup center',
               onPressed: _controller.load,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
             ),
             CupertinoButton(
               padding: EdgeInsets.zero,
@@ -148,6 +148,8 @@ class _BackupCenterContent extends StatelessWidget {
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
+        _BackupReadinessSummary(snapshot: snapshot),
+        const SizedBox(height: 18),
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -182,16 +184,121 @@ class _BackupCenterContent extends StatelessWidget {
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Scheduled backups'),
         const SizedBox(height: 8),
-        _BackupSchedulesCard(schedules: snapshot.schedules),
+        _BackupSchedulesCard(
+          schedules: snapshot.schedules,
+          dataState: snapshot.scheduleDataState,
+        ),
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Latest backup copies'),
         const SizedBox(height: 8),
-        _BackupRecordsCard(records: snapshot.records),
+        _BackupRecordsCard(
+          records: snapshot.records,
+          dataState: snapshot.recordDataState,
+        ),
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Recent backup activity'),
         const SizedBox(height: 8),
         _BackupTasksCard(tasks: snapshot.recentTasks),
       ],
+    );
+  }
+}
+
+class _BackupReadinessSummary extends StatelessWidget {
+  const _BackupReadinessSummary({required this.snapshot});
+
+  final PveBackupCenterSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final PveBackupReadiness readiness = snapshot.readiness;
+    final ({String title, String detail, Color color, IconData icon})
+    content = switch (readiness) {
+      PveBackupReadiness.noDestination => (
+        title: 'No backup destination reported',
+        detail:
+            'No storage accepting backup content is reported. Set up a destination before expecting scheduled copies.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.archivebox,
+      ),
+      PveBackupReadiness.configurationUnreadable => (
+        title: 'Backup configuration unreadable',
+        detail:
+            'This account cannot read backup schedules, so readiness cannot be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.lock,
+      ),
+      PveBackupReadiness.configurationUnavailable => (
+        title: 'Backup configuration unavailable',
+        detail:
+            'The server did not make backup schedules available, so readiness cannot be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.noSchedule => (
+        title: 'No backup schedule reported',
+        detail:
+            'A destination is reported, but no backup schedule is currently reported.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.calendar_badge_minus,
+      ),
+      PveBackupReadiness.copiesUnreadable => (
+        title: 'Backup copies unreadable',
+        detail:
+            'This account cannot read stored backup copies. Access is needed to verify reported copies.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.lock,
+      ),
+      PveBackupReadiness.copiesUnavailable => (
+        title: 'Backup copies unavailable',
+        detail:
+            'The server did not make stored backup copies available, so no copy coverage can be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.copiesPartiallyReported => (
+        title: 'Backup copies only partially reported',
+        detail:
+            '${snapshot.records.length} ${snapshot.records.length == 1 ? 'copy is' : 'copies are'} reported, but one or more destinations could not be checked. Reported copies do not prove restore readiness.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.copiesReported => (
+        title: 'Backup copies reported',
+        detail:
+            '${snapshot.records.length} ${snapshot.records.length == 1 ? 'copy is' : 'copies are'} reported. Reported copies do not prove restore readiness.',
+        color: PveAppleColors.success(context),
+        icon: CupertinoIcons.check_mark_circled,
+      ),
+      PveBackupReadiness.copiesNotReported => (
+        title: 'No backup copies reported',
+        detail:
+            'Backup configuration is reported, but no copies are currently reported by readable destinations.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+    };
+    return PveInsetGroup(
+      key: const ValueKey<String>('backup-readiness-summary'),
+      color: content.color.withValues(alpha: 0.08),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(content.icon, color: content.color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(content.title, style: PveAppleText.title3(context)),
+                const SizedBox(height: 4),
+                Text(content.detail, style: PveAppleText.secondary(context)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -204,12 +311,7 @@ class _BackupDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (destinations.isEmpty) {
-      return const PveInsetGroup(
-        padding: EdgeInsets.all(16),
-        child: Text(
-          'No Proxmox storage configured for backup content was reported.',
-        ),
-      );
+      return const _BackupSetupChecklist();
     }
     return PveInsetGroup(
       padding: EdgeInsets.zero,
@@ -277,18 +379,196 @@ class _BackupDestinationCard extends StatelessWidget {
   }
 }
 
+class _BackupSetupChecklist extends StatefulWidget {
+  const _BackupSetupChecklist();
+
+  @override
+  State<_BackupSetupChecklist> createState() => _BackupSetupChecklistState();
+}
+
+class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
+  bool _copiedStoragePath = false;
+  bool _copiedBackupPath = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      color: PveAppleColors.warning(context).withValues(alpha: 0.08),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                CupertinoIcons.archivebox,
+                color: PveAppleColors.warning(context),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Set up backup storage',
+                style: PveAppleText.title3(context),
+              ),
+              const Spacer(),
+              PveStatusPill(
+                label: 'Not configured',
+                color: PveAppleColors.warning(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'This app cannot create storage or schedules. Complete these safe setup steps in the Proxmox web interface, then return here to verify what is reported.',
+            style: PveAppleText.secondary(context),
+          ),
+          const SizedBox(height: 14),
+          const _BackupSetupStep(
+            number: '1',
+            title: 'Open Datacenter → Storage',
+            detail:
+                'Add or enable a storage target that accepts backup content.',
+          ),
+          const SizedBox(height: 10),
+          const _BackupSetupStep(
+            number: '2',
+            title: 'Open Datacenter → Backup',
+            detail: 'Create a schedule and select the storage destination.',
+          ),
+          const SizedBox(height: 10),
+          const _BackupSetupStep(
+            number: '3',
+            title: 'Return and refresh Backup Center',
+            detail:
+                'PVE Companion will show the destinations, schedules, and copies your account can read.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                minimumSize: const Size(44, 36),
+                onPressed: () => _copyPath(
+                  label: 'Datacenter → Storage',
+                  onCopied: () => setState(() => _copiedStoragePath = true),
+                ),
+                child: Text(
+                  _copiedStoragePath
+                      ? 'Storage path copied'
+                      : 'Copy storage path',
+                ),
+              ),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                minimumSize: const Size(44, 36),
+                onPressed: () => _copyPath(
+                  label: 'Datacenter → Backup',
+                  onCopied: () => setState(() => _copiedBackupPath = true),
+                ),
+                child: Text(
+                  _copiedBackupPath ? 'Backup path copied' : 'Copy backup path',
+                ),
+              ),
+            ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'These buttons copy navigation text; they do not open or change Proxmox.',
+            style: PveAppleText.caption(context),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyPath({
+    required String label,
+    required VoidCallback onCopied,
+  }) async {
+    await Clipboard.setData(ClipboardData(text: label));
+    if (mounted) {
+      onCopied();
+    }
+  }
+}
+
+class _BackupSetupStep extends StatelessWidget {
+  const _BackupSetupStep({
+    required this.number,
+    required this.title,
+    required this.detail,
+  });
+
+  final String number;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: PveAppleColors.primary(context).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: SizedBox.square(
+            dimension: 24,
+            child: Center(
+              child: Text(number, style: PveAppleText.caption(context)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: PveAppleText.body(context)),
+              const SizedBox(height: 2),
+              Text(detail, style: PveAppleText.secondary(context)),
+            ],
+          ),
+        ),
+      ],
+    );
+  }
+}
+
 class _BackupSchedulesCard extends StatelessWidget {
-  const _BackupSchedulesCard({required this.schedules});
+  const _BackupSchedulesCard({
+    required this.schedules,
+    required this.dataState,
+  });
 
   final List<PveBackupSchedule> schedules;
+  final PveBackupDataState dataState;
 
   @override
   Widget build(BuildContext context) {
     if (schedules.isEmpty) {
-      return const PveInsetGroup(
+      return PveInsetGroup(
         padding: EdgeInsets.all(16),
         child: Text(
-          'No backup schedules were reported, or this account cannot read them.',
+          _emptyBackupDataMessage(
+            dataState,
+            emptyMessage: 'No backup schedules are configured.',
+            notConfiguredMessage: 'Backup schedules are not configured.',
+            unavailableMessage:
+                'Backup schedules are not available from this server.',
+            permissionMessage:
+                'This account cannot read backup schedules. Ask an administrator to grant backup job access.',
+            partiallyAvailableMessage:
+                'Some backup schedules could not be read. Refresh to try again.',
+          ),
         ),
       );
     }
@@ -317,17 +597,30 @@ class _BackupSchedulesCard extends StatelessWidget {
 }
 
 class _BackupRecordsCard extends StatelessWidget {
-  const _BackupRecordsCard({required this.records});
+  const _BackupRecordsCard({required this.records, required this.dataState});
 
   final List<PveBackupRecord> records;
+  final PveBackupDataState dataState;
 
   @override
   Widget build(BuildContext context) {
     if (records.isEmpty) {
-      return const PveInsetGroup(
+      return PveInsetGroup(
         padding: EdgeInsets.all(16),
         child: Text(
-          'No backup copies were reported by the configured destinations.',
+          _emptyBackupDataMessage(
+            dataState,
+            emptyMessage:
+                'No backup copies were found in the configured destinations.',
+            notConfiguredMessage:
+                'Configure a storage target that accepts backup content to view backup copies.',
+            unavailableMessage:
+                'Backup copies could not be loaded from the configured destinations.',
+            permissionMessage:
+                'This account cannot read backup copies. Ask an administrator to grant storage-content access.',
+            partiallyAvailableMessage:
+                'Some configured destinations could not be read, so this list may be incomplete.',
+          ),
         ),
       );
     }
@@ -335,6 +628,19 @@ class _BackupRecordsCard extends StatelessWidget {
       padding: EdgeInsets.zero,
       child: Column(
         children: <Widget>[
+          if (dataState == PveBackupDataState.partiallyAvailable) ...<Widget>[
+            PveListRow(
+              leading: Icon(
+                CupertinoIcons.exclamationmark_triangle,
+                color: PveAppleColors.warning(context),
+              ),
+              title: const Text('Some backup destinations could not be read'),
+              subtitle: const Text(
+                'The copies shown may be incomplete. Check storage-content access, then refresh.',
+              ),
+            ),
+            const PveRowSeparator(),
+          ],
           for (int index = 0; index < records.length; index++) ...<Widget>[
             PveListRow(
               leading: Icon(
@@ -396,6 +702,21 @@ class _BackupTasksCard extends StatelessWidget {
     );
   }
 }
+
+String _emptyBackupDataMessage(
+  PveBackupDataState dataState, {
+  required String emptyMessage,
+  required String notConfiguredMessage,
+  required String unavailableMessage,
+  required String permissionMessage,
+  required String partiallyAvailableMessage,
+}) => switch (dataState) {
+  PveBackupDataState.available => emptyMessage,
+  PveBackupDataState.partiallyAvailable => partiallyAvailableMessage,
+  PveBackupDataState.unavailable => unavailableMessage,
+  PveBackupDataState.permissionLimited => permissionMessage,
+  PveBackupDataState.notConfigured => notConfiguredMessage,
+};
 
 String _scheduleSubtitle(PveBackupSchedule schedule) {
   final List<String> fragments = <String>[

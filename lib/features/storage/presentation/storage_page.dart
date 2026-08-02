@@ -74,9 +74,9 @@ class _StoragePageState extends State<StoragePage> {
     List<ClusterStorage> storages, {
     required bool usesExpandedPresentation,
   }) {
-    final List<ClusterStorage> visibleStorages = storages
-        .where(_matchesFilter)
-        .toList(growable: false);
+    final List<ClusterStorage> visibleStorages =
+        storages.where(_matchesFilter).toList(growable: false)
+          ..sort(_compareStorageRisk);
     final int fullyAvailableCount = storages
         .where(
           (ClusterStorage storage) =>
@@ -86,22 +86,38 @@ class _StoragePageState extends State<StoragePage> {
     final int availabilityReportedCount = storages
         .where((ClusterStorage storage) => storage.hasAvailabilityTelemetry)
         .length;
-    final bool hasCapacityTelemetry = storages.any(
-      (ClusterStorage storage) =>
-          storage.usedBytes != null && storage.capacityBytes != null,
-    );
-    final int aggregateUsedBytes = storages.fold<int>(
+    final List<ClusterStorage> storagesWithCapacity = storages
+        .where(
+          (ClusterStorage storage) =>
+              storage.usedBytes != null && storage.capacityBytes != null,
+        )
+        .toList(growable: false);
+    final bool hasCapacityTelemetry = storagesWithCapacity.isNotEmpty;
+    final int aggregateUsedBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
-    final int aggregateAvailableBytes = storages.fold<int>(
+    final int aggregateAvailableBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) =>
-          total + (storage.availableBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.availableBytes!,
     );
+    final List<ClusterStorage> backupDestinations = storages
+        .where(_supportsBackup)
+        .toList(growable: false);
+    final List<ClusterStorage> availableBackupDestinations = backupDestinations
+        .where(_isAvailableBackupDestination)
+        .toList(growable: false);
+    final int backupDestinationsWithUnknownAvailability = backupDestinations
+        .where((ClusterStorage storage) => !storage.hasAvailabilityTelemetry)
+        .length;
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
       key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
+      semanticLabels: const <_StorageFilter, String>{
+        _StorageFilter.all: 'All storage pools',
+        _StorageFilter.shared: 'Shared storage pools',
+        _StorageFilter.local: 'Local storage pools',
+      },
       children: const <_StorageFilter, Widget>{
         _StorageFilter.all: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -135,12 +151,13 @@ class _StoragePageState extends State<StoragePage> {
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Configured',
+              label: 'Configured pools',
               value: '${storages.length}',
               icon: CupertinoIcons.tray_full_fill,
+              scope: 'Reported by this server',
             ),
             PveMetricStripItem(
-              label: 'Available',
+              label: 'Availability coverage',
               value: availabilityReportedCount == 0
                   ? '—'
                   : '$fullyAvailableCount/$availabilityReportedCount',
@@ -150,20 +167,31 @@ class _StoragePageState extends State<StoragePage> {
                   : fullyAvailableCount == availabilityReportedCount
                   ? PveAppleColors.success(context)
                   : PveAppleColors.warning(context),
+              scope: availabilityReportedCount == 0
+                  ? 'No pool status reported'
+                  : 'Fully available now',
             ),
             PveMetricStripItem(
-              label: 'Used',
+              label: 'Capacity used now',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateUsedBytes)
                   : '—',
               icon: CupertinoIcons.chart_pie_fill,
+              scope: _capacityCoverageLabel(
+                reportingCount: storagesWithCapacity.length,
+                totalCount: storages.length,
+              ),
             ),
             PveMetricStripItem(
-              label: 'Free',
+              label: 'Capacity free now',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateAvailableBytes)
                   : '—',
               icon: CupertinoIcons.tray,
+              scope: _capacityCoverageLabel(
+                reportingCount: storagesWithCapacity.length,
+                totalCount: storages.length,
+              ),
             ),
           ],
         ),
@@ -171,7 +199,7 @@ class _StoragePageState extends State<StoragePage> {
           const SizedBox(height: 24),
           PveSectionHeader(
             title: 'Data protection',
-            actionLabel: 'Backup Center',
+            actionLabel: 'Open Backup Center',
             actionSemanticsLabel: 'Open Backup Center',
             onAction: _showBackupCenter,
           ),
@@ -179,6 +207,7 @@ class _StoragePageState extends State<StoragePage> {
             onTap: _showBackupCenter,
             padding: const EdgeInsets.all(16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -205,9 +234,17 @@ class _StoragePageState extends State<StoragePage> {
                         'Backup Center',
                         style: PveAppleText.title3(context),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 5),
+                      _BackupDestinationReadiness(
+                        configuredDestinations: backupDestinations.length,
+                        availableDestinations:
+                            availableBackupDestinations.length,
+                        unknownAvailabilityDestinations:
+                            backupDestinationsWithUnknownAvailability,
+                      ),
+                      const SizedBox(height: 6),
                       Text(
-                        'Review backup destinations, schedules, copies, and activity.',
+                        'Destination availability is based on the latest storage report. Open Backup Center to review schedules, copies, and backup activity.',
                         style: PveAppleText.secondary(context),
                       ),
                     ],
@@ -232,6 +269,15 @@ class _StoragePageState extends State<StoragePage> {
           primary: const PveSectionTitle(title: 'Storage pools'),
           secondary: filter,
         ),
+        const SizedBox(height: 8),
+        Text(
+          _storageCountLabel(
+            visibleCount: visibleStorages.length,
+            totalCount: storages.length,
+          ),
+          key: const ValueKey<String>('storage-result-count'),
+          style: PveAppleText.secondary(context),
+        ),
         const SizedBox(height: 16),
         if (storages.isEmpty)
           const PveInsetGroup(
@@ -250,7 +296,9 @@ class _StoragePageState extends State<StoragePage> {
         else
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns = constraints.maxWidth >= 700;
+              final bool twoColumns =
+                  constraints.maxWidth >=
+                  PveAppleLayout.controlBarStackBreakpoint;
               final double cardWidth = twoColumns
                   ? (constraints.maxWidth - 12) / 2
                   : constraints.maxWidth;
@@ -292,6 +340,33 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.local => !storage.shared,
   };
 
+  bool _supportsBackup(ClusterStorage storage) => storage.content
+      .toLowerCase()
+      .split(',')
+      .map((String item) => item.trim())
+      .contains('backup');
+
+  bool _isAvailableBackupDestination(ClusterStorage storage) =>
+      _supportsBackup(storage) &&
+      storage.hasAvailabilityTelemetry &&
+      storage.isAvailable;
+
+  int _compareStorageRisk(ClusterStorage left, ClusterStorage right) {
+    final int riskComparison = _storageRiskRank(
+      left,
+    ).compareTo(_storageRiskRank(right));
+    if (riskComparison != 0) {
+      return riskComparison;
+    }
+    final double leftUsage = left.usageFraction ?? -1;
+    final double rightUsage = right.usageFraction ?? -1;
+    final int usageComparison = rightUsage.compareTo(leftUsage);
+    if (usageComparison != 0) {
+      return usageComparison;
+    }
+    return left.name.toLowerCase().compareTo(right.name.toLowerCase());
+  }
+
   Future<void> _showBackupCenter() async {
     final ProxmoxSession? session = widget.session;
     final ClusterOverviewSnapshot? overview = widget.controller.snapshot;
@@ -299,6 +374,53 @@ class _StoragePageState extends State<StoragePage> {
       return;
     }
     await showBackupCenterSheet(context, session: session, overview: overview);
+  }
+}
+
+class _BackupDestinationReadiness extends StatelessWidget {
+  const _BackupDestinationReadiness({
+    required this.configuredDestinations,
+    required this.availableDestinations,
+    required this.unknownAvailabilityDestinations,
+  });
+
+  final int configuredDestinations;
+  final int availableDestinations;
+  final int unknownAvailabilityDestinations;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasAvailableDestination = availableDestinations > 0;
+    final bool hasConfiguredDestination = configuredDestinations > 0;
+    final bool hasUnknownAvailability = unknownAvailabilityDestinations > 0;
+    final String label = hasAvailableDestination
+        ? 'Destination ready'
+        : hasUnknownAvailability
+        ? 'Availability not reported'
+        : hasConfiguredDestination
+        ? 'Destination needs attention'
+        : 'Backup setup needed';
+    final Color color = hasAvailableDestination
+        ? PveAppleColors.success(context)
+        : hasUnknownAvailability
+        ? PveAppleColors.secondaryLabel(context)
+        : hasConfiguredDestination
+        ? PveAppleColors.warning(context)
+        : PveAppleColors.destructive(context);
+    final String detail = hasAvailableDestination
+        ? '$availableDestinations ${availableDestinations == 1 ? 'available destination' : 'available destinations'} reported.'
+        : hasUnknownAvailability
+        ? '$unknownAvailabilityDestinations ${unknownAvailabilityDestinations == 1 ? 'configured destination does' : 'configured destinations do'} not report availability.'
+        : hasConfiguredDestination
+        ? '$configuredDestinations ${configuredDestinations == 1 ? 'configured destination is' : 'configured destinations are'} not currently reported available.'
+        : 'No storage reports backup content.';
+    return Row(
+      children: <Widget>[
+        PveStatusPill(label: label, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(detail, style: PveAppleText.caption(context))),
+      ],
+    );
   }
 }
 
@@ -379,7 +501,7 @@ class _StorageCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  'Capacity used',
+                  'Capacity used now',
                   style: PveAppleText.caption(context),
                 ),
               ),
@@ -411,3 +533,45 @@ class _StorageCard extends StatelessWidget {
 }
 
 enum _StorageFilter { all, shared, local }
+
+int _storageRiskRank(ClusterStorage storage) {
+  if (storage.hasAvailabilityTelemetry && !storage.isAvailable) {
+    return 0;
+  }
+  if (storage.isPartiallyAvailable) {
+    return 1;
+  }
+  final double? usage = storage.usageFraction;
+  if (usage != null && usage >= 0.9) {
+    return 2;
+  }
+  if (usage != null && usage >= 0.75) {
+    return 3;
+  }
+  if (!storage.hasAvailabilityTelemetry || usage == null) {
+    return 4;
+  }
+  return 5;
+}
+
+String _storageCountLabel({
+  required int visibleCount,
+  required int totalCount,
+}) {
+  final String noun = totalCount == 1 ? 'pool' : 'pools';
+  if (visibleCount == totalCount) {
+    return 'Showing all $totalCount storage $noun · highest risk first';
+  }
+  return 'Showing $visibleCount of $totalCount storage $noun · highest risk first';
+}
+
+String _capacityCoverageLabel({
+  required int reportingCount,
+  required int totalCount,
+}) {
+  if (reportingCount == 0) {
+    return 'No capacity reported';
+  }
+  return '$reportingCount of $totalCount '
+      '${totalCount == 1 ? 'pool reports capacity' : 'pools report capacity'}';
+}
