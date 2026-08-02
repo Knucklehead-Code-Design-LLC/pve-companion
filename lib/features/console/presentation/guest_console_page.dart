@@ -9,6 +9,7 @@ import '../../guests/domain/pve_guest.dart';
 import '../application/guest_console_controller.dart';
 import '../data/proxmox_guest_console_repository.dart';
 import '../data/proxmox_rfb_client.dart';
+import '../data/rfb_key_sym.dart';
 import 'rfb_framebuffer_view.dart';
 
 Future<void> showGuestConsolePage(
@@ -51,7 +52,7 @@ class _GuestConsolePageState extends State<GuestConsolePage>
   final FocusNode _textInputFocusNode = FocusNode(
     debugLabel: 'guest-console-text-input',
   );
-  String _previousTextInput = '';
+  List<int> _previousTextInputCodePoints = const <int>[];
   bool _clearingTextInput = false;
   bool _showsTextInput = false;
   bool _closedForBackground = false;
@@ -220,21 +221,22 @@ class _GuestConsolePageState extends State<GuestConsolePage>
     if (_clearingTextInput) {
       return;
     }
-    final int sharedLength = _commonPrefixLength(
-      _previousTextInput,
-      currentText,
+    final List<int> currentCodePoints = currentText.runes.toList(
+      growable: false,
     );
-    final int removedLength = _previousTextInput.length - sharedLength;
+    final int sharedLength = _commonPrefixLength(
+      _previousTextInputCodePoints,
+      currentCodePoints,
+    );
+    final int removedLength =
+        _previousTextInputCodePoints.length - sharedLength;
     for (int index = 0; index < removedLength; index += 1) {
       _controller.sendKeyStroke(0xff08);
     }
-    final String addedText = currentText.substring(sharedLength);
-    for (final int codePoint in addedText.runes) {
-      _controller.sendKeyStroke(
-        codePoint <= 0xff ? codePoint : 0x01000000 | codePoint,
-      );
+    for (final int codePoint in currentCodePoints.skip(sharedLength)) {
+      _controller.sendKeyStroke(rfbKeySymForCodePoint(codePoint));
     }
-    _previousTextInput = currentText;
+    _previousTextInputCodePoints = currentCodePoints;
   }
 
   void _submitTypedText() {
@@ -289,15 +291,15 @@ class _GuestConsolePageState extends State<GuestConsolePage>
 
   void _clearTextInput() {
     _clearingTextInput = true;
-    _previousTextInput = '';
+    _previousTextInputCodePoints = const <int>[];
     _textInputController.clear();
     _clearingTextInput = false;
   }
 
-  int _commonPrefixLength(String left, String right) {
+  int _commonPrefixLength(List<int> left, List<int> right) {
     final int limit = left.length < right.length ? left.length : right.length;
     int index = 0;
-    while (index < limit && left.codeUnitAt(index) == right.codeUnitAt(index)) {
+    while (index < limit && left[index] == right[index]) {
       index += 1;
     }
     return index;

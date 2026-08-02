@@ -1,23 +1,22 @@
-import 'dart:async';
 import 'dart:typed_data';
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pve_companion/core/api/proxmox_session.dart';
-import 'package:pve_companion/features/console/data/proxmox_guest_console_repository.dart';
 import 'package:pve_companion/features/console/presentation/guest_console_page.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
+
+import 'console_test_fixtures.dart';
 
 void main() {
   testWidgets('closes the in-app console when the app backgrounds', (
     WidgetTester tester,
   ) async {
-    final _PendingConsoleRepository repository = _PendingConsoleRepository();
+    final DeferredConsoleRepository repository = DeferredConsoleRepository();
     await tester.pumpWidget(
       CupertinoApp(
         home: GuestConsolePage(
           guest: _guest,
-          session: _FakeSession(),
+          session: FakeProxmoxSession(),
           repository: repository,
         ),
       ),
@@ -30,11 +29,61 @@ void main() {
     await tester.pump();
 
     expect(find.text('Console closed for privacy'), findsOneWidget);
-    final _MemoryTransport transport = _MemoryTransport();
+    final MemoryConsoleTransport transport = MemoryConsoleTransport();
     repository.request.complete(transport);
     await tester.pump();
     await tester.pump();
     expect(transport.closed, isTrue);
+  });
+
+  testWidgets('sends complete Unicode code points when replacing typed text', (
+    WidgetTester tester,
+  ) async {
+    final DeferredConsoleRepository repository = DeferredConsoleRepository();
+    final MemoryConsoleTransport transport = MemoryConsoleTransport();
+    repository.request.complete(transport);
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: GuestConsolePage(
+          guest: _guest,
+          session: FakeProxmoxSession(),
+          repository: repository,
+        ),
+      ),
+    );
+    await tester.pump();
+    await tester.pump();
+    transport.addBytes(rfbServerHandshake(width: 80, height: 24));
+    await tester.pump();
+    await tester.pump();
+
+    await tester.tap(find.text('Keyboard'));
+    await tester.pump();
+    final Finder textInput = find.byType(CupertinoTextField);
+    expect(textInput, findsOneWidget);
+
+    await tester.enterText(textInput, '😀');
+    await tester.enterText(textInput, '😃');
+
+    final List<Uint8List> keyMessages = transport.sent
+        .where((Uint8List message) => message.first == 4)
+        .toList(growable: false);
+    expect(
+      _keySymbols(keyMessages),
+      orderedEquals(<int>[
+        0x0101f600,
+        0x0101f600,
+        0xff08,
+        0xff08,
+        0x0101f603,
+        0x0101f603,
+      ]),
+    );
+    expect(
+      keyMessages.map((Uint8List message) => message[1]),
+      orderedEquals(<int>[1, 0, 1, 0, 1, 0]),
+    );
   });
 }
 
@@ -45,57 +94,8 @@ const PveGuest _guest = PveGuest(
   status: 'running',
 );
 
-class _PendingConsoleRepository implements PveGuestConsoleRepository {
-  final Completer<ProxmoxConsoleTransport> request =
-      Completer<ProxmoxConsoleTransport>();
-
-  @override
-  Future<ProxmoxConsoleTransport> open(
-    ProxmoxSession session,
-    PveGuest guest,
-  ) => request.future;
-}
-
-class _FakeSession implements ProxmoxSession {
-  @override
-  void close() {}
-
-  @override
-  Future<Object?> getData(
-    String resource, {
-    Map<String, String> query = const <String, String>{},
-  }) async => null;
-
-  @override
-  Future<Object?> postForm(
-    String resource, {
-    required Map<String, String> fields,
-  }) async => null;
-}
-
-class _MemoryTransport implements ProxmoxConsoleTransport {
-  final StreamController<Uint8List> _messages =
-      StreamController<Uint8List>.broadcast();
-  bool closed = false;
-
-  @override
-  Stream<Uint8List> get messages => _messages.stream;
-
-  @override
-  Future<void> close() async {
-    if (closed) {
-      return;
-    }
-    closed = true;
-    await _messages.close();
-  }
-
-  @override
-  void discardVncTicket() {}
-
-  @override
-  Uint8List respondToVncChallenge(Uint8List challenge) => Uint8List(16);
-
-  @override
-  void send(Uint8List message) {}
+List<int> _keySymbols(List<Uint8List> messages) {
+  return messages
+      .map((Uint8List message) => ByteData.sublistView(message).getUint32(4))
+      .toList(growable: false);
 }

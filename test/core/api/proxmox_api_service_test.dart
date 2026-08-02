@@ -4,6 +4,7 @@ import 'dart:io';
 import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
+import 'package:pve_companion/core/api/proxmox_api_exception.dart';
 import 'package:pve_companion/core/api/proxmox_api_service.dart';
 import 'package:pve_companion/core/api/proxmox_authentication.dart';
 
@@ -253,6 +254,51 @@ void main() {
     final _ConsoleRequest request = await socketRequest.future;
     expect(request.authorization, authorization);
     expect(request.cookie, isNull);
+  });
+
+  test('rejects a fractional guest-console port', () async {
+    final HttpServer server = await HttpServer.bind(
+      InternetAddress.loopbackIPv4,
+      0,
+    );
+    addTearDown(() => server.close(force: true));
+    final StreamSubscription<HttpRequest> serverSubscription = server.listen((
+      HttpRequest request,
+    ) async {
+      await utf8.decoder.bind(request).drain<void>();
+      if (request.uri.path == '/api2/json/nodes/node-a/qemu/101/vncproxy') {
+        await _respondJson(request, <String, Object?>{
+          'data': <String, Object>{
+            'ticket': 'PVEVNC:test-ticket',
+            'port': 5900.5,
+          },
+        });
+        return;
+      }
+      request.response.statusCode = HttpStatus.notFound;
+      await request.response.close();
+    });
+    addTearDown(serverSubscription.cancel);
+
+    final ProxmoxApiService service = ProxmoxApiService(
+      endpoint: Uri(scheme: 'http', host: '127.0.0.1', port: server.port),
+      authentication: const ProxmoxApiTokenAuthentication(
+        tokenId: 'root@pam!mobile',
+        secret: 'token-secret',
+      ),
+    );
+    addTearDown(service.close);
+
+    await expectLater(
+      service.openConsole(node: 'node-a', resource: 'qemu', vmid: 101),
+      throwsA(
+        isA<ProxmoxMalformedResponseException>().having(
+          (ProxmoxMalformedResponseException error) => error.message,
+          'message',
+          'The console ticket response did not contain a usable port.',
+        ),
+      ),
+    );
   });
 }
 

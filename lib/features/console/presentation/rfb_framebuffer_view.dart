@@ -6,6 +6,7 @@ import 'package:flutter/services.dart';
 
 import '../application/guest_console_controller.dart';
 import '../data/proxmox_rfb_client.dart';
+import '../data/rfb_key_sym.dart';
 
 class RfbFramebufferView extends StatefulWidget {
   const RfbFramebufferView({
@@ -232,6 +233,6 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
       return null;
     }
     final int codePoint = character.runes.first;
-    return codePoint <= 0xff ? codePoint : 0x01000000 | codePoint;
+    return rfbKeySymForCodePoint(codePoint);
   }
 }

@@ -386,12 +386,12 @@ class ProxmoxApiService
   }
 
   static int _requirePort(Object? value) {
-    final int? port = switch (value) {
-      final int value => value,
-      final num value => value.toInt(),
-      final String value => int.tryParse(value),
-      _ => null,
-    };
+    int? port;
+    if (value is int) {
+      port = value;
+    } else if (value is String) {
+      port = int.tryParse(value);
+    }
     if (port == null || port < 1 || port > 65535) {
       throw const ProxmoxMalformedResponseException(
         'The console ticket response did not contain a usable port.',
