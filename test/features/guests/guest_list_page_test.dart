@@ -157,6 +157,40 @@ void main() {
     expect(tester.takeException(), isNull);
     debugDefaultTargetPlatformOverride = null;
   });
+
+  testWidgets('offers desktop inventory sorting by host and resource use', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: GuestListPage(
+            overviewController: controller,
+            session: const _GuestListSession(),
+            onRefresh: () async {},
+            onGuestPowerAction: () async {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(
+      find.byKey(const ValueKey<String>('guest-inventory-sort')),
+    );
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sort guest inventory'), findsOneWidget);
+    expect(find.text('Host'), findsOneWidget);
+    expect(find.text('Resource use'), findsOneWidget);
+  });
 }
 
 Widget _largeTextBuilder(BuildContext context, Widget? child) {

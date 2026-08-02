@@ -37,6 +37,7 @@ class GuestListPage extends StatefulWidget {
 class _GuestListPageState extends State<GuestListPage> {
   final TextEditingController _searchController = TextEditingController();
   _GuestFilter _filter = _GuestFilter.all;
+  _GuestInventorySort _sort = _GuestInventorySort.status;
 
   @override
   void dispose() {
@@ -50,19 +51,9 @@ class _GuestListPageState extends State<GuestListPage> {
         PveAppleLayout.usesExpandedPresentation(context);
     final ClusterOverviewSnapshot? snapshot =
         widget.overviewController.snapshot;
-    final List<PveGuest> guests =
-        List<PveGuest>.of(snapshot?.guests ?? const <PveGuest>[])..sort((
-          PveGuest left,
-          PveGuest right,
-        ) {
-          if (left.isTemplate != right.isTemplate) {
-            return left.isTemplate ? 1 : -1;
-          }
-          if (left.isRunning != right.isRunning) {
-            return left.isRunning ? -1 : 1;
-          }
-          return left.title.toLowerCase().compareTo(right.title.toLowerCase());
-        });
+    final List<PveGuest> guests = List<PveGuest>.of(
+      snapshot?.guests ?? const <PveGuest>[],
+    )..sort(_compareGuests);
 
     return PvePrimaryScrollView(
       title: 'Guests',
@@ -191,6 +182,15 @@ class _GuestListPageState extends State<GuestListPage> {
         const PveSectionTitle(title: 'Guest inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
+        Align(
+          alignment: Alignment.centerRight,
+          child: CupertinoButton(
+            key: const ValueKey<String>('guest-inventory-sort'),
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            onPressed: () => _showSortPicker(context),
+            child: Text('Sort: ${_sort.label}'),
+          ),
+        ),
         const SizedBox(height: 8),
         Text(
           _inventoryCountLabel(
@@ -290,6 +290,64 @@ class _GuestListPageState extends State<GuestListPage> {
     _GuestFilter.stopped => !guest.isTemplate && !guest.isRunning,
     _GuestFilter.templates => guest.isTemplate,
   };
+
+  int _compareGuests(PveGuest left, PveGuest right) {
+    if (left.isTemplate != right.isTemplate) {
+      return left.isTemplate ? 1 : -1;
+    }
+    final int result = switch (_sort) {
+      _GuestInventorySort.status => _statusRank(
+        left,
+      ).compareTo(_statusRank(right)),
+      _GuestInventorySort.name => left.title.toLowerCase().compareTo(
+        right.title.toLowerCase(),
+      ),
+      _GuestInventorySort.host => left.node.compareTo(right.node),
+      _GuestInventorySort.uptime => (right.uptimeSeconds ?? -1).compareTo(
+        left.uptimeSeconds ?? -1,
+      ),
+      _GuestInventorySort.resource => _resourceUse(
+        right,
+      ).compareTo(_resourceUse(left)),
+    };
+    return result == 0
+        ? left.title.toLowerCase().compareTo(right.title.toLowerCase())
+        : result;
+  }
+
+  int _statusRank(PveGuest guest) => guest.isRunning ? 0 : 1;
+
+  double _resourceUse(PveGuest guest) {
+    final double memory =
+        _resourceFraction(guest.memoryBytes, guest.memoryLimitBytes) ?? -1;
+    return guest.cpuFraction ?? memory;
+  }
+
+  Future<void> _showSortPicker(BuildContext context) async {
+    final _GuestInventorySort? sort =
+        await showCupertinoModalPopup<_GuestInventorySort>(
+          context: context,
+          builder: (BuildContext popupContext) => CupertinoActionSheet(
+            title: const Text('Sort guest inventory'),
+            actions: _GuestInventorySort.values
+                .map(
+                  (_GuestInventorySort value) => CupertinoActionSheetAction(
+                    isDefaultAction: value == _sort,
+                    onPressed: () => Navigator.of(popupContext).pop(value),
+                    child: Text(value.label),
+                  ),
+                )
+                .toList(growable: false),
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(popupContext).pop(),
+              child: const Text('Cancel'),
+            ),
+          ),
+        );
+    if (sort != null && mounted) {
+      setState(() => _sort = sort);
+    }
+  }
 
   bool _isAvailableBackupStorage(ClusterStorage storage) {
     final bool supportsBackup = storage.content
@@ -509,6 +567,18 @@ class _GuestListItem extends StatelessWidget {
 }
 
 enum _GuestFilter { all, running, stopped, templates }
+
+enum _GuestInventorySort {
+  status('Status'),
+  name('Name'),
+  host('Host'),
+  uptime('Uptime'),
+  resource('Resource use');
+
+  const _GuestInventorySort(this.label);
+
+  final String label;
+}
 
 String _inventoryCountLabel({
   required int visibleCount,

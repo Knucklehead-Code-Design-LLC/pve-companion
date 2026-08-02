@@ -118,6 +118,36 @@ void main() {
 
     expect(tester.takeException(), isNull);
   });
+
+  testWidgets('offers desktop inventory sorting by uptime and resource use', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: Scaffold(
+          body: ClusterNodesPage(
+            controller: controller,
+            onRefresh: () async {},
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.byKey(const ValueKey<String>('node-inventory-sort')));
+    await tester.pumpAndSettle();
+
+    expect(find.text('Sort node inventory'), findsOneWidget);
+    expect(find.text('Uptime'), findsOneWidget);
+    expect(find.text('Resource use'), findsOneWidget);
+  });
 }
 
 Widget _largeTextBuilder(BuildContext context, Widget? child) {

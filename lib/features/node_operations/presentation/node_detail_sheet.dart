@@ -130,6 +130,7 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
       ),
       NodeOperationsLoadState.ready => _NodeDetailContent(
         controller: _controller,
+        seed: widget.seed,
         scrollController: widget.scrollController,
         onPowerAction: _handlePowerAction,
         onRestartService: _restartService,
@@ -196,9 +197,9 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
       builder: (BuildContext dialogContext) => CupertinoAlertDialog(
         title: Text('${action.label}?'),
         content: Text(
-          isShutdown
-              ? 'This powers off ${widget.seed.node.name}. Running guests and cluster quorum can be affected.'
-              : 'This restarts ${widget.seed.node.name}. Running guests and cluster quorum can be affected.',
+          '${isShutdown ? 'This powers off' : 'This restarts'} ${widget.seed.node.name}. '
+          '${widget.seed.runningHostedGuestCount} running hosted ${widget.seed.runningHostedGuestCount == 1 ? 'guest' : 'guests'} '
+          'and cluster quorum can be affected${widget.seed.isLastKnownOnlineNode ? '. This is the last online node reported.' : ''}',
         ),
         actions: <Widget>[
           CupertinoDialogAction(
@@ -220,6 +221,7 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
 class _NodeDetailContent extends StatelessWidget {
   const _NodeDetailContent({
     required this.controller,
+    required this.seed,
     required this.scrollController,
     required this.onPowerAction,
     required this.onRestartService,
@@ -227,6 +229,7 @@ class _NodeDetailContent extends StatelessWidget {
   });
 
   final NodeOperationsController controller;
+  final PveNodeDetailsSeed seed;
   final ScrollController scrollController;
   final Future<void> Function(PveNodePowerAction) onPowerAction;
   final Future<void> Function(PveNodeService) onRestartService;
@@ -243,6 +246,7 @@ class _NodeDetailContent extends StatelessWidget {
       children: <Widget>[
         _NodeDetailColumns(
           details: details,
+          seed: seed,
           controller: controller,
           controlsDisabled: controlsDisabled,
           onPowerAction: onPowerAction,
@@ -257,6 +261,7 @@ class _NodeDetailContent extends StatelessWidget {
 class _NodeDetailColumns extends StatelessWidget {
   const _NodeDetailColumns({
     required this.details,
+    required this.seed,
     required this.controller,
     required this.controlsDisabled,
     required this.onPowerAction,
@@ -265,6 +270,7 @@ class _NodeDetailColumns extends StatelessWidget {
   });
 
   final PveNodeDetails details;
+  final PveNodeDetailsSeed seed;
   final NodeOperationsController controller;
   final bool controlsDisabled;
   final Future<void> Function(PveNodePowerAction) onPowerAction;
@@ -274,7 +280,7 @@ class _NodeDetailColumns extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final List<Widget> primarySections = <Widget>[
-      _NodeStatusCard(details: details),
+      _NodeStatusCard(details: details, seed: seed),
       if (controller.activeTask != null)
         ProxmoxTaskStatusCard(task: controller.activeTask!),
       if (controller.errorMessage != null)
@@ -282,6 +288,7 @@ class _NodeDetailColumns extends StatelessWidget {
       _NodePowerSection(
         enabled: !controlsDisabled,
         isOnline: details.node.isOnline,
+        seed: seed,
         onAction: onPowerAction,
       ),
       _NodeSystemInformationSection(details: details),
@@ -341,11 +348,13 @@ class _NodePowerSection extends StatelessWidget {
   const _NodePowerSection({
     required this.enabled,
     required this.isOnline,
+    required this.seed,
     required this.onAction,
   });
 
   final bool enabled;
   final bool isOnline;
+  final PveNodeDetailsSeed seed;
   final Future<void> Function(PveNodePowerAction) onAction;
 
   @override
@@ -353,7 +362,7 @@ class _NodePowerSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const PveSectionTitle(title: 'Node power'),
+        const PveSectionTitle(title: 'Danger zone'),
         const SizedBox(height: 8),
         _NodePowerControls(enabled: enabled, onAction: onAction),
         if (!isOnline) ...<Widget>[
@@ -364,13 +373,22 @@ class _NodePowerSection extends StatelessWidget {
           ),
         ] else ...<Widget>[
           const SizedBox(height: 8),
-          Text(
-            'Restarting or shutting down this node can interrupt hosted guests and affect cluster quorum.',
-            style: PveAppleText.secondary(context),
-          ),
+          Text(_impactMessage(seed), style: PveAppleText.secondary(context)),
         ],
       ],
     );
+  }
+
+  String _impactMessage(PveNodeDetailsSeed seed) {
+    final String guestImpact = seed.runningHostedGuestCount == 0
+        ? 'No running guests were reported on this node.'
+        : '${seed.runningHostedGuestCount} running ${seed.runningHostedGuestCount == 1 ? 'guest is' : 'guests are'} hosted here.';
+    final String quorumImpact = seed.isLastKnownOnlineNode
+        ? ' This is the last online node reported, so this action can make the cluster unavailable.'
+        : seed.clusterOnlineNodeCount > 1
+        ? ' ${seed.clusterOnlineNodeCount} nodes are currently online, but quorum can still be affected.'
+        : ' Cluster quorum status was not available.';
+    return '$guestImpact$quorumImpact';
   }
 }
 
@@ -420,7 +438,7 @@ class _NodeUpdatesSection extends StatelessWidget {
   }
 }
 
-class _NodeServicesSection extends StatelessWidget {
+class _NodeServicesSection extends StatefulWidget {
   const _NodeServicesSection({
     required this.services,
     required this.restartEnabled,
@@ -432,8 +450,15 @@ class _NodeServicesSection extends StatelessWidget {
   final Future<void> Function(PveNodeService) onRestartService;
 
   @override
+  State<_NodeServicesSection> createState() => _NodeServicesSectionState();
+}
+
+class _NodeServicesSectionState extends State<_NodeServicesSection> {
+  bool _showsHealthyServices = false;
+
+  @override
   Widget build(BuildContext context) {
-    final int attentionCount = services
+    final int attentionCount = widget.services
         .where((PveNodeService service) => !service.isRunning)
         .length;
     final String title = attentionCount == 0
@@ -445,9 +470,13 @@ class _NodeServicesSection extends StatelessWidget {
         PveSectionTitle(title: title),
         const SizedBox(height: 8),
         _NodeServicesCard(
-          services: services,
-          restartEnabled: restartEnabled,
-          onRestartService: onRestartService,
+          services: widget.services,
+          restartEnabled: widget.restartEnabled,
+          onRestartService: widget.onRestartService,
+          showsHealthyServices: _showsHealthyServices,
+          onToggleHealthyServices: () {
+            setState(() => _showsHealthyServices = !_showsHealthyServices);
+          },
         ),
       ],
     );
@@ -475,9 +504,10 @@ class _NodeInlineError extends StatelessWidget {
 }
 
 class _NodeStatusCard extends StatelessWidget {
-  const _NodeStatusCard({required this.details});
+  const _NodeStatusCard({required this.details, required this.seed});
 
   final PveNodeDetails details;
+  final PveNodeDetailsSeed seed;
 
   @override
   Widget build(BuildContext context) {
@@ -569,6 +599,13 @@ class _NodeStatusCard extends StatelessWidget {
                 ],
               );
             },
+          ),
+          const SizedBox(height: 16),
+          Text(
+            '${seed.hostedGuestCount} hosted ${seed.hostedGuestCount == 1 ? 'guest' : 'guests'} · '
+            '${seed.recentTaskCount} recent node ${seed.recentTaskCount == 1 ? 'task' : 'tasks'}',
+            key: const ValueKey<String>('node-hosted-workload-summary'),
+            style: PveAppleText.secondary(context),
           ),
         ],
       ),
@@ -706,11 +743,15 @@ class _NodeServicesCard extends StatelessWidget {
     required this.services,
     required this.restartEnabled,
     required this.onRestartService,
+    required this.showsHealthyServices,
+    required this.onToggleHealthyServices,
   });
 
   final List<PveNodeService> services;
   final bool restartEnabled;
   final Future<void> Function(PveNodeService) onRestartService;
+  final bool showsHealthyServices;
+  final VoidCallback onToggleHealthyServices;
 
   @override
   Widget build(BuildContext context) {
@@ -728,39 +769,64 @@ class _NodeServicesCard extends StatelessWidget {
             }
             return first.isRunning ? 1 : -1;
           });
+    final List<PveNodeService> visibleServices = showsHealthyServices
+        ? scanOrderedServices
+        : scanOrderedServices
+              .where((PveNodeService service) => !service.isRunning)
+              .toList(growable: false);
+    final int healthyServiceCount = scanOrderedServices
+        .where((PveNodeService service) => service.isRunning)
+        .length;
     return PveInsetGroup(
       padding: EdgeInsets.zero,
       child: Column(
         children: <Widget>[
+          if (visibleServices.isEmpty)
+            const Padding(
+              padding: EdgeInsets.all(16),
+              child: Text('All reported services are running.'),
+            ),
           for (
             int index = 0;
-            index < scanOrderedServices.length;
+            index < visibleServices.length;
             index++
           ) ...<Widget>[
             PveListRow(
               leading: Icon(
-                scanOrderedServices[index].isRunning
+                visibleServices[index].isRunning
                     ? CupertinoIcons.check_mark_circled_solid
                     : CupertinoIcons.exclamationmark_triangle_fill,
-                color: scanOrderedServices[index].isRunning
+                color: visibleServices[index].isRunning
                     ? PveAppleColors.success(context)
                     : PveAppleColors.warning(context),
               ),
-              title: Text(scanOrderedServices[index].name),
+              title: Text(visibleServices[index].name),
               subtitle: Text(
-                scanOrderedServices[index].description ??
-                    _nodeServiceState(scanOrderedServices[index]),
+                visibleServices[index].description ??
+                    _nodeServiceState(visibleServices[index]),
               ),
               trailing: CupertinoButton(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                 minimumSize: const Size(44, 34),
                 onPressed: restartEnabled
-                    ? () => onRestartService(scanOrderedServices[index])
+                    ? () => onRestartService(visibleServices[index])
                     : null,
                 child: const Icon(CupertinoIcons.arrow_clockwise, size: 18),
               ),
             ),
-            if (index < scanOrderedServices.length - 1) const PveRowSeparator(),
+            if (index < visibleServices.length - 1) const PveRowSeparator(),
+          ],
+          if (healthyServiceCount > 0) ...<Widget>[
+            if (visibleServices.isNotEmpty) const PveRowSeparator(),
+            CupertinoButton(
+              key: const ValueKey<String>('node-services-toggle-healthy'),
+              onPressed: onToggleHealthyServices,
+              child: Text(
+                showsHealthyServices
+                    ? 'Hide $healthyServiceCount healthy services'
+                    : 'Show $healthyServiceCount healthy services',
+              ),
+            ),
           ],
         ],
       ),

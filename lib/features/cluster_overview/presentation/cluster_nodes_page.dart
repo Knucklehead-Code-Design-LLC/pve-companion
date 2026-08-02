@@ -4,6 +4,7 @@ import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_data_visualization.dart';
 import '../../../core/presentation/pve_value_format.dart';
+import '../../guests/domain/pve_guest.dart';
 import '../../node_operations/domain/pve_node_details.dart';
 import '../../node_operations/presentation/node_detail_sheet.dart';
 import '../application/cluster_overview_controller.dart';
@@ -41,6 +42,7 @@ class ClusterNodesPage extends StatefulWidget {
 class _ClusterNodesPageState extends State<ClusterNodesPage> {
   final TextEditingController _searchController = TextEditingController();
   _NodeFilter _filter = _NodeFilter.all;
+  _NodeInventorySort _sort = _NodeInventorySort.attention;
 
   @override
   void dispose() {
@@ -83,7 +85,9 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
       snapshot,
     );
-    final List<DatacenterNodeHealth> nodes = health.nodes;
+    final List<DatacenterNodeHealth> nodes = List<DatacenterNodeHealth>.of(
+      health.nodes,
+    )..sort(_compareNodes);
     final String searchQuery = _searchController.text.trim().toLowerCase();
     final List<DatacenterNodeHealth> visibleNodes = nodes
         .where(
@@ -186,6 +190,15 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
         const PveSectionTitle(title: 'Node inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
+        Align(
+          alignment: Alignment.centerRight,
+          child: CupertinoButton(
+            key: const ValueKey<String>('node-inventory-sort'),
+            padding: const EdgeInsets.only(top: 8, bottom: 4),
+            onPressed: () => _showSortPicker(context),
+            child: Text('Sort: ${_sort.label}'),
+          ),
+        ),
         const SizedBox(height: 16),
         if (nodes.isEmpty)
           const PveInsetGroup(
@@ -256,10 +269,83 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     }
     await showNodeDetailSheet(
       context,
-      seed: PveNodeDetailsSeed(node.node),
+      seed: PveNodeDetailsSeed(
+        node.node,
+        hostedGuestCount: widget.controller.snapshot!.guests
+            .where((PveGuest guest) => guest.node == node.node.name)
+            .length,
+        runningHostedGuestCount: widget.controller.snapshot!.guests
+            .where(
+              (PveGuest guest) =>
+                  guest.node == node.node.name && guest.isRunning,
+            )
+            .length,
+        clusterOnlineNodeCount: widget.controller.snapshot!.nodes
+            .where((ClusterNode clusterNode) => clusterNode.isOnline)
+            .length,
+        recentTaskCount: widget.controller.snapshot!.tasks
+            .where((ClusterTask task) => task.node == node.node.name)
+            .length,
+      ),
       session: session,
       onNodeOperation: onNodeOperation,
     );
+  }
+
+  int _compareNodes(DatacenterNodeHealth left, DatacenterNodeHealth right) {
+    final int result = switch (_sort) {
+      _NodeInventorySort.attention => _attentionRank(
+        left,
+      ).compareTo(_attentionRank(right)),
+      _NodeInventorySort.name => left.node.name.compareTo(right.node.name),
+      _NodeInventorySort.uptime => (right.node.uptimeSeconds ?? -1).compareTo(
+        left.node.uptimeSeconds ?? -1,
+      ),
+      _NodeInventorySort.resource => _nodeResourceUse(
+        right,
+      ).compareTo(_nodeResourceUse(left)),
+    };
+    return result == 0 ? left.node.name.compareTo(right.node.name) : result;
+  }
+
+  int _attentionRank(DatacenterNodeHealth node) {
+    if (!node.node.isOnline) {
+      return 0;
+    }
+    return switch (node.state) {
+      DatacenterHealthState.critical => 1,
+      DatacenterHealthState.warning => 2,
+      DatacenterHealthState.healthy => 3,
+    };
+  }
+
+  double _nodeResourceUse(DatacenterNodeHealth node) =>
+      node.cpu?.progressFraction ?? node.memory?.progressFraction ?? -1;
+
+  Future<void> _showSortPicker(BuildContext context) async {
+    final _NodeInventorySort? sort =
+        await showCupertinoModalPopup<_NodeInventorySort>(
+          context: context,
+          builder: (BuildContext popupContext) => CupertinoActionSheet(
+            title: const Text('Sort node inventory'),
+            actions: _NodeInventorySort.values
+                .map(
+                  (_NodeInventorySort value) => CupertinoActionSheetAction(
+                    isDefaultAction: value == _sort,
+                    onPressed: () => Navigator.of(popupContext).pop(value),
+                    child: Text(value.label),
+                  ),
+                )
+                .toList(growable: false),
+            cancelButton: CupertinoActionSheetAction(
+              onPressed: () => Navigator.of(popupContext).pop(),
+              child: const Text('Cancel'),
+            ),
+          ),
+        );
+    if (sort != null && mounted) {
+      setState(() => _sort = sort);
+    }
   }
 }
 
@@ -361,6 +447,17 @@ class _PressureRow extends StatelessWidget {
 }
 
 enum _NodeFilter { all, attention }
+
+enum _NodeInventorySort {
+  attention('Attention'),
+  name('Name'),
+  uptime('Uptime'),
+  resource('Resource use');
+
+  const _NodeInventorySort(this.label);
+
+  final String label;
+}
 
 String _statusLabel(DatacenterNodeHealth node) {
   if (!node.node.isOnline) {
