@@ -1,7 +1,9 @@
 import 'package:flutter/cupertino.dart';
 
+import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_value_format.dart';
+import '../../backups/presentation/backup_center_sheet.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_load_state_view.dart';
@@ -15,6 +17,7 @@ class StoragePage extends StatefulWidget {
     this.showsSliverNavigationBar = true,
     this.navigationLeading,
     this.navigationTrailing,
+    this.session,
   });
 
   final ClusterOverviewController controller;
@@ -22,6 +25,7 @@ class StoragePage extends StatefulWidget {
   final bool showsSliverNavigationBar;
   final Widget? navigationLeading;
   final Widget? navigationTrailing;
+  final ProxmoxSession? session;
 
   @override
   State<StoragePage> createState() => _StoragePageState();
@@ -163,6 +167,61 @@ class _StoragePageState extends State<StoragePage> {
             ),
           ],
         ),
+        if (widget.session != null) ...<Widget>[
+          const SizedBox(height: 24),
+          PveSectionHeader(
+            title: 'Data protection',
+            actionLabel: 'Backup Center',
+            actionSemanticsLabel: 'Open Backup Center',
+            onAction: _showBackupCenter,
+          ),
+          PveInsetGroup(
+            onTap: _showBackupCenter,
+            padding: const EdgeInsets.all(16),
+            child: Row(
+              children: <Widget>[
+                DecoratedBox(
+                  decoration: BoxDecoration(
+                    color: PveAppleColors.primary(
+                      context,
+                    ).withValues(alpha: 0.12),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: SizedBox.square(
+                    dimension: 38,
+                    child: Icon(
+                      CupertinoIcons.archivebox,
+                      size: 20,
+                      color: PveAppleColors.primary(context),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        'Backup Center',
+                        style: PveAppleText.title3(context),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        'Review backup destinations, schedules, copies, and activity.',
+                        style: PveAppleText.secondary(context),
+                      ),
+                    ],
+                  ),
+                ),
+                Icon(
+                  CupertinoIcons.chevron_forward,
+                  size: 15,
+                  color: PveAppleColors.secondaryLabel(context),
+                ),
+              ],
+            ),
+          ),
+        ],
         if (usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 16),
           StorageInsights(storages: storages),
@@ -232,6 +291,15 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.shared => storage.shared,
     _StorageFilter.local => !storage.shared,
   };
+
+  Future<void> _showBackupCenter() async {
+    final ProxmoxSession? session = widget.session;
+    final ClusterOverviewSnapshot? overview = widget.controller.snapshot;
+    if (session == null || overview == null) {
+      return;
+    }
+    await showBackupCenterSheet(context, session: session, overview: overview);
+  }
 }
 
 class _StorageCard extends StatelessWidget {

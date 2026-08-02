@@ -27,12 +27,16 @@ final class AppleSystemSurfacesPlugin {
         let snapshot = try snapshot(from: call)
         try snapshot.save()
         if #available(iOS 14.0, *) {
-          WidgetCenter.shared.reloadAllTimelines()
+          WidgetCenter.shared.reloadTimelines(
+            ofKind: DatacenterSurfaceSnapshot.widgetKind
+          )
         }
         result(nil)
       } catch {
         result(flutterError(error, code: "snapshot-write-failed"))
       }
+    case "clearSnapshot":
+      clearSnapshot(result: result)
     case "startDatacenterWatch":
       startDatacenterWatch(call, result: result)
     case "updateDatacenterWatch":
@@ -59,6 +63,29 @@ final class AppleSystemSurfacesPlugin {
     ]
   }
 
+  private func clearSnapshot(result: @escaping FlutterResult) {
+    guard
+      let defaults = UserDefaults(
+        suiteName: DatacenterSurfaceSnapshot.appGroupIdentifier
+      )
+    else {
+      result(
+        flutterError(
+          DatacenterSurfaceError.appGroupUnavailable,
+          code: "snapshot-clear-failed"
+        )
+      )
+      return
+    }
+    defaults.removeObject(forKey: DatacenterSurfaceSnapshot.storageKey)
+    if #available(iOS 14.0, *) {
+      WidgetCenter.shared.reloadTimelines(
+        ofKind: DatacenterSurfaceSnapshot.widgetKind
+      )
+    }
+    result(nil)
+  }
+
   private func startDatacenterWatch(
     _ call: FlutterMethodCall,
     result: @escaping FlutterResult
@@ -74,7 +101,8 @@ final class AppleSystemSurfacesPlugin {
     do {
       let snapshot = try snapshot(from: call)
       let arguments = call.arguments as? [String: Any]
-      let requestedDuration = (arguments?["durationSeconds"] as? NSNumber)?.doubleValue
+      let requestedDuration =
+        (arguments?["durationSeconds"] as? NSNumber)?.doubleValue
         ?? 14_400
       let duration = min(max(requestedDuration, 900), 28_800)
       let startedAt = Date()

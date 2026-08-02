@@ -17,6 +17,9 @@ class WorkspaceToolbar extends StatelessWidget
     required this.onDisconnect,
     required this.onManageServers,
     required this.onAbout,
+    this.onViewFleet,
+    this.onManageNotifications,
+    this.onClusterAdministration,
     this.showServerMenu = true,
     this.includeRefreshMenuAction = true,
     this.liveActivitiesAvailable = false,
@@ -34,6 +37,9 @@ class WorkspaceToolbar extends StatelessWidget
   final VoidCallback onDisconnect;
   final VoidCallback onManageServers;
   final VoidCallback onAbout;
+  final VoidCallback? onViewFleet;
+  final VoidCallback? onManageNotifications;
+  final VoidCallback? onClusterAdministration;
   final bool showServerMenu;
   final bool includeRefreshMenuAction;
   final bool liveActivitiesAvailable;
@@ -61,6 +67,9 @@ class WorkspaceToolbar extends StatelessWidget
         onDisconnect: onDisconnect,
         onManageServers: onManageServers,
         onAbout: onAbout,
+        onViewFleet: onViewFleet,
+        onManageNotifications: onManageNotifications,
+        onClusterAdministration: onClusterAdministration,
         includeRefreshAction: includeRefreshMenuAction,
         liveActivitiesAvailable: liveActivitiesAvailable,
         datacenterWatchActive: datacenterWatchActive,

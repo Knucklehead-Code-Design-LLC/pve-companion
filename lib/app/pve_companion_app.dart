@@ -10,6 +10,7 @@ import 'pve_companion_about.dart';
 import 'pve_companion_controller.dart';
 import 'pve_companion_theme.dart';
 import 'pve_workspace.dart';
+import 'workspace/workspace_deep_link.dart';
 
 class PveCompanionApp extends StatefulWidget {
   const PveCompanionApp({super.key, required this.controller});
@@ -20,17 +21,49 @@ class PveCompanionApp extends StatefulWidget {
   State<PveCompanionApp> createState() => _PveCompanionAppState();
 }
 
-class _PveCompanionAppState extends State<PveCompanionApp> {
+class _PveCompanionAppState extends State<PveCompanionApp>
+    with WidgetsBindingObserver {
   @override
   void initState() {
     super.initState();
+    WidgetsBinding.instance.addObserver(this);
+    _handleInitialDeepLink();
     unawaited(widget.controller.initialize());
   }
 
   @override
   void dispose() {
+    WidgetsBinding.instance.removeObserver(this);
     widget.controller.dispose();
     super.dispose();
+  }
+
+  @override
+  Future<bool> didPushRouteInformation(
+    RouteInformation routeInformation,
+  ) async {
+    return _handleDeepLink(routeInformation.uri);
+  }
+
+  void _handleInitialDeepLink() {
+    final String route =
+        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    if (route == Navigator.defaultRouteName) {
+      return;
+    }
+    final Uri? uri = Uri.tryParse(route);
+    if (uri != null) {
+      _handleDeepLink(uri);
+    }
+  }
+
+  bool _handleDeepLink(Uri uri) {
+    final section = workspaceSectionFromDeepLink(uri);
+    if (section == null) {
+      return false;
+    }
+    widget.controller.openWorkspaceSection(section);
+    return true;
   }
 
   @override
@@ -41,6 +74,7 @@ class _PveCompanionAppState extends State<PveCompanionApp> {
       theme: PveCompanionTheme.light(),
       darkTheme: PveCompanionTheme.dark(),
       themeMode: ThemeMode.system,
+      initialRoute: Navigator.defaultRouteName,
       builder: (BuildContext context, Widget? child) {
         return CupertinoTheme(
           data: PveCompanionTheme.cupertino(

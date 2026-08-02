@@ -10,10 +10,9 @@ frontend or its Dart packages.
 > are used only to describe compatibility and may be trademarks of their
 > respective owners.
 
-## First milestone
+## Current capability
 
-The `0.1` baseline is deliberately useful without claiming web-interface
-parity:
+PVE Companion is deliberately useful without claiming web-interface parity:
 
 - Multiple named server profiles, with password-realm or API-token sign-in.
 - Password sign-in does not yet implement TOTP/2FA challenge flows. Use an
@@ -32,22 +31,45 @@ parity:
   filters, inset grouped data, scoped sheets, clear confirmations, Dynamic
   Type support, and system light/dark appearance.
 - Privacy-safe WidgetKit views for the iPhone and iPad Home Screen and Lock
-  Screen. Widgets show the last snapshot the app received; they never store or
-  display a server URL, hostname, username, credential, ticket, or CSRF token.
+  Screen. Dedicated small, medium, and large Home Screen layouts summarize
+  health, nodes, guests, tasks, and aggregate resource pressure; metric links
+  open the matching app destination. Widgets identify data older than one hour
+  as stale and never store or display a server URL, hostname, username,
+  credential, ticket, or CSRF token.
 - An optional four-hour **Datacenter Watch** Live Activity for maintenance and
   incident windows. It appears on the Lock Screen and, on supported iPhones,
   in the Dynamic Island, and updates whenever the app refreshes the cluster.
-- Drill-down navigation for nodes, guest inventory, configured storage, and
-  recent tasks.
-- VM/LXC details plus confirmed, non-force start, shutdown, and reboot
-  requests. Storage and tasks are read-only in this milestone.
+- An Incident Center that derives prioritized, drill-down-ready attention from
+  offline nodes, per-node pressure, storage availability/capacity, and failed
+  reported tasks.
+- VM/LXC details with task-aware power controls, snapshots, guest backups,
+  recent guest task state, and a narrow configuration editor for CPU, memory,
+  start-at-boot, and description. Force Stop and Reset are explicitly
+  confirmed and visually separated from normal power actions.
+- Node detail and guarded operations: restart/shut down a reported-online
+  node, restart a reported service, and refresh its package index. The app
+  never performs a package upgrade automatically.
+- Backup Center for reviewing configured backup destinations, schedules,
+  copies, and recent backup activity. On-demand backups originate from the
+  relevant guest detail so their scope is unambiguous.
+- A short-lived, read-only multi-datacenter portfolio for all saved Keychain
+  profiles. It never changes the active workspace while collecting status.
+- Local, opt-in foreground alerts for newly observed critical or attention
+  incidents. They supplement—not replace—Proxmox or a real monitoring system.
+- A Cluster Administration audit surface for membership, quorum, HA state, and
+  safe datacenter options. Cluster topology, storage, and network changes stay
+  in Proxmox's full administration UI.
+- Browser handoff to an individual guest's official noVNC route without
+  transferring the app's password, API token, ticket, or CSRF token. The
+  browser authenticates to Proxmox independently when required.
 - An original, trademark-distinct app icon and deterministic App Store capture
   flows for iPhone, iPad, and Mac.
 
-It does **not** yet provide guest consoles, guest creation, destructive
-deletion, migration, backup/restore, cluster/network configuration, roles,
-or a replacement for every Proxmox VE web surface. See the
-[web-parity roadmap](docs/roadmap.md) for the planned path.
+It does **not** yet provide an embedded console/ticket bridge, guest creation
+or deletion, migration, restore, package upgrades, cluster/network topology
+editing, roles, background monitoring, or a replacement for every Proxmox VE
+web surface. See the [web-parity roadmap](docs/roadmap.md) for the planned
+path.
 
 ## Security model
 
@@ -63,6 +85,12 @@ port `8006` directly to the public internet.
   the current app session.
 - Configuration details are allow-listed before display so secrets are not
   casually surfaced in the guest detail view.
+- Console handoff opens an HTTPS Proxmox route in the system browser and does
+  not transfer credentials, session tickets, or CSRF tokens from the app.
+- Local incident notifications can display the selected profile name and an
+  incident title (such as a node or storage name) on the device. They are
+  evaluated only after a foreground refresh and may be visible to someone with
+  physical access to the device.
 - A sanitized aggregate snapshot is stored in the app's private Apple App
   Group so the WidgetKit extension can render it. Datacenter Watch is started
   only by the user and shows aggregate health/counts on visible system
@@ -133,8 +161,9 @@ is warning at **75% or above** and critical at **90% or above**.
 it does not claim that every possible metric was reported. Missing or
 incomplete telemetry remains explicitly unreported.
 
-Configured storage is shown as inventory only in this milestone. The existing
-API view does not report its utilization, so the dashboard does not invent it.
+Configured storage is shown as inventory backed by available cluster telemetry.
+Backup Center reads only backup destinations and content exposed to the signed-in
+Proxmox account; it does not invent a retention policy or manipulate copies.
 
 Apple builds are intentionally verified locally, not on paid macOS GitHub
 Actions runners. An iOS simulator build does not require signing; the macOS
@@ -151,8 +180,8 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 See [Apple build and release notes](docs/release/apple-builds.md) for signing,
 simulator, distribution, App Store metadata, and TestFlight guidance. GitHub
 Actions runs the low-cost Ubuntu verification path; Codemagic compiles iOS pull
-requests without credentials, uploads signed `main` builds to TestFlight, and
-submits version-tagged releases to App Store review.
+requests without credentials, uploads signed `main` builds to internal
+TestFlight, and submits version-tagged releases to App Store review.
 
 ## Project design
 

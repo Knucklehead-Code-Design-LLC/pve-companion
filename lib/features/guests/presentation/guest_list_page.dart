@@ -20,6 +20,7 @@ class GuestListPage extends StatefulWidget {
     this.showsSliverNavigationBar = true,
     this.navigationLeading,
     this.navigationTrailing,
+    this.consoleEndpoint,
   });
 
   final ClusterOverviewController overviewController;
@@ -29,6 +30,7 @@ class GuestListPage extends StatefulWidget {
   final bool showsSliverNavigationBar;
   final Widget? navigationLeading;
   final Widget? navigationTrailing;
+  final Uri? consoleEndpoint;
 
   @override
   State<GuestListPage> createState() => _GuestListPageState();
@@ -249,11 +251,20 @@ class _GuestListPageState extends State<GuestListPage> {
   }
 
   void _showGuest(PveGuest guest) {
+    final List<String> backupStorageNames = widget
+        .overviewController
+        .snapshot!
+        .storages
+        .where((ClusterStorage storage) => _isAvailableBackupStorage(storage))
+        .map((ClusterStorage storage) => storage.name)
+        .toList(growable: false);
     showGuestDetailSheet(
       context,
       guest: guest,
       session: widget.session,
       onGuestPowerAction: widget.onGuestPowerAction,
+      backupStorageNames: backupStorageNames,
+      consoleEndpoint: widget.consoleEndpoint,
     );
   }
 
@@ -262,6 +273,16 @@ class _GuestListPageState extends State<GuestListPage> {
     _GuestFilter.running => guest.isRunning,
     _GuestFilter.stopped => !guest.isRunning,
   };
+
+  bool _isAvailableBackupStorage(ClusterStorage storage) {
+    final bool supportsBackup = storage.content
+        .toLowerCase()
+        .split(',')
+        .map((String item) => item.trim())
+        .contains('backup');
+    return supportsBackup &&
+        (!storage.hasAvailabilityTelemetry || storage.isAvailable);
+  }
 
   bool _matchesSearch(PveGuest guest) {
     final String query = _searchController.text.trim().toLowerCase();

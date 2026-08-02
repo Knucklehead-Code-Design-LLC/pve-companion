@@ -9,6 +9,12 @@ class MainFlutterWindow: NSWindow {
     self.setFrame(windowFrame, display: true)
 
     RegisterGeneratedPlugins(registry: flutterViewController)
+    AppleLocalNotificationsPlugin.register(
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
+    AppleExternalNavigationPlugin.register(
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
 
     super.awakeFromNib()
   }

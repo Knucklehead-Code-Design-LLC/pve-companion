@@ -10,8 +10,9 @@ the live App Store Connect record synchronized when product behavior changes.
 | Primary category | Developer Tools |
 | Secondary category | Utilities |
 | Bundle ID | `com.knuckleheadcodedesign.pvecompanion` |
-| SKU | `pve-companion-apple-001` |
-| Copyright | 2026 Knucklehead Code Design LLC |
+| SKU | `pve-companion-ios` |
+| Initial TestFlight platforms | iOS and iPadOS |
+| Copyright | 2026 Knucklehead Code & Design LLC |
 | Privacy policy URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/blob/main/PRIVACY.md` |
 | Support URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/issues` |
 | Marketing URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion` |
@@ -40,7 +41,8 @@ Core version 0.1 features:
 - Read-only storage and task views
 - Apple-native tabs, sidebar, sheets, and adaptive layouts for iPhone, iPad,
   and Mac
-- Home and Lock Screen widgets for last-known datacenter health
+- Small, medium, and large Home Screen widgets for last-known datacenter
+  health, workload, activity, and aggregate resource pressure
 - Optional four-hour Datacenter Watch on the Lock Screen and Dynamic Island
 - No ads, analytics, tracking, or developer-operated cloud service
 

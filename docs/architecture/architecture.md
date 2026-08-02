@@ -11,10 +11,18 @@ domain, data, application, and presentation code.
 | --- | --- |
 | `connection_profiles` | Server profile rules, secure credential boundary, profile persistence, sign-in state, and add/manage-server UI. |
 | `cluster_overview` | Cluster/node/storage/task models, strict response decoding, merged storage telemetry, snapshot refresh state, derived datacenter health, command-center overview, and node views. |
-| `guests` | VM/LXC models, safe configuration projection, power command behavior, detail state, and guest UI. |
-| `storage` and `tasks` | Read-only presentation of the cluster-overview data in the first milestone. |
+| `guests` | VM/LXC models, allow-listed configuration projection, task-aware power/snapshot/backup behavior, detail state, and guest UI. |
+| `node_operations` | Node detail decoding plus guarded node, service, and package-index actions. |
+| `backups` | Backup destination, schedule, copy, and recent-task projection. |
+| `incidents` | Deterministic incident derivation from a cluster snapshot and incident-center presentation. |
+| `fleet` | Bounded-concurrency, short-lived read-only portfolio refreshes across saved profiles. |
+| `notifications` | Local foreground incident preferences, de-duplication state, and the Apple-notification adapter. |
+| `cluster_administration` | Read-only cluster membership, quorum, HA, and safe option audit. |
+| `console` | Credential-free browser handoff URL construction for Proxmox noVNC routes. |
+| `storage` and `tasks` | Cluster-overview presentation, with Storage also owning the Backup Center entry point. |
 | `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
-| `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, and typed transport errors. |
+| `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, typed transport errors, and a shared task contract/poller. |
+| `core/platform` | Narrow Apple platform channels for local notifications and HTTPS external navigation. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
 | `core/presentation` | Apple-first colors, typography, value formatting, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
@@ -44,24 +52,31 @@ generic service locator, speculative shared `utils`, or code generation.
 ## Apple system surfaces
 
 `system_surfaces` converts a loaded cluster snapshot into a deliberately small
-aggregate model. The projection includes only health and counts; it excludes
-server endpoints, host and guest names, users, credentials, tickets, and CSRF
-values. `PveCompanionController` publishes that model after a successful
-cluster refresh.
+aggregate model. The projection includes health, counts, and current aggregate
+CPU, memory, and root-disk pressure; it excludes server endpoints, host and
+guest names, users, credentials, tickets, and CSRF values.
+`PveCompanionController` publishes that model after a successful cluster
+refresh.
 
 One Flutter method channel forwards the model to native iOS code. The native
 host writes JSON to the private
-`group.com.knuckleheadcodedesign.pvecompanion` App Group and asks WidgetKit to
-reload its timeline. The SwiftUI extension owns Home Screen, Lock Screen, and
-Live Activity rendering. No Flutter engine or third-party widget package runs
-inside the extension.
+`group.com.knuckleheadcodedesign.pvecompanion` App Group and reloads only the
+datacenter widget timeline. The SwiftUI extension owns Home Screen, Lock
+Screen, and Live Activity rendering. No Flutter engine or third-party widget
+package runs inside the extension.
 
-Widgets display the latest app-provided snapshot and make its age visible.
-They do not promise real-time status. Datacenter Watch is a user-started,
-four-hour ActivityKit session for a defined maintenance or incident window;
-it updates when the app refreshes and supports Lock Screen plus compact,
-minimal, and expanded Dynamic Island presentations. A future remote-update
-service would require an explicit APNs design and privacy review.
+Widgets display the latest app-provided snapshot and make its age visible. A
+two-entry timeline changes fresh data to stale after one hour without polling;
+no-data and already-stale timelines wait for the app's next successful publish.
+Small, medium, and large Home Screen families use dedicated layouts and native
+accent groups so WidgetKit can adapt them to full-color, tinted, clear-glass,
+and vibrant contexts. Widget and metric URLs route to the corresponding
+Flutter workspace destination. Widgets do not promise real-time status.
+Datacenter Watch is a user-started, four-hour ActivityKit session for a defined
+maintenance or incident window; it updates when the app refreshes and supports
+Lock Screen plus compact, minimal, and expanded Dynamic Island presentations.
+A future remote-update service would require an explicit APNs design and
+privacy review.
 
 ## Dashboard derivation
 
@@ -93,9 +108,9 @@ or network connection.
 
 Large presentation surfaces are split at responsibility boundaries rather
 than by arbitrary size. Connection form orchestration, field rendering, and
-certificate consent are separate owners; guest-detail lifecycle, content, and
-power confirmation are separate owners; dashboard metric and storage cards
-are also independent from the section layout.
+certificate consent are separate owners; guest-detail lifecycle, content,
+operations forms, and action confirmation are separate owners; dashboard
+metric and storage cards are also independent from the section layout.
 
 The deterministic preview data belongs under `tool/support`, not `lib`, and
 the preview targets are local-only. They give maintainers repeatable healthy,
@@ -114,8 +129,17 @@ feature widgets and performs no network requests.
   captures a SHA-256 DER fingerprint and rejects the connection. A connection
   succeeds only after the user explicitly pins that exact fingerprint for the
   same host and port.
-- Guest configuration is allow-listed before rendering. No force-stop or
-  destructive guest control is present in the first milestone.
+- Guest configuration is allow-listed before rendering and mutable fields are
+  intentionally limited to CPU, memory, start-at-boot, and description.
+- Guest force-stop/reset, snapshot rollback/deletion, node power, and service
+  restart are deliberately scoped actions with explicit confirmation. Cluster
+  membership, quorum, storage, and network topology remain outside the app's
+  mutation boundary.
+- The noVNC handoff constructs only an HTTPS route. It never transfers a
+  password, API token, PVE ticket, or CSRF token to the browser.
+- Local notifications are evaluated only after a foreground refresh. Their
+  persisted state contains incident IDs rather than credentials; visible alert
+  content may include the profile display name and incident title.
 
 ## Adaptive Apple UI
 

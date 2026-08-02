@@ -102,27 +102,53 @@ class _DatacenterNodeCard extends StatelessWidget {
         child: Column(
           crossAxisAlignment: CrossAxisAlignment.start,
           children: <Widget>[
-            Row(
-              children: <Widget>[
-                Icon(
-                  CupertinoIcons.rectangle_stack,
-                  color: dashboardToneColor(context, tone),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    node.node.name,
-                    style: PveAppleText.title3(context),
-                  ),
-                ),
-                Text(
-                  statusLabel,
-                  style: PveAppleText.caption(context).copyWith(
-                    color: dashboardToneColor(context, tone),
-                    fontWeight: FontWeight.w700,
-                  ),
-                ),
-              ],
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool stacksStatus =
+                    constraints.maxWidth < 390 ||
+                    MediaQuery.textScalerOf(context).scale(12) >= 20;
+                final TextStyle statusStyle = PveAppleText.caption(context)
+                    .copyWith(
+                      color: dashboardToneColor(context, tone),
+                      fontWeight: FontWeight.w700,
+                    );
+                final Widget identity = Row(
+                  children: <Widget>[
+                    Icon(
+                      CupertinoIcons.rectangle_stack,
+                      color: dashboardToneColor(context, tone),
+                    ),
+                    const SizedBox(width: 10),
+                    Expanded(
+                      child: Text(
+                        node.node.name,
+                        style: PveAppleText.title3(context),
+                        overflow: TextOverflow.ellipsis,
+                      ),
+                    ),
+                  ],
+                );
+                if (stacksStatus) {
+                  return Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      identity,
+                      const SizedBox(height: 6),
+                      Padding(
+                        padding: const EdgeInsets.only(left: 34),
+                        child: Text(statusLabel, style: statusStyle),
+                      ),
+                    ],
+                  );
+                }
+                return Row(
+                  children: <Widget>[
+                    Expanded(child: identity),
+                    const SizedBox(width: 10),
+                    Text(statusLabel, style: statusStyle),
+                  ],
+                );
+              },
             ),
             const SizedBox(height: 18),
             _NodePressureRow(label: 'CPU', pressure: node.cpu, useBytes: false),

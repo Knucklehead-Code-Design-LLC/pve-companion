@@ -1,9 +1,20 @@
 import Foundation
 
+enum DatacenterSurfaceDestination: String {
+  case overview = "datacenter"
+  case guests
+  case nodes
+  case storage
+  case tasks
+}
+
 struct DatacenterSurfaceSnapshot: Codable, Equatable {
   static let appGroupIdentifier = "group.com.knuckleheadcodedesign.pvecompanion"
   static let storageKey = "datacenter-surface-snapshot-v1"
-  static let deepLink = URL(string: "pvecompanion://datacenter")!
+  static let widgetKind = "DatacenterStatusWidget"
+  static let staleInterval: TimeInterval = 60 * 60
+
+  static let deepLink = deepLink(for: .overview)
 
   let healthCode: String
   let healthLabel: String
@@ -15,6 +26,9 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
   let runningTaskCount: Int
   let failedTaskCount: Int
   let updatedAt: Date
+  let cpuFraction: Double?
+  let memoryFraction: Double?
+  let rootDiskFraction: Double?
 
   init?(dictionary: [String: Any]) {
     guard
@@ -41,6 +55,13 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
     self.runningTaskCount = runningTaskCount
     self.failedTaskCount = failedTaskCount
     updatedAt = Date(timeIntervalSince1970: updatedAtSeconds)
+    cpuFraction = Self.fraction(dictionary["cpuFraction"])
+    memoryFraction = Self.fraction(dictionary["memoryFraction"])
+    rootDiskFraction = Self.fraction(dictionary["rootDiskFraction"])
+
+    guard isValid else {
+      return nil
+    }
   }
 
   init(
@@ -53,7 +74,10 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
     guestCount: Int,
     runningTaskCount: Int,
     failedTaskCount: Int,
-    updatedAt: Date
+    updatedAt: Date,
+    cpuFraction: Double? = nil,
+    memoryFraction: Double? = nil,
+    rootDiskFraction: Double? = nil
   ) {
     self.healthCode = healthCode
     self.healthLabel = healthLabel
@@ -65,6 +89,9 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
     self.runningTaskCount = runningTaskCount
     self.failedTaskCount = failedTaskCount
     self.updatedAt = updatedAt
+    self.cpuFraction = cpuFraction
+    self.memoryFraction = memoryFraction
+    self.rootDiskFraction = rootDiskFraction
   }
 
   static let placeholder = DatacenterSurfaceSnapshot(
@@ -77,8 +104,27 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
     guestCount: 14,
     runningTaskCount: 1,
     failedTaskCount: 0,
-    updatedAt: Date()
+    updatedAt: Date(),
+    cpuFraction: 0.42,
+    memoryFraction: 0.47,
+    rootDiskFraction: 0.40
   )
+
+  var staleDate: Date {
+    updatedAt.addingTimeInterval(Self.staleInterval)
+  }
+
+  func isStale(at date: Date) -> Bool {
+    date >= staleDate
+  }
+
+  func widgetTimelineDates(now: Date) -> [Date] {
+    isStale(at: now) ? [now] : [now, staleDate]
+  }
+
+  static func deepLink(for destination: DatacenterSurfaceDestination) -> URL {
+    URL(string: "pvecompanion://\(destination.rawValue)")!
+  }
 
   static func load() -> DatacenterSurfaceSnapshot? {
     guard
@@ -87,7 +133,16 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
     else {
       return nil
     }
-    return try? JSONDecoder().decode(DatacenterSurfaceSnapshot.self, from: data)
+    guard
+      let snapshot = try? JSONDecoder().decode(
+        DatacenterSurfaceSnapshot.self,
+        from: data
+      ),
+      snapshot.isValid
+    else {
+      return nil
+    }
+    return snapshot
   }
 
   func save() throws {
@@ -109,6 +164,24 @@ struct DatacenterSurfaceSnapshot: Codable, Equatable {
       return number.doubleValue
     }
     return value as? Double
+  }
+
+  private static func fraction(_ value: Any?) -> Double? {
+    guard let value = double(value), value.isFinite, value >= 0 else {
+      return nil
+    }
+    return min(value, 1)
+  }
+
+  private var isValid: Bool {
+    ["healthy", "warning", "critical"].contains(healthCode)
+      && issueCount >= 0
+      && onlineNodeCount >= 0
+      && nodeCount >= onlineNodeCount
+      && runningGuestCount >= 0
+      && guestCount >= runningGuestCount
+      && runningTaskCount >= 0
+      && failedTaskCount >= 0
   }
 }
 

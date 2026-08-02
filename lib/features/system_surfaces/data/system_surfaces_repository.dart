@@ -25,6 +25,8 @@ abstract interface class SystemSurfacesRepository {
 
   Future<void> publishSnapshot(DatacenterSurfaceSnapshot snapshot);
 
+  Future<void> clearSnapshot();
+
   Future<bool> startDatacenterWatch(
     DatacenterSurfaceSnapshot snapshot, {
     required Duration duration,
@@ -76,6 +78,14 @@ class AppleSystemSurfacesRepository implements SystemSurfacesRepository {
   }
 
   @override
+  Future<void> clearSnapshot() async {
+    if (!_isSupportedPlatform) {
+      return;
+    }
+    await _channel.invokeMethod<void>('clearSnapshot');
+  }
+
+  @override
   Future<bool> startDatacenterWatch(
     DatacenterSurfaceSnapshot snapshot, {
     required Duration duration,
@@ -121,6 +131,9 @@ class UnsupportedSystemSurfacesRepository implements SystemSurfacesRepository {
 
   @override
   Future<void> publishSnapshot(DatacenterSurfaceSnapshot snapshot) async {}
+
+  @override
+  Future<void> clearSnapshot() async {}
 
   @override
   Future<bool> startDatacenterWatch(

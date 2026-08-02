@@ -45,7 +45,7 @@ class ConnectionProfileFormFields extends StatelessWidget {
           CupertinoFormSection.insetGrouped(
             header: const Text('SERVER'),
             footer: const Text(
-              'Use the address you normally open in Safari. HTTPS is required.',
+              'Enter the HTTPS address you normally use in a browser.',
             ),
             children: <Widget>[
               CupertinoTextFormFieldRow(
@@ -82,11 +82,10 @@ class ConnectionProfileFormFields extends StatelessWidget {
             header: const Text('SIGN IN'),
             footer: Text(
               passwordAuthentication
-                  ? 'PVE Companion exchanges your password for a short-lived '
-                        'session ticket. API tokens are recommended when you '
-                        'only need selected permissions.'
-                  : 'Use a dedicated, least-privilege Proxmox API token. Enter '
-                        'the complete token ID in user@realm!token-name form.',
+                  ? 'Your password creates a short-lived session and is never '
+                        'written to preferences.'
+                  : 'Use a dedicated token with only the permissions this app '
+                        'needs. Enter user@realm!token-name.',
             ),
             children: <Widget>[
               CupertinoFormRow(
@@ -151,7 +150,7 @@ class ConnectionProfileFormFields extends StatelessWidget {
             header: const Text('ON THIS DEVICE'),
             footer: const Text(
               'When enabled, the credential is encrypted in Apple Keychain. '
-              'When disabled, it is kept only for this connection.',
+              'When disabled, it is used only for this session.',
             ),
             children: <Widget>[
               _PersistCredentialsRow(
@@ -219,25 +218,28 @@ class _AuthenticationKindPicker extends StatelessWidget {
   Widget build(BuildContext context) {
     final bool usesLargeText = MediaQuery.textScalerOf(context).scale(17) >= 22;
     if (!usesLargeText) {
-      return IgnorePointer(
-        ignoring: !enabled,
-        child: CupertinoSlidingSegmentedControl<ConnectionAuthenticationKind>(
-          groupValue: value,
-          children: const <ConnectionAuthenticationKind, Widget>{
-            ConnectionAuthenticationKind.password: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Password'),
-            ),
-            ConnectionAuthenticationKind.apiToken: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('API Token'),
-            ),
-          },
-          onValueChanged: (ConnectionAuthenticationKind? kind) {
-            if (kind != null) {
-              onChanged(kind);
-            }
-          },
+      return Opacity(
+        opacity: enabled ? 1 : 0.55,
+        child: IgnorePointer(
+          ignoring: !enabled,
+          child: PveSlidingSegmentedControl<ConnectionAuthenticationKind>(
+            groupValue: value,
+            children: const <ConnectionAuthenticationKind, Widget>{
+              ConnectionAuthenticationKind.password: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('Password'),
+              ),
+              ConnectionAuthenticationKind.apiToken: Padding(
+                padding: EdgeInsets.symmetric(horizontal: 8),
+                child: Text('API Token'),
+              ),
+            },
+            onValueChanged: (ConnectionAuthenticationKind? kind) {
+              if (kind != null) {
+                onChanged(kind);
+              }
+            },
+          ),
         ),
       );
     }

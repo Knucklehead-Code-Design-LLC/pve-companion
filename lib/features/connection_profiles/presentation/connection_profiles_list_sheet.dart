@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../app/pve_companion_controller.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_modal_sheet.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_profile.dart';
 import 'connection_profile_form_sheet.dart';
@@ -10,9 +11,8 @@ Future<void> showConnectionProfilesSheet(
   BuildContext context, {
   required PveCompanionController controller,
 }) {
-  return showCupertinoSheet<void>(
+  return showPveModalSheet<void>(
     context: context,
-    useNestedNavigation: true,
     scrollableBuilder:
         (BuildContext sheetContext, ScrollController scrollController) {
           return ConnectionProfilesListSheet(

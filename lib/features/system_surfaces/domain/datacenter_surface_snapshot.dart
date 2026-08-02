@@ -13,6 +13,9 @@ class DatacenterSurfaceSnapshot {
     required this.runningTaskCount,
     required this.failedTaskCount,
     required this.updatedAt,
+    this.cpuFraction,
+    this.memoryFraction,
+    this.rootDiskFraction,
   });
 
   factory DatacenterSurfaceSnapshot.fromCluster({
@@ -37,6 +40,9 @@ class DatacenterSurfaceSnapshot {
       runningTaskCount: health.tasks.runningTaskCount,
       failedTaskCount: health.tasks.failedTaskCount,
       updatedAt: updatedAt ?? DateTime.now(),
+      cpuFraction: _surfaceFraction(health.pressure.cpu),
+      memoryFraction: _surfaceFraction(health.pressure.memory),
+      rootDiskFraction: _surfaceFraction(health.pressure.rootDisk),
     );
   }
 
@@ -50,17 +56,33 @@ class DatacenterSurfaceSnapshot {
   final int runningTaskCount;
   final int failedTaskCount;
   final DateTime updatedAt;
+  final double? cpuFraction;
+  final double? memoryFraction;
+  final double? rootDiskFraction;
 
-  Map<String, Object> toPlatformMap() => <String, Object>{
-    'healthCode': healthCode,
-    'healthLabel': healthLabel,
-    'issueCount': issueCount,
-    'onlineNodeCount': onlineNodeCount,
-    'nodeCount': nodeCount,
-    'runningGuestCount': runningGuestCount,
-    'guestCount': guestCount,
-    'runningTaskCount': runningTaskCount,
-    'failedTaskCount': failedTaskCount,
-    'updatedAt': updatedAt.millisecondsSinceEpoch / 1000,
-  };
+  Map<String, Object> toPlatformMap() {
+    return <String, Object>{
+      'healthCode': healthCode,
+      'healthLabel': healthLabel,
+      'issueCount': issueCount,
+      'onlineNodeCount': onlineNodeCount,
+      'nodeCount': nodeCount,
+      'runningGuestCount': runningGuestCount,
+      'guestCount': guestCount,
+      'runningTaskCount': runningTaskCount,
+      'failedTaskCount': failedTaskCount,
+      'updatedAt': updatedAt.millisecondsSinceEpoch / 1000,
+      if (cpuFraction != null) 'cpuFraction': cpuFraction!,
+      if (memoryFraction != null) 'memoryFraction': memoryFraction!,
+      if (rootDiskFraction != null) 'rootDiskFraction': rootDiskFraction!,
+    };
+  }
+}
+
+double? _surfaceFraction(DatacenterPressureMetric? pressure) {
+  final double? fraction = pressure?.fraction;
+  if (fraction == null || !fraction.isFinite || fraction < 0) {
+    return null;
+  }
+  return fraction.clamp(0, 1).toDouble();
 }

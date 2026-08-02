@@ -1,8 +1,11 @@
 import 'package:flutter/cupertino.dart';
 
+import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_data_visualization.dart';
 import '../../../core/presentation/pve_value_format.dart';
+import '../../node_operations/domain/pve_node_details.dart';
+import '../../node_operations/presentation/node_detail_sheet.dart';
 import '../application/cluster_overview_controller.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
@@ -19,6 +22,8 @@ class ClusterNodesPage extends StatefulWidget {
     this.showsSliverNavigationBar = true,
     this.navigationLeading,
     this.navigationTrailing,
+    this.session,
+    this.onNodeOperation,
   });
 
   final ClusterOverviewController controller;
@@ -26,6 +31,8 @@ class ClusterNodesPage extends StatefulWidget {
   final bool showsSliverNavigationBar;
   final Widget? navigationLeading;
   final Widget? navigationTrailing;
+  final ProxmoxSession? session;
+  final Future<void> Function()? onNodeOperation;
 
   @override
   State<ClusterNodesPage> createState() => _ClusterNodesPageState();
@@ -104,6 +111,8 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       (int total, DatacenterNodeHealth node) =>
           total + (node.node.cpuCores ?? 0),
     );
+    final bool canOpenNodeOperations =
+        widget.session != null && widget.onNodeOperation != null;
     final Widget search = CupertinoSearchTextField(
       controller: _searchController,
       placeholder: 'Search nodes',
@@ -217,7 +226,12 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
                     .map(
                       (DatacenterNodeHealth node) => SizedBox(
                         width: width,
-                        child: _NodeDetailCard(node: node),
+                        child: _NodeDetailCard(
+                          node: node,
+                          onTap: canOpenNodeOperations
+                              ? () => _showNode(node)
+                              : null,
+                        ),
                       ),
                     )
                     .toList(growable: false),
@@ -233,12 +247,27 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       ],
     );
   }
+
+  Future<void> _showNode(DatacenterNodeHealth node) async {
+    final ProxmoxSession? session = widget.session;
+    final Future<void> Function()? onNodeOperation = widget.onNodeOperation;
+    if (session == null || onNodeOperation == null) {
+      return;
+    }
+    await showNodeDetailSheet(
+      context,
+      seed: PveNodeDetailsSeed(node.node),
+      session: session,
+      onNodeOperation: onNodeOperation,
+    );
+  }
 }
 
 class _NodeDetailCard extends StatelessWidget {
-  const _NodeDetailCard({required this.node});
+  const _NodeDetailCard({required this.node, required this.onTap});
 
   final DatacenterNodeHealth node;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
@@ -248,6 +277,7 @@ class _NodeDetailCard extends StatelessWidget {
     final Color accent = dashboardToneColor(context, tone);
     return PveInsetGroup(
       key: ValueKey<String>('node-inventory-${node.node.name}'),
+      onTap: onTap,
       padding: const EdgeInsets.all(18),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,

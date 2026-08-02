@@ -12,38 +12,27 @@ abstract interface class ClusterOverviewRepository {
 class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
-    final List<Object?> responses = await Future.wait<Object?>(
-      <Future<Object?>>[
-        session.getData('version'),
-        session.getData('nodes'),
-        session.getData(
-          'cluster/resources',
-          query: const <String, String>{'type': 'vm'},
-        ),
-        session.getData('storage'),
-        _loadStorageResources(session),
-        session.getData(
-          'cluster/tasks',
-          query: const <String, String>{'limit': '25'},
-        ),
-      ],
-    );
+    final List<Object?> responses =
+        await Future.wait<Object?>(<Future<Object?>>[
+          session.getData('version'),
+          session.getData('nodes'),
+          _loadClusterResources(session),
+          session.getData('storage'),
+          session.getData('cluster/tasks'),
+        ]);
 
     return ClusterOverviewSnapshot(
       version: _decodeVersion(responses[0]),
       nodes: _decodeNodes(responses[1]),
       guests: _decodeGuests(responses[2]),
-      storages: _decodeStorages(responses[3], responses[4]),
-      tasks: _decodeTasks(responses[5]),
+      storages: _decodeStorages(responses[3], responses[2]),
+      tasks: _decodeTasks(responses[4]),
     );
   }
 
-  Future<Object?> _loadStorageResources(ProxmoxSession session) async {
+  Future<Object?> _loadClusterResources(ProxmoxSession session) async {
     try {
-      return await session.getData(
-        'cluster/resources',
-        query: const <String, String>{'type': 'storage'},
-      );
+      return await session.getData('cluster/resources');
     } on ProxmoxUnauthorizedException {
       return const <Object?>[];
     } on ProxmoxResponseException catch (error) {
@@ -82,6 +71,10 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
 
   List<PveGuest> _decodeGuests(Object? value) {
     return _objects(value, 'guests')
+        .where((Map<String, Object?> resource) {
+          final Object? type = resource['type'];
+          return type == 'qemu' || type == 'lxc';
+        })
         .map((Map<String, Object?> guest) {
           final String type = _requiredString(guest, 'type', 'guest');
           final GuestKind kind = switch (type) {
@@ -154,6 +147,7 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
 
   List<ClusterTask> _decodeTasks(Object? value) {
     return _objects(value, 'tasks')
+        .take(25)
         .map((Map<String, Object?> task) {
           return ClusterTask(
             upid: _requiredString(task, 'upid', 'task'),

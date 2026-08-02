@@ -64,6 +64,29 @@ class SystemSurfacesController extends ChangeNotifier {
     }
   }
 
+  Future<void> clearSnapshot() async {
+    _latestSnapshot = null;
+    _errorMessage = null;
+    bool failed = false;
+    if (_datacenterWatchActive) {
+      try {
+        await _repository.endDatacenterWatch();
+        _datacenterWatchActive = false;
+      } catch (_) {
+        failed = true;
+      }
+    }
+    try {
+      await _repository.clearSnapshot();
+    } catch (_) {
+      failed = true;
+    }
+    if (failed) {
+      _errorMessage = 'Apple system surfaces could not be cleared.';
+    }
+    _notify();
+  }
+
   Future<bool> startDatacenterWatch() async {
     final DatacenterSurfaceSnapshot? snapshot = _latestSnapshot;
     if (snapshot == null || !canStartDatacenterWatch) {

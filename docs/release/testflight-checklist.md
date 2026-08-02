@@ -7,15 +7,16 @@ app.
 
 ## One-time App Store Connect setup
 
-- [ ] Confirm the legal entity that should own PVE Companion and select its
-      Apple Developer team in Xcode.
-- [ ] Register `com.knuckleheadcodedesign.pvecompanion` as an explicit App ID.
-- [ ] Register `com.knuckleheadcodedesign.pvecompanion.widgets` as the WidgetKit
+- [x] Confirm Knucklehead Code & Design LLC as the publishing legal entity and
+      add its Apple Developer account to the publishing Mac’s Xcode account list.
+- [x] Register `com.knuckleheadcodedesign.pvecompanion` as an explicit App ID.
+- [x] Register `com.knuckleheadcodedesign.pvecompanion.widgets` as the WidgetKit
       extension App ID.
-- [ ] Register the App Group
-      `group.com.knuckleheadcodedesign.pvecompanion`, enable it for both App
-      IDs, and enable Live Activities for the main App ID.
-- [ ] Create the App Store Connect app using the metadata in
+- [x] Register the App Group
+      `group.com.knuckleheadcodedesign.pvecompanion` and assign it to both App
+      IDs. The main target declares `NSSupportsLiveActivities = true` for local
+      ActivityKit updates.
+- [x] Create the iOS/iPadOS App Store Connect app using the metadata in
       [app-store-metadata.md](app-store-metadata.md).
 - [ ] Complete agreements, banking/tax status if applicable, trader status,
       age rating, app privacy, availability, and contact information.
@@ -23,6 +24,11 @@ app.
 - [ ] Provide a live, least-privilege review server and credentials in **App
       Review Information**. Apple requires review access for sign-in features;
       do not place reviewer credentials in this repository.
+
+The initial iOS/iPadOS build, version 0.1.0 (build 1), was uploaded to
+TestFlight on August 2, 2026. Confirm its processing status in App Store
+Connect before assigning testers. The macOS target is not part of this initial
+App Store Connect release.
 
 ## Build qualification
 
@@ -42,11 +48,23 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 - [ ] Exercise trusted-chain TLS and the explicit self-signed fingerprint
       path. Verify the fingerprint independently before accepting it.
 - [ ] Verify profile deletion removes the profile and its remembered secret.
-- [ ] Exercise overview, every drill-down, and guest power confirmations on an
-      iPhone, iPad, and Mac.
-- [ ] Add each supported Home/Lock Screen widget family on iPhone and iPad;
-      verify placeholder, populated, stale, tinted, dark, and Always-On
-      appearances.
+- [ ] Exercise overview, Incident Center, every drill-down, and all guest
+      power/snapshot/backup/configuration confirmations on an iPhone, iPad,
+      and Mac. Verify task status reaches a terminal state or reports an
+      honest polling failure.
+- [ ] Exercise node detail, service restart confirmation, node power
+      confirmation, package-index refresh, Backup Center, Datacenter Portfolio,
+      Cluster Administration, notification permission/settings, and console
+      browser handoff. Use a non-production guest for every state-changing
+      action.
+- [ ] Verify local alert content and noVNC browser handoff do not transfer
+      credentials, tickets, or CSRF values. Confirm testers understand that
+      foreground alerts are not background monitoring.
+- [ ] Add the small, medium, and large Home Screen families plus every Lock
+      Screen family on iPhone and iPad. Verify placeholder, no-data, populated,
+      stale, critical, full-color, tinted, clear-glass, dark, and Always-On
+      appearances. Confirm the whole widget opens Overview and each metric link
+      opens Nodes, Guests, or Tasks as labeled.
 - [ ] Start, update, open, and end Datacenter Watch on a Dynamic
       Island-capable physical iPhone. Verify Lock Screen, compact, minimal, and
       expanded presentations contain no sensitive identifiers.
@@ -58,10 +76,13 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 
 ## Archive and upload
 
-1. Open `ios/Runner.xcworkspace` in Xcode.
-2. Select the publishing team for both Runner and PVECompanionWidgets and
-   allow Xcode to manage their distribution profiles. Confirm both targets use
-   the registered App Group. Keep team identifiers out of the repository.
+1. On the publishing Mac, create the ignored
+   `ios/Flutter/Signing.xcconfig` from its checked-in example and set the
+   publishing `DEVELOPMENT_TEAM`. Open `ios/Runner.xcworkspace` in Xcode.
+2. Confirm automatic signing for Runner and PVECompanionWidgets, the publishing
+   team inherited from the local config, and the registered App Group on both
+   targets. Keep team identifiers, profiles, certificates, and credentials out
+   of the repository.
 3. Select **Any iOS Device (arm64)** and choose **Product → Archive**.
 4. In Organizer, run **Validate App**, resolve all errors, then choose
    **Distribute App → App Store Connect → Upload**.

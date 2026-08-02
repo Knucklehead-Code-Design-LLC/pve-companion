@@ -7,7 +7,7 @@ import 'proxmox_api_exception.dart';
 import 'proxmox_authentication.dart';
 import 'proxmox_session.dart';
 
-class ProxmoxApiService implements ProxmoxSession {
+class ProxmoxApiService implements ProxmoxWritableSession {
   ProxmoxApiService({
     required Uri endpoint,
     required ProxmoxAuthentication authentication,
@@ -77,6 +77,22 @@ class ProxmoxApiService implements ProxmoxSession {
   }
 
   @override
+  Future<Object?> putForm(
+    String resource, {
+    required Map<String, String> fields,
+  }) {
+    return _request('PUT', resource, fields: fields);
+  }
+
+  @override
+  Future<Object?> deleteResource(
+    String resource, {
+    Map<String, String> query = const <String, String>{},
+  }) {
+    return _request('DELETE', resource, query: query);
+  }
+
+  @override
   void close() {
     if (_closed) {
       return;
@@ -103,12 +119,18 @@ class ProxmoxApiService implements ProxmoxSession {
       _addAuthenticationHeaders(request, method, includeAuthentication);
 
       if (fields != null) {
+        final List<int> encodedFields = utf8.encode(
+          Uri(queryParameters: fields).query,
+        );
         request.headers.contentType = ContentType(
           'application',
           'x-www-form-urlencoded',
           charset: 'utf-8',
         );
-        request.write(Uri(queryParameters: fields).query);
+        // Proxmox's API daemon rejects HTTP/1.1 chunked form uploads. Supplying
+        // the exact byte length makes Dart send a standard Content-Length body.
+        request.contentLength = encodedFields.length;
+        request.add(encodedFields);
       }
 
       final HttpClientResponse response = await request.close().timeout(

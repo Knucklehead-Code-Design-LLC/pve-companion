@@ -19,11 +19,14 @@
 		74858FAF1ED2DC5600515810 /* AppDelegate.swift in Sources */ = {isa = PBXBuildFile; fileRef = 74858FAE1ED2DC5600515810 /* AppDelegate.swift */; };
 		78A318202AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage in Frameworks */ = {isa = PBXBuildFile; productRef = 78A3181F2AECB46A00862997 /* FlutterGeneratedPluginSwiftPackage */; };
 		83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */; };
+		D11111111111111111111111 /* AppleLocalNotificationsPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */; };
+		D11111111111111111111113 /* AppleExternalNavigationPlugin.swift in Sources */ = {isa = PBXBuildFile; fileRef = D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */; };
 		8AA6F8B1AD9870C0D3095039 /* PVECompanionWidgets.swift in Sources */ = {isa = PBXBuildFile; fileRef = 1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */; };
 		97C146FC1CF9000F007C117D /* Main.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FA1CF9000F007C117D /* Main.storyboard */; };
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A11000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A11000000000000000000002 /* PrivacyInfo.xcprivacy */; };
+		AC14CA2E2534F678AA6BEB15 /* DatacenterStatusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */; };
 		AD7A6FED841F004D8061B76A /* DatacenterSurfaceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */; };
 		BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */; };
 /* End PBXBuildFile section */
@@ -77,6 +80,8 @@
 		1498D2331E8E89220040F4C2 /* GeneratedPluginRegistrant.m */ = {isa = PBXFileReference; fileEncoding = 4; lastKnownFileType = sourcecode.c.objc; path = GeneratedPluginRegistrant.m; sourceTree = "<group>"; };
 		1A74F36CC3A16AF475B7F4C6 /* PVECompanionWidgets.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = PVECompanionWidgets.swift; sourceTree = "<group>"; };
 		1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleSystemSurfacesPlugin.swift; sourceTree = "<group>"; };
+		D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleLocalNotificationsPlugin.swift; sourceTree = "<group>"; };
+		D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = AppleExternalNavigationPlugin.swift; sourceTree = "<group>"; };
 		2452D0EB6644D509242BEE11 /* Foundation.framework */ = {isa = PBXFileReference; lastKnownFileType = wrapper.framework; name = Foundation.framework; path = Platforms/iPhoneOS.platform/Developer/SDKs/iPhoneOS26.0.sdk/System/Library/Frameworks/Foundation.framework; sourceTree = DEVELOPER_DIR; };
 		331C807B294A618700263BE5 /* RunnerTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RunnerTests.swift; sourceTree = "<group>"; };
 		331C8081294A63A400263BE5 /* RunnerTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = RunnerTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
@@ -95,6 +100,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterWatchLiveActivity.swift; sourceTree = "<group>"; };
 		A11000000000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterStatusWidget.swift; sourceTree = "<group>"; };
 		C4149F85D7799DD2868100B2 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterSurfaceSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -190,6 +196,8 @@
 				74858FAE1ED2DC5600515810 /* AppDelegate.swift */,
 				74858FAD1ED2DC5600515810 /* Runner-Bridging-Header.h */,
 				1D2DE354FBA5CC147424FB89 /* AppleSystemSurfacesPlugin.swift */,
+				D11111111111111111111112 /* AppleLocalNotificationsPlugin.swift */,
+				D11111111111111111111114 /* AppleExternalNavigationPlugin.swift */,
 			);
 			path = Runner;
 			sourceTree = "<group>";
@@ -220,6 +228,7 @@
 				0D9CACE7B603BDAC18167B47 /* PrivacyInfo.xcprivacy */,
 				C4149F85D7799DD2868100B2 /* Info.plist */,
 				03404809E6BCB42D4F47C8DE /* PVECompanionWidgets.entitlements */,
+				BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */,
 			);
 			name = PVECompanionWidgets;
 			path = PVECompanionWidgets;
@@ -408,6 +417,7 @@
 				BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */,
 				1C2524F72F017E3EC62B29AA /* DatacenterSurfaceSnapshot.swift in Sources */,
 				43D509FD2E7ED39BEA369514 /* DatacenterWatchAttributes.swift in Sources */,
+				AC14CA2E2534F678AA6BEB15 /* DatacenterStatusWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -428,6 +438,8 @@
 				AD7A6FED841F004D8061B76A /* DatacenterSurfaceSnapshot.swift in Sources */,
 				7063F12473117F377425C1BD /* DatacenterWatchAttributes.swift in Sources */,
 				83EB80DAF2C47FA91A7C75E1 /* AppleSystemSurfacesPlugin.swift in Sources */,
+				D11111111111111111111111 /* AppleLocalNotificationsPlugin.swift in Sources */,
+				D11111111111111111111113 /* AppleExternalNavigationPlugin.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -469,12 +481,13 @@
 /* Begin XCBuildConfiguration section */
 		069697139DD3FA831D440D17 /* Profile */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
@@ -483,7 +496,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -620,12 +633,13 @@
 		};
 		3FE2D4A7DFD3AA34011A4CA6 /* Release */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 7AFA3C8E1D35360C0083082E /* Release.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
@@ -634,7 +648,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
@@ -806,12 +820,13 @@
 		};
 		A912D595C851AF9E5015DE4B /* Debug */ = {
 			isa = XCBuildConfiguration;
+			baseConfigurationReference = 9740EEB21CF90195004384FC /* Debug.xcconfig */;
 			buildSettings = {
 				APPLICATION_EXTENSION_API_ONLY = YES;
 				CLANG_ENABLE_OBJC_WEAK = NO;
 				CODE_SIGN_ENTITLEMENTS = PVECompanionWidgets/PVECompanionWidgets.entitlements;
 				CODE_SIGN_STYLE = Automatic;
-				CURRENT_PROJECT_VERSION = 1;
+				CURRENT_PROJECT_VERSION = "$(FLUTTER_BUILD_NUMBER)";
 				GENERATE_INFOPLIST_FILE = NO;
 				INFOPLIST_FILE = PVECompanionWidgets/Info.plist;
 				IPHONEOS_DEPLOYMENT_TARGET = 16.2;
@@ -820,7 +835,7 @@
 					"@executable_path/Frameworks",
 					"@executable_path/../../Frameworks",
 				);
-				MARKETING_VERSION = 0.1.0;
+				MARKETING_VERSION = "$(FLUTTER_BUILD_NAME)";
 				PRODUCT_BUNDLE_IDENTIFIER = com.knuckleheadcodedesign.pvecompanion.widgets;
 				PRODUCT_NAME = "$(TARGET_NAME)";
 				SDKROOT = iphoneos;
