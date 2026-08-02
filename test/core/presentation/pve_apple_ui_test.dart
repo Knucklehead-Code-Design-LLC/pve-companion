@@ -133,6 +133,25 @@ void main() {
     expect(all.flagsCollection.isSelected, Tristate.isTrue);
   });
 
+  testWidgets('segmented options retain their visible label by default', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: PveSlidingSegmentedControl<int>(
+            groupValue: 1,
+            children: <int, Widget>{1: Text('All'), 2: Text('Attention')},
+            onValueChanged: _ignoreSegment,
+          ),
+        ),
+      ),
+    );
+
+    expect(tester.getSemantics(find.text('All')).label, 'All');
+    expect(tester.getSemantics(find.text('Attention')).label, 'Attention');
+  });
+
   testWidgets('desktop inspector layouts show primary content beside details', (
     WidgetTester tester,
   ) async {

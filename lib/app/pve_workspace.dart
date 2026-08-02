@@ -125,6 +125,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
                 refreshErrorMessage:
                     widget.controller.clusterOverview.errorMessage,
                 sidebarActions: _sidebarActions(),
+                footerActions: _footerActions(),
+                desktopInspector: _desktopInspector(),
                 pages: _buildPages(session, compact: compact),
               ),
       ),
@@ -161,6 +163,41 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         onPressed: _showClusterAdministration,
       ),
     ];
+  }
+
+  List<WorkspaceSidebarAction> _footerActions() => <WorkspaceSidebarAction>[
+    WorkspaceSidebarAction(
+      label: PveActionLabels.workspaceSettings,
+      icon: CupertinoIcons.gear_alt,
+      onPressed: _showWorkspaceSettings,
+    ),
+  ];
+
+  Widget? _desktopInspector() {
+    if (defaultTargetPlatform != TargetPlatform.macOS) {
+      return null;
+    }
+    if (switch (_section) {
+      WorkspaceSection.guests ||
+      WorkspaceSection.nodes ||
+      WorkspaceSection.tasks => true,
+      WorkspaceSection.overview || WorkspaceSection.storage => false,
+    }) {
+      return null;
+    }
+    final ClusterOverviewSnapshot? snapshot =
+        widget.controller.clusterOverview.snapshot;
+    final int attentionCount = snapshot == null
+        ? 0
+        : DatacenterIncidentEvaluator.evaluate(snapshot).incidents.length;
+    return _WorkspaceContextInspector(
+      section: _section,
+      refreshedAt: widget.controller.clusterOverview.lastUpdatedAt,
+      attentionCount: attentionCount,
+      onShowNotifications: _showNotifications,
+      onManageServers: () =>
+          showConnectionProfilesSheet(context, controller: widget.controller),
+    );
   }
 
   List<Widget> _buildPages(ProxmoxSession session, {required bool compact}) {
@@ -281,6 +318,9 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         controller: widget.controller.systemSurfaces,
       ),
       onEndDatacenterWatch: widget.controller.systemSurfaces.endDatacenterWatch,
+      lastUpdatedAt: connected
+          ? widget.controller.clusterOverview.lastUpdatedAt
+          : null,
     );
   }
 
@@ -377,6 +417,48 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     );
   }
 
+  Future<void> _showWorkspaceSettings() {
+    return showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext settingsContext) => CupertinoActionSheet(
+        title: const Text(PveActionLabels.workspaceSettings),
+        message: const Text(
+          'Manage saved servers, notification preferences, and workspace information.',
+        ),
+        actions: <Widget>[
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(settingsContext).pop();
+              showConnectionProfilesSheet(
+                context,
+                controller: widget.controller,
+              );
+            },
+            child: const Text('Manage servers'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(settingsContext).pop();
+              _showNotifications();
+            },
+            child: const Text('Notification settings'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(settingsContext).pop();
+              showPveCompanionAboutDialog(context);
+            },
+            child: const Text('About PVE Companion'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(settingsContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
   Future<void> _showClusterAdministration() async {
     final ProxmoxSession? session =
         widget.controller.connectionProfiles.activeSession;
@@ -390,6 +472,79 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       session: session,
       overview: overview,
       onViewNodes: () => _selectSection(WorkspaceSection.nodes),
+    );
+  }
+}
+
+class _WorkspaceContextInspector extends StatelessWidget {
+  const _WorkspaceContextInspector({
+    required this.section,
+    required this.refreshedAt,
+    required this.attentionCount,
+    required this.onShowNotifications,
+    required this.onManageServers,
+  });
+
+  final WorkspaceSection section;
+  final DateTime? refreshedAt;
+  final int attentionCount;
+  final VoidCallback onShowNotifications;
+  final VoidCallback onManageServers;
+
+  @override
+  Widget build(BuildContext context) {
+    final String attentionLabel = attentionCount == 0
+        ? 'No active incidents are derived from the latest refresh.'
+        : '$attentionCount ${attentionCount == 1 ? 'incident needs' : 'incidents need'} attention.';
+    return Padding(
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          Text('Workspace', style: PveAppleText.title3(context)),
+          const SizedBox(height: 4),
+          Text(
+            '${section.label} context',
+            style: PveAppleText.secondary(context),
+          ),
+          const SizedBox(height: 16),
+          PveInsetGroup(
+            padding: const EdgeInsets.all(14),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text('Datacenter status', style: PveAppleText.title3(context)),
+                const SizedBox(height: 4),
+                if (refreshedAt != null)
+                  PveFreshnessLabel(refreshedAt: refreshedAt!)
+                else
+                  Text(
+                    'Data has not been refreshed yet.',
+                    style: PveAppleText.secondary(context),
+                  ),
+                const SizedBox(height: 8),
+                Text(attentionLabel, style: PveAppleText.secondary(context)),
+              ],
+            ),
+          ),
+          const SizedBox(height: 12),
+          CupertinoButton.tinted(
+            onPressed: onShowNotifications,
+            child: const Text('Open notifications'),
+          ),
+          CupertinoButton(
+            onPressed: onManageServers,
+            child: const Text('Manage servers'),
+          ),
+          const Spacer(),
+          Text('Keyboard shortcuts', style: PveAppleText.caption(context)),
+          const SizedBox(height: 4),
+          Text(
+            '⌘R refresh · ⌘K commands · ⌘1–5 sections',
+            style: PveAppleText.caption(context),
+          ),
+        ],
+      ),
     );
   }
 }

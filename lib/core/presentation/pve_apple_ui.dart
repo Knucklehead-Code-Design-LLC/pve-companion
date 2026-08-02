@@ -118,6 +118,7 @@ abstract final class PveActionLabels {
   static const String close = 'Close';
   static const String retry = 'Try again';
   static const String viewAll = 'View all';
+  static const String workspaceSettings = 'Workspace settings';
 }
 
 /// A consistently sized icon action with both a spoken label and desktop tooltip.
@@ -149,6 +150,7 @@ class PveIconAction extends StatelessWidget {
         child: CupertinoButton(
           padding: EdgeInsets.zero,
           minimumSize: const Size(44, 44),
+          focusColor: PveAppleColors.primary(context).withValues(alpha: 0.55),
           onPressed: onPressed,
           child: Icon(icon, color: color),
         ),
@@ -345,7 +347,9 @@ class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
               button: true,
               selected: entry.key == groupValue,
               label: semanticLabels?[entry.key],
-              child: ExcludeSemantics(child: entry.value),
+              child: semanticLabels?[entry.key] == null
+                  ? entry.value
+                  : ExcludeSemantics(child: entry.value),
             ),
         },
         onValueChanged: onValueChanged,
@@ -635,6 +639,7 @@ class PveInsetGroup extends StatelessWidget {
           alignment: Alignment.centerLeft,
           borderRadius: borderRadius,
           pressedOpacity: 0.72,
+          focusColor: PveAppleColors.primary(context).withValues(alpha: 0.55),
           onPressed: onTap,
           child: DefaultTextStyle.merge(
             style: PveAppleText.body(context),

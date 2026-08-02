@@ -32,6 +32,7 @@ class WorkspaceToolbar extends StatelessWidget
     this.onStartDatacenterWatch,
     this.onEndDatacenterWatch,
     this.desktopWorkspaceCommandsEnabled,
+    this.lastUpdatedAt,
   });
 
   final List<ConnectionProfile> profiles;
@@ -57,6 +58,10 @@ class WorkspaceToolbar extends StatelessWidget
   /// desktop command presentation explicitly.
   final bool? desktopWorkspaceCommandsEnabled;
 
+  /// The latest successful datacenter refresh, shown beside the desktop page
+  /// title so the operator can judge data freshness before acting.
+  final DateTime? lastUpdatedAt;
+
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
@@ -75,8 +80,11 @@ class WorkspaceToolbar extends StatelessWidget
                   onSelected: onConnectToProfile,
                   compact: true,
                 )
-              : null,
-          middle: Text(title),
+              : _WorkspaceToolbarTitle(
+                  title: title,
+                  lastUpdatedAt: lastUpdatedAt,
+                ),
+          middle: showServerMenu ? Text(title) : null,
           trailing: _WorkspaceToolbarActions(
             showsDesktopWorkspaceCommands: showsDesktopWorkspaceCommands,
             connected: connected,
@@ -103,6 +111,29 @@ class WorkspaceToolbar extends StatelessWidget
 
   @override
   bool shouldFullyObstruct(BuildContext context) => true;
+}
+
+class _WorkspaceToolbarTitle extends StatelessWidget {
+  const _WorkspaceToolbarTitle({
+    required this.title,
+    required this.lastUpdatedAt,
+  });
+
+  final String title;
+  final DateTime? lastUpdatedAt;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    mainAxisSize: MainAxisSize.min,
+    crossAxisAlignment: CrossAxisAlignment.start,
+    children: <Widget>[
+      Semantics(
+        header: true,
+        child: Text(title, style: PveAppleText.title3(context)),
+      ),
+      if (lastUpdatedAt != null) PveFreshnessLabel(refreshedAt: lastUpdatedAt!),
+    ],
+  );
 }
 
 class _WorkspaceToolbarActions extends StatelessWidget {

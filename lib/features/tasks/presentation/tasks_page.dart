@@ -1,5 +1,6 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
@@ -187,26 +188,30 @@ class _TasksPageState extends State<TasksPage> {
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Recent',
+              label: 'Recent operations',
               value: '${tasks.length}',
               icon: CupertinoIcons.clock_fill,
+              scope: 'Latest server response',
             ),
             PveMetricStripItem(
               label: 'Active work',
               value: '$runningCount',
               icon: CupertinoIcons.arrow_2_circlepath,
+              scope: 'Reported running operations',
             ),
             if (interactiveSessionCount > 0)
               PveMetricStripItem(
                 label: 'Sessions',
                 value: '$interactiveSessionCount',
                 icon: CupertinoIcons.desktopcomputer,
+                scope: 'Reported interactive sessions',
               ),
             PveMetricStripItem(
               label: 'Successful',
               value: '$successfulCount',
               icon: CupertinoIcons.check_mark_circled_solid,
               color: PveAppleColors.success(context),
+              scope: 'Recent reported operations',
             ),
             PveMetricStripItem(
               label: 'Failed',
@@ -215,6 +220,7 @@ class _TasksPageState extends State<TasksPage> {
               color: failedCount == 0
                   ? PveAppleColors.secondaryLabel(context)
                   : PveAppleColors.destructive(context),
+              scope: 'Recent reported operations',
             ),
           ],
         ),
@@ -1090,11 +1096,18 @@ class _TaskInspectorState extends State<_TaskInspector> {
     session: widget.session,
     task: widget.task,
   );
+  bool _copiedTaskId = false;
 
   @override
   void dispose() {
     _logController.dispose();
     super.dispose();
+  }
+
+  Future<void> _copyTaskId() async {
+    await Clipboard.setData(ClipboardData(text: widget.task.upid));
+    if (!mounted) return;
+    setState(() => _copiedTaskId = true);
   }
 
   @override
@@ -1128,8 +1141,25 @@ class _TaskInspectorState extends State<_TaskInspector> {
             value: formatPveDateTime(task.endedAt),
           ),
           _InspectorRow(label: 'Duration', value: _taskDurationLabel(task)),
-          _InspectorRow(label: 'Task ID', value: task.upid),
+          CupertinoContextMenu(
+            actions: <Widget>[
+              CupertinoContextMenuAction(
+                onPressed: () {
+                  Navigator.of(context).pop();
+                  _copyTaskId();
+                },
+                child: const Text('Copy task ID'),
+              ),
+            ],
+            child: _InspectorRow(label: 'Task ID', value: task.upid),
+          ),
         ],
+      ),
+      CupertinoButton(
+        padding: EdgeInsets.zero,
+        alignment: Alignment.centerLeft,
+        onPressed: _copyTaskId,
+        child: Text(_copiedTaskId ? 'Task ID copied' : 'Copy task ID'),
       ),
       const SizedBox(height: 18),
       _TaskLogSection(controller: _logController),

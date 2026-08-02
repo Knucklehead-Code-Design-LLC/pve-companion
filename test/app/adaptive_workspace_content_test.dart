@@ -218,6 +218,31 @@ void main() {
     );
   });
 
+  testWidgets('keeps workspace settings in the sidebar footer', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      const _NavigationHarness(
+        footerActions: <WorkspaceSidebarAction>[
+          WorkspaceSidebarAction(
+            label: PveActionLabels.workspaceSettings,
+            icon: CupertinoIcons.gear_alt,
+            onPressed: _noop,
+          ),
+        ],
+      ),
+    );
+
+    expect(
+      find.byKey(const ValueKey<String>('workspace-footer-actions')),
+      findsOneWidget,
+    );
+    expect(find.text(PveActionLabels.workspaceSettings), findsOneWidget);
+  });
+
   testWidgets('reserves a persistent wide inspector only when supplied', (
     WidgetTester tester,
   ) async {
@@ -278,6 +303,7 @@ class _NavigationHarness extends StatefulWidget {
     this.lastUpdatedAt,
     this.refreshErrorMessage,
     this.sidebarActions = const <WorkspaceSidebarAction>[],
+    this.footerActions = const <WorkspaceSidebarAction>[],
     this.desktopInspector,
   });
 
@@ -285,6 +311,7 @@ class _NavigationHarness extends StatefulWidget {
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
   final List<WorkspaceSidebarAction> sidebarActions;
+  final List<WorkspaceSidebarAction> footerActions;
   final Widget? desktopInspector;
 
   @override
@@ -334,6 +361,7 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
           lastUpdatedAt: widget.lastUpdatedAt ?? DateTime.now(),
           refreshErrorMessage: widget.refreshErrorMessage,
           sidebarActions: widget.sidebarActions,
+          footerActions: widget.footerActions,
           desktopInspector: widget.desktopInspector,
         ),
       ),

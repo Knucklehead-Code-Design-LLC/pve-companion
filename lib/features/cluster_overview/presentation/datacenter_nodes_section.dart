@@ -22,7 +22,7 @@ class DatacenterNodesSection extends StatelessWidget {
       children: <Widget>[
         DatacenterDashboardSectionHeader(
           title: 'Nodes',
-          actionLabel: 'View all',
+          actionLabel: 'View nodes',
           actionSemanticsLabel: 'View all nodes',
           onAction: onViewNodes,
         ),

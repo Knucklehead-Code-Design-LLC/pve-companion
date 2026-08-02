@@ -162,6 +162,7 @@ void main() {
       expect(find.text('Task details'), findsOneWidget);
       expect(find.text('Load server log'), findsOneWidget);
       expect(find.text('Task ID'), findsOneWidget);
+      expect(find.text('Copy task ID'), findsOneWidget);
       expect(find.text('Close'), findsNothing);
       debugDefaultTargetPlatformOverride = null;
     },

@@ -94,7 +94,7 @@ class DatacenterDashboard extends StatelessWidget {
                         if (!incidents.isEmpty) ...<Widget>[
                           PveSectionHeader(
                             title: 'Needs attention',
-                            actionLabel: 'View all',
+                            actionLabel: 'View incidents',
                             actionSemanticsLabel:
                                 'View all datacenter incidents',
                             onAction: () => showDatacenterIncidentCenter(

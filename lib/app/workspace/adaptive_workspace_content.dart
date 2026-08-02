@@ -40,6 +40,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     this.lastUpdatedAt,
     this.refreshErrorMessage,
     this.sidebarActions = const <WorkspaceSidebarAction>[],
+    this.footerActions = const <WorkspaceSidebarAction>[],
     this.desktopInspector,
   }) : assert(pages.length == WorkspaceSection.values.length);
 
@@ -56,6 +57,10 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
   /// Secondary workspace destinations that remain visible on desktop instead
   /// of being hidden behind the overflow menu.
   final List<WorkspaceSidebarAction> sidebarActions;
+
+  /// Persistent workspace settings and utilities placed at the bottom of the
+  /// desktop sidebar, above connection status.
+  final List<WorkspaceSidebarAction> footerActions;
 
   /// An optional persistent inspector supplied by a selected-resource owner.
   /// The shell deliberately does not invent inspection content itself.
@@ -87,6 +92,7 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
                 lastUpdatedAt: lastUpdatedAt,
                 refreshErrorMessage: refreshErrorMessage,
                 actions: sidebarActions,
+                footerActions: footerActions,
               ),
               Container(
                 width: 0.5,
@@ -168,6 +174,7 @@ class _WorkspaceSidebar extends StatelessWidget {
     required this.lastUpdatedAt,
     required this.refreshErrorMessage,
     required this.actions,
+    required this.footerActions,
   });
 
   final WorkspaceSection section;
@@ -179,6 +186,7 @@ class _WorkspaceSidebar extends StatelessWidget {
   final DateTime? lastUpdatedAt;
   final String? refreshErrorMessage;
   final List<WorkspaceSidebarAction> actions;
+  final List<WorkspaceSidebarAction> footerActions;
 
   @override
   Widget build(BuildContext context) {
@@ -232,6 +240,13 @@ class _WorkspaceSidebar extends StatelessWidget {
                 if (actions.isNotEmpty) ...<Widget>[
                   const SizedBox(height: 8),
                   _SidebarWorkspaceActions(actions: actions),
+                ],
+                if (footerActions.isNotEmpty) ...<Widget>[
+                  const SizedBox(height: 8),
+                  _SidebarWorkspaceActions(
+                    key: const ValueKey<String>('workspace-footer-actions'),
+                    actions: footerActions,
+                  ),
                 ],
                 const SizedBox(height: 12),
                 _WorkspaceConnectionFooter(
@@ -319,7 +334,7 @@ class _SidebarMoveIntent extends Intent {
 }
 
 class _SidebarWorkspaceActions extends StatelessWidget {
-  const _SidebarWorkspaceActions({required this.actions});
+  const _SidebarWorkspaceActions({super.key, required this.actions});
 
   final List<WorkspaceSidebarAction> actions;
 

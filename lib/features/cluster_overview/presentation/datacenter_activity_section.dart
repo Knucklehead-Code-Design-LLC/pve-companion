@@ -28,7 +28,7 @@ class DatacenterRecentActivitySection extends StatelessWidget {
       children: <Widget>[
         DatacenterDashboardSectionHeader(
           title: 'Recent reported activity',
-          actionLabel: 'View all',
+          actionLabel: 'View tasks',
           actionSemanticsLabel: 'View all tasks',
           onAction: onViewTasks,
         ),
