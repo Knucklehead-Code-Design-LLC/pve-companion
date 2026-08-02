@@ -54,12 +54,13 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
       honest polling failure.
 - [ ] Exercise node detail, service restart confirmation, node power
       confirmation, package-index refresh, Backup Center, Datacenter Portfolio,
-      Cluster Administration, notification permission/settings, and console
-      browser handoff. Use a non-production guest for every state-changing
-      action.
-- [ ] Verify local alert content and noVNC browser handoff do not transfer
-      credentials, tickets, or CSRF values. Confirm testers understand that
-      foreground alerts are not background monitoring.
+      Cluster Administration, notification permission/settings, and the
+      in-app guest console. Use a non-production guest for every
+      state-changing action.
+- [ ] Verify the in-app guest console connects with both password and API-token
+      profiles, renders a framebuffer, accepts pointer/keyboard input, and
+      closes when the app backgrounds. Confirm that no UI, alert, diagnostic,
+      or external process exposes credentials, tickets, or CSRF values.
 - [ ] Add the small, medium, and large Home Screen families plus every Lock
       Screen family on iPhone and iPad. Verify placeholder, no-data, populated,
       stale, critical, full-color, tinted, clear-glass, dark, and Always-On

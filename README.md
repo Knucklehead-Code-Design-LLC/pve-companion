@@ -59,17 +59,16 @@ PVE Companion is deliberately useful without claiming web-interface parity:
 - A Cluster Administration audit surface for membership, quorum, HA state, and
   safe datacenter options. Cluster topology, storage, and network changes stay
   in Proxmox's full administration UI.
-- Browser handoff to an individual guest's official noVNC route without
-  transferring the app's password, API token, ticket, or CSRF token. The
-  browser authenticates to Proxmox independently when required.
+- An in-app VM/LXC VNC console with framebuffer, pointer, keyboard, and
+  clipboard controls. Its short-lived VNC ticket stays inside the authenticated
+  transport and is discarded after connection setup.
 - An original, trademark-distinct app icon and deterministic App Store capture
   flows for iPhone, iPad, and Mac.
 
-It does **not** yet provide an embedded console/ticket bridge, guest creation
-or deletion, migration, restore, package upgrades, cluster/network topology
-editing, roles, background monitoring, or a replacement for every Proxmox VE
-web surface. See the [web-parity roadmap](docs/roadmap.md) for the planned
-path.
+It does **not** yet provide guest creation or deletion, migration, restore,
+SPICE, package upgrades, cluster/network topology editing, roles, background
+monitoring, or a replacement for every Proxmox VE web surface. See the
+[web-parity roadmap](docs/roadmap.md) for the planned path.
 
 ## Security model
 
@@ -85,8 +84,10 @@ port `8006` directly to the public internet.
   the current app session.
 - Configuration details are allow-listed before display so secrets are not
   casually surfaced in the guest detail view.
-- Console handoff opens an HTTPS Proxmox route in the system browser and does
-  not transfer credentials, session tickets, or CSRF tokens from the app.
+- In-app consoles use the existing authenticated WebSocket and certificate
+  pinning path. Their VNC ticket is held only in memory by the transport,
+  never exposed to UI code, and discarded after setup or when the app leaves
+  the foreground.
 - Local incident notifications can display the selected profile name and an
   incident title (such as a node or storage name) on the device. They are
   evaluated only after a foreground refresh and may be visible to someone with

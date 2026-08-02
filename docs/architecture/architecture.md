@@ -18,11 +18,11 @@ domain, data, application, and presentation code.
 | `fleet` | Bounded-concurrency, short-lived read-only portfolio refreshes across saved profiles. |
 | `notifications` | Local foreground incident preferences, de-duplication state, and the Apple-notification adapter. |
 | `cluster_administration` | Read-only cluster membership, quorum, HA, and safe option audit. |
-| `console` | Credential-free browser handoff URL construction for Proxmox noVNC routes. |
+| `console` | In-app RFB/VNC negotiation, framebuffer/input adaptation, and guest-console presentation. |
 | `storage` and `tasks` | Cluster-overview presentation, with Storage also owning the Backup Center entry point. |
 | `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
-| `core/api` | Transport-only Proxmox HTTP session, headers, ticket handling, response validation, typed transport errors, and a shared task contract/poller. |
-| `core/platform` | Narrow Apple platform channels for local notifications and HTTPS external navigation. |
+| `core/api` | Proxmox HTTP/WebSocket session, headers, in-memory ticket handling, response validation, typed transport errors, and a shared task contract/poller. |
+| `core/platform` | Narrow Apple platform channels for local notifications. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
 | `core/presentation` | Apple-first colors, typography, value formatting, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
@@ -135,8 +135,10 @@ feature widgets and performs no network requests.
   restart are deliberately scoped actions with explicit confirmation. Cluster
   membership, quorum, storage, and network topology remain outside the app's
   mutation boundary.
-- The noVNC handoff constructs only an HTTPS route. It never transfers a
-  password, API token, PVE ticket, or CSRF token to the browser.
+- The in-app VNC transport retains the short-lived ticket and computes the RFB
+  authentication response without exposing credentials, tickets, or CSRF
+  values to feature or presentation code. It uses the same certificate-pinned
+  HTTP client as the API session and closes when the app leaves the foreground.
 - Local notifications are evaluated only after a foreground refresh. Their
   persisted state contains incident IDs rather than credentials; visible alert
   content may include the profile display name and incident title.

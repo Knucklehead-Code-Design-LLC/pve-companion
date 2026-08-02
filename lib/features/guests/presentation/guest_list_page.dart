@@ -20,7 +20,6 @@ class GuestListPage extends StatefulWidget {
     this.showsSliverNavigationBar = true,
     this.navigationLeading,
     this.navigationTrailing,
-    this.consoleEndpoint,
   });
 
   final ClusterOverviewController overviewController;
@@ -30,7 +29,6 @@ class GuestListPage extends StatefulWidget {
   final bool showsSliverNavigationBar;
   final Widget? navigationLeading;
   final Widget? navigationTrailing;
-  final Uri? consoleEndpoint;
 
   @override
   State<GuestListPage> createState() => _GuestListPageState();
@@ -264,7 +262,6 @@ class _GuestListPageState extends State<GuestListPage> {
       session: widget.session,
       onGuestPowerAction: widget.onGuestPowerAction,
       backupStorageNames: backupStorageNames,
-      consoleEndpoint: widget.consoleEndpoint,
     );
   }
 

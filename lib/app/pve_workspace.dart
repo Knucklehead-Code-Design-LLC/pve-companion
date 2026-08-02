@@ -136,8 +136,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       GuestListPage(
         overviewController: widget.controller.clusterOverview,
         session: session,
-        consoleEndpoint:
-            widget.controller.connectionProfiles.selectedProfile?.endpoint,
         showsSliverNavigationBar: compact,
         navigationLeading: compact ? _buildCompactLeading() : null,
         navigationTrailing: compact ? _buildCompactTrailing() : null,

@@ -129,8 +129,8 @@ launch.
    shown fingerprint before trusting it.
 4. On an isolated test guest, smoke-test every state-changing guest/node
    operation and verify its tracked task status. Exercise Backup Center,
-   Portfolio, Cluster Administration, notification permission, and browser
-   console handoff on each Apple platform.
+   Portfolio, Cluster Administration, notification permission, and the in-app
+   guest console on each Apple platform.
 5. Confirm no profile export, diagnostics, screenshot, or log includes a
    password, token secret, ticket, CSRF token, private hostname, or IP address.
 6. Configure App Store signing in Xcode or the approved release system; never

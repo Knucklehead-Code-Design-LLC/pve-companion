@@ -1,13 +1,16 @@
 import 'dart:async';
 import 'dart:convert';
 import 'dart:io';
+import 'dart:typed_data';
 
 import '../security/certificate_fingerprint.dart';
 import 'proxmox_api_exception.dart';
 import 'proxmox_authentication.dart';
 import 'proxmox_session.dart';
+import 'proxmox_vnc_authentication.dart';
 
-class ProxmoxApiService implements ProxmoxWritableSession {
+class ProxmoxApiService
+    implements ProxmoxWritableSession, ProxmoxConsoleSession {
   ProxmoxApiService({
     required Uri endpoint,
     required ProxmoxAuthentication authentication,
@@ -90,6 +93,85 @@ class ProxmoxApiService implements ProxmoxWritableSession {
     Map<String, String> query = const <String, String>{},
   }) {
     return _request('DELETE', resource, query: query);
+  }
+
+  @override
+  Future<ProxmoxConsoleTransport> openConsole({
+    required String node,
+    required String resource,
+    required int vmid,
+  }) async {
+    _ensureOpen();
+    if (!_isSafeResourceSegment(node) ||
+        (resource != 'qemu' && resource != 'lxc') ||
+        vmid <= 0) {
+      throw const ProxmoxResponseException(
+        statusCode: 400,
+        message: 'The requested guest console is not valid.',
+      );
+    }
+
+    final Object? response = await _request(
+      'POST',
+      'nodes/$node/$resource/$vmid/vncproxy',
+      fields: const <String, String>{'websocket': '1'},
+    );
+    final Map<String, Object?> proxy = _requireObject(
+      response,
+      'The console ticket response was not an object.',
+    );
+    final String vncTicket = _requireString(proxy, 'ticket');
+    final int port = _requirePort(proxy['port']);
+
+    final Uri uri = _apiUri(
+      'nodes/$node/$resource/$vmid/vncwebsocket',
+      <String, String>{'port': '$port', 'vncticket': vncTicket},
+    ).replace(scheme: _endpoint.scheme == 'https' ? 'wss' : 'ws');
+
+    _rejectedCertificateFingerprint = null;
+    try {
+      // The returned transport owns this socket and closes it when its console
+      // session ends. Keeping that ownership separate ensures the VNC ticket
+      // is never exposed outside this API layer.
+      // ignore: close_sinks
+      final WebSocket socket = await WebSocket.connect(
+        uri.toString(),
+        headers: _webSocketAuthenticationHeaders(),
+        customClient: _httpClient,
+      ).timeout(const Duration(seconds: 12));
+      socket.pingInterval = const Duration(seconds: 20);
+      return _WebSocketConsoleTransport(socket, vncTicket: vncTicket);
+    } on ProxmoxApiException {
+      rethrow;
+    } on HandshakeException catch (error) {
+      final String? fingerprint = _rejectedCertificateFingerprint;
+      if (fingerprint != null) {
+        throw ProxmoxTlsTrustRequiredException(
+          fingerprint: fingerprint,
+          host: _endpoint.host,
+          port: _endpointPort,
+        );
+      }
+      throw ProxmoxNetworkException('TLS negotiation failed: ${error.message}');
+    } on SocketException catch (error) {
+      throw ProxmoxNetworkException(
+        'Could not reach the server: ${error.message}',
+      );
+    } on TimeoutException {
+      throw const ProxmoxNetworkException(
+        'The console did not connect before its ticket expired.',
+      );
+    } on WebSocketException {
+      // The WebSocket error can include a URL with a short-lived VNC ticket.
+      // Never surface or log it.
+      throw const ProxmoxNetworkException(
+        'The server did not accept the guest console connection.',
+      );
+    } on HttpException {
+      throw const ProxmoxNetworkException(
+        'The server did not accept the guest console connection.',
+      );
+    }
   }
 
   @override
@@ -241,6 +323,28 @@ class ProxmoxApiService implements ProxmoxWritableSession {
     }
   }
 
+  Map<String, String> _webSocketAuthenticationHeaders() {
+    switch (_authentication) {
+      case ProxmoxApiTokenAuthentication(
+        :final String tokenId,
+        :final String secret,
+      ):
+        return <String, String>{
+          HttpHeaders.authorizationHeader: 'PVEAPIToken=$tokenId=$secret',
+        };
+      case ProxmoxPasswordAuthentication():
+        final String? ticket = _ticket;
+        if (ticket == null) {
+          throw const ProxmoxUnauthorizedException(
+            'A session ticket is unavailable.',
+          );
+        }
+        return <String, String>{
+          HttpHeaders.cookieHeader: 'PVEAuthCookie=$ticket',
+        };
+    }
+  }
+
   bool _shouldTrustBadCertificate(
     X509Certificate certificate,
     String host,
@@ -281,6 +385,24 @@ class ProxmoxApiService implements ProxmoxWritableSession {
     );
   }
 
+  static int _requirePort(Object? value) {
+    final int? port = switch (value) {
+      final int value => value,
+      final num value => value.toInt(),
+      final String value => int.tryParse(value),
+      _ => null,
+    };
+    if (port == null || port < 1 || port > 65535) {
+      throw const ProxmoxMalformedResponseException(
+        'The console ticket response did not contain a usable port.',
+      );
+    }
+    return port;
+  }
+
+  static bool _isSafeResourceSegment(String value) =>
+      RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$').hasMatch(value);
+
   static String _responseMessage(String body, String fallback) {
     try {
       final Object? decoded = jsonDecode(body);
@@ -305,5 +427,56 @@ class ProxmoxApiService implements ProxmoxWritableSession {
       return null;
     }
     return fingerprint.replaceAll(':', '').replaceAll(' ', '').toUpperCase();
+  }
+}
+
+class _WebSocketConsoleTransport implements ProxmoxConsoleTransport {
+  _WebSocketConsoleTransport(this._socket, {required String vncTicket})
+    : _vncTicket = vncTicket;
+
+  final WebSocket _socket;
+  String? _vncTicket;
+
+  @override
+  Stream<Uint8List> get messages => _socket.map<Uint8List>((Object? message) {
+    if (message is List<int>) {
+      return Uint8List.fromList(message);
+    }
+    throw StateError('The guest console returned a non-binary response.');
+  });
+
+  @override
+  Uint8List respondToVncChallenge(Uint8List challenge) {
+    final String? ticket = _vncTicket;
+    if (ticket == null) {
+      throw StateError('The guest console ticket has already been used.');
+    }
+    _vncTicket = null;
+    return ProxmoxVncAuthentication.responseForTicket(
+      ticket: ticket,
+      challenge: challenge,
+    );
+  }
+
+  @override
+  void discardVncTicket() {
+    _vncTicket = null;
+  }
+
+  @override
+  void send(Uint8List message) {
+    if (_socket.readyState != WebSocket.open) {
+      throw StateError('The guest console is no longer connected.');
+    }
+    _socket.add(message);
+  }
+
+  @override
+  Future<void> close() async {
+    discardVncTicket();
+    if (_socket.readyState == WebSocket.closed) {
+      return;
+    }
+    await _socket.close(WebSocketStatus.normalClosure, 'Console closed');
   }
 }

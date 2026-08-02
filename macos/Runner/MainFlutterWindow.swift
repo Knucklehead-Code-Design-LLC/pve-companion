@@ -12,9 +12,6 @@ class MainFlutterWindow: NSWindow {
     AppleLocalNotificationsPlugin.register(
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
-    AppleExternalNavigationPlugin.register(
-      binaryMessenger: flutterViewController.engine.binaryMessenger
-    )
 
     super.awakeFromNib()
   }
