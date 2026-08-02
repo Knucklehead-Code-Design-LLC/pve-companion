@@ -28,6 +28,11 @@ void main() {
       find.text('Showing all 2 storage pools · highest risk first'),
       findsOneWidget,
     );
+    expect(find.text('Configured pools'), findsOneWidget);
+    expect(find.text('Availability coverage'), findsNWidgets(2));
+    expect(find.text('Capacity used now'), findsNWidgets(3));
+    expect(find.text('Capacity free now'), findsOneWidget);
+    expect(find.text('2 of 2 pools report capacity'), findsNWidgets(2));
 
     await tester.tap(find.text('Shared').first);
     await tester.pump();

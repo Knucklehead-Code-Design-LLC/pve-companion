@@ -79,9 +79,12 @@ class _DatacenterActivityItem extends StatelessWidget {
         ),
         title: Text('${task.type} on ${task.node}'),
         subtitle: Text('${task.user} · ${formatPveDateTime(task.startedAt)}'),
-        trailing: PveStatusPill(
-          label: statusLabel,
-          color: dashboardToneColor(context, tone),
+        trailing: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.25,
+          child: PveStatusPill(
+            label: statusLabel,
+            color: dashboardToneColor(context, tone),
+          ),
         ),
       ),
     );

@@ -66,9 +66,11 @@ void main() {
     expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
-    expect(find.text('Peak CPU'), findsOneWidget);
-    expect(find.text('Memory'), findsWidgets);
-    expect(find.text('Root disk'), findsWidgets);
+    expect(find.text('Peak CPU now'), findsOneWidget);
+    expect(find.text('Memory allocated now'), findsOneWidget);
+    expect(find.text('Root disk allocated now'), findsOneWidget);
+    expect(find.textContaining('Highest reported node'), findsOneWidget);
+    expect(find.textContaining('Combined reported capacity'), findsNWidgets(2));
     expect(
       find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
       findsOneWidget,

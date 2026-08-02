@@ -44,22 +44,23 @@ class DatacenterOperationalSummary extends StatelessWidget {
           key: const ValueKey<String>('dashboard-resource-pressure'),
           child: PveInsightCard(
             title: 'Resource pressure',
-            subtitle: 'Current cluster utilization',
+            subtitle:
+                'Current refresh · peak CPU and combined reported capacity',
             child: Column(
               children: <Widget>[
                 _DashboardPressureMeter(
-                  label: 'Peak CPU',
+                  label: 'Peak CPU now',
                   pressure: health.pressure.cpu,
                   detail: health.pressure.cpu?.representativeNodeName,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Memory',
+                  label: 'Memory allocated now',
                   pressure: health.pressure.memory,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Root disk',
+                  label: 'Root disk allocated now',
                   pressure: health.pressure.rootDisk,
                 ),
               ],
@@ -70,7 +71,9 @@ class DatacenterOperationalSummary extends StatelessWidget {
           key: const ValueKey<String>('dashboard-workload-composition'),
           child: PveInsightCard(
             title: 'Workload composition',
-            subtitle: '${snapshot.storages.length} storage pools configured',
+            subtitle:
+                '${snapshot.storages.length} '
+                '${snapshot.storages.length == 1 ? 'storage pool' : 'storage pools'} configured',
             footer: Row(
               children: <Widget>[
                 Expanded(
@@ -138,7 +141,7 @@ class DatacenterOperationalSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
-                        label: 'Storage used',
+                        label: 'Current storage used',
                         value: reportingStorageCount == 0
                             ? 'Not reported'
                             : '${formatPveBytes(storageUsedBytes)} / '
@@ -176,7 +179,18 @@ class _DashboardPressureMeter extends StatelessWidget {
       value: datacenterPressureValueLabel(pressure),
       progress: pressure?.progressFraction,
       color: dashboardToneColor(context, tone),
-      detail: datacenterPressureReportingLabel(pressure, detail: detail),
+      detail: _pressureDetail(pressure, representativeNode: detail),
     );
+  }
+
+  String _pressureDetail(
+    DatacenterPressureMetric? pressure, {
+    required String? representativeNode,
+  }) {
+    final String scope = datacenterPressureScopeLabel(pressure);
+    if (representativeNode == null) {
+      return scope;
+    }
+    return '$representativeNode · $scope';
   }
 }

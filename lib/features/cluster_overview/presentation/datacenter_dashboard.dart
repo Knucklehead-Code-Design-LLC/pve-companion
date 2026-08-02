@@ -47,7 +47,9 @@ class DatacenterDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool wideLayout = constraints.maxWidth >= 760;
+        final bool wideLayout = PveAppleLayout.usesExpandedWidth(
+          constraints.maxWidth,
+        );
         final incidents = DatacenterIncidentEvaluator.evaluate(snapshot);
         final EdgeInsets padding = EdgeInsets.symmetric(
           horizontal: wideLayout ? 28 : 16,

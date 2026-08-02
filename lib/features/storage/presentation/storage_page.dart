@@ -138,12 +138,13 @@ class _StoragePageState extends State<StoragePage> {
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Configured',
+              label: 'Configured pools',
               value: '${storages.length}',
               icon: CupertinoIcons.tray_full_fill,
+              scope: 'Reported by this server',
             ),
             PveMetricStripItem(
-              label: 'Available',
+              label: 'Availability coverage',
               value: availabilityReportedCount == 0
                   ? '—'
                   : '$fullyAvailableCount/$availabilityReportedCount',
@@ -153,20 +154,31 @@ class _StoragePageState extends State<StoragePage> {
                   : fullyAvailableCount == availabilityReportedCount
                   ? PveAppleColors.success(context)
                   : PveAppleColors.warning(context),
+              scope: availabilityReportedCount == 0
+                  ? 'No pool status reported'
+                  : 'Fully available now',
             ),
             PveMetricStripItem(
-              label: 'Used',
+              label: 'Capacity used now',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateUsedBytes)
                   : '—',
               icon: CupertinoIcons.chart_pie_fill,
+              scope: _capacityCoverageLabel(
+                reportingCount: storagesWithCapacity.length,
+                totalCount: storages.length,
+              ),
             ),
             PveMetricStripItem(
-              label: 'Free',
+              label: 'Capacity free now',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateAvailableBytes)
                   : '—',
               icon: CupertinoIcons.tray,
+              scope: _capacityCoverageLabel(
+                reportingCount: storagesWithCapacity.length,
+                totalCount: storages.length,
+              ),
             ),
           ],
         ),
@@ -174,7 +186,7 @@ class _StoragePageState extends State<StoragePage> {
           const SizedBox(height: 24),
           PveSectionHeader(
             title: 'Data protection',
-            actionLabel: 'Backup Center',
+            actionLabel: 'Open Backup Center',
             actionSemanticsLabel: 'Open Backup Center',
             onAction: _showBackupCenter,
           ),
@@ -262,7 +274,9 @@ class _StoragePageState extends State<StoragePage> {
         else
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns = constraints.maxWidth >= 700;
+              final bool twoColumns =
+                  constraints.maxWidth >=
+                  PveAppleLayout.controlBarStackBreakpoint;
               final double cardWidth = twoColumns
                   ? (constraints.maxWidth - 12) / 2
                   : constraints.maxWidth;
@@ -407,7 +421,7 @@ class _StorageCard extends StatelessWidget {
             children: <Widget>[
               Expanded(
                 child: Text(
-                  'Capacity used',
+                  'Capacity used now',
                   style: PveAppleText.caption(context),
                 ),
               ),
@@ -469,4 +483,15 @@ String _storageCountLabel({
     return 'Showing all $totalCount storage $noun · highest risk first';
   }
   return 'Showing $visibleCount of $totalCount storage $noun · highest risk first';
+}
+
+String _capacityCoverageLabel({
+  required int reportingCount,
+  required int totalCount,
+}) {
+  if (reportingCount == 0) {
+    return 'No capacity reported';
+  }
+  return '$reportingCount of $totalCount '
+      '${totalCount == 1 ? 'pool reports capacity' : 'pools report capacity'}';
 }

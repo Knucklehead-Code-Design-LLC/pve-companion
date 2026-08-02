@@ -240,11 +240,16 @@ class _IncidentRow extends StatelessWidget {
       ),
       title: Text(incident.title),
       subtitle: Text(incident.detail),
-      trailing: PveStatusPill(
-        label: incident.severity == DatacenterIncidentSeverity.critical
-            ? 'Critical'
-            : 'Attention',
-        color: color,
+      trailing: MediaQuery.withClampedTextScaling(
+        // The short status tag stays legible beside the incident title at
+        // very large text sizes; the actionable title and detail still scale.
+        maxScaleFactor: 1.25,
+        child: PveStatusPill(
+          label: incident.severity == DatacenterIncidentSeverity.critical
+              ? 'Critical'
+              : 'Attention',
+          color: color,
+        ),
       ),
       onTap: onTap,
     );

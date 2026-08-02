@@ -120,3 +120,20 @@ String datacenterPressureReportingLabel(
             '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
   return detail == null ? reportingLabel : '$detail · $reportingLabel';
 }
+
+/// Explains whether a cluster meter is a peak or a combined allocation.
+/// Values are always from the current dashboard refresh.
+String datacenterPressureScopeLabel(DatacenterPressureMetric? pressure) {
+  if (pressure == null) {
+    return 'No nodes reporting';
+  }
+  final String coverage =
+      '${pressure.reportedNodeCount} '
+      '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
+  return switch (pressure.aggregation) {
+    DatacenterPressureAggregation.peakReportedNode =>
+      'Highest reported node · $coverage',
+    DatacenterPressureAggregation.totalKnownNodes =>
+      'Combined reported capacity · $coverage',
+  };
+}
