@@ -7,6 +7,7 @@ import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/adaptive_workspace_content.dart';
 import 'package:pve_companion/app/workspace/workspace_section.dart';
 import 'package:pve_companion/app/workspace/workspace_toolbar.dart';
+import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 
 void main() {
   testWidgets('uses stable tabs in a compact window', (
@@ -150,7 +151,7 @@ void main() {
     expect(find.text('Tasks'), findsOneWidget);
   });
 
-  testWidgets('shows the current last-updated age', (
+  testWidgets('shows the current last-updated age with an exact hover label', (
     WidgetTester tester,
   ) async {
     await tester.binding.setSurfaceSize(const Size(1024, 768));
@@ -161,7 +162,11 @@ void main() {
 
     await tester.pumpWidget(_NavigationHarness(lastUpdatedAt: updatedAt));
     expect(find.text('Data refreshed 2m ago'), findsOneWidget);
-    expect(find.bySemanticsLabel('Data last refreshed 2m ago'), findsOneWidget);
+    final String freshnessLabel = tester
+        .getSemantics(find.byType(PveFreshnessLabel))
+        .label;
+    expect(freshnessLabel, startsWith('Data refreshed at '));
+    expect(find.byTooltip(freshnessLabel), findsOneWidget);
   });
 
   testWidgets('discloses a failed refresh in the connection footer', (
@@ -241,6 +246,27 @@ void main() {
     await tester.pump();
 
     expect(find.text('Page: Guests'), findsOneWidget);
+  });
+
+  testWidgets('gives the compact refresh control an accessible tooltip', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1024, 768));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+
+    await tester.pumpWidget(const _NavigationHarness());
+
+    expect(find.byTooltip('Refresh data'), findsOneWidget);
+    expect(
+      tester
+          .getSemantics(
+            find.byKey(const ValueKey<String>('workspace-footer-refresh')),
+          )
+          .label,
+      'Refresh data',
+    );
+    debugDefaultTargetPlatformOverride = null;
   });
 }
 

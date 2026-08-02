@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/presentation/pve_modal_sheet.dart';
 
@@ -134,6 +135,41 @@ void main() {
     expect(contentRect.width, lessThanOrEqualTo(1110));
     expect(contentRect.center.dx, closeTo(720, 1));
     expect(contentRect.bottom, lessThan(1000));
+  });
+
+  testWidgets('Escape dismisses only the open modal sheet', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Builder(
+            builder: (BuildContext context) => CupertinoButton(
+              onPressed: () => showPveModalSheet<void>(
+                context: context,
+                scrollableBuilder:
+                    (BuildContext context, ScrollController scrollController) =>
+                        ListView(
+                          controller: scrollController,
+                          children: const <Widget>[Text('Dismissible sheet')],
+                        ),
+              ),
+              child: const Text('Show sheet'),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Show sheet'));
+    await tester.pumpAndSettle();
+    expect(find.text('Dismissible sheet'), findsOneWidget);
+
+    await tester.sendKeyEvent(LogicalKeyboardKey.escape);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Dismissible sheet'), findsNothing);
+    expect(find.text('Show sheet'), findsOneWidget);
   });
 }
 

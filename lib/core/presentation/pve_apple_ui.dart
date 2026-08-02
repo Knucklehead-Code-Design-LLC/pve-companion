@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart' show Divider, Tooltip;
 
@@ -5,6 +7,10 @@ abstract final class PveAppleLayout {
   /// Named layout tiers keep desktop and tablet behavior consistent across pages.
   static const double compactBreakpoint = 760;
   static const double wideBreakpoint = 1280;
+
+  /// A shared threshold for horizontal control bars whose controls otherwise
+  /// become too narrow to scan or operate comfortably.
+  static const double controlBarStackBreakpoint = 700;
 
   static bool usesExpandedPresentation(BuildContext context) {
     return MediaQuery.sizeOf(context).width >= compactBreakpoint;
@@ -152,7 +158,7 @@ class PveIconAction extends StatelessWidget {
 }
 
 /// Shows relative freshness visually while always exposing the exact time.
-class PveFreshnessLabel extends StatelessWidget {
+class PveFreshnessLabel extends StatefulWidget {
   const PveFreshnessLabel({
     super.key,
     required this.refreshedAt,
@@ -163,21 +169,66 @@ class PveFreshnessLabel extends StatelessWidget {
   final String prefix;
 
   @override
+  State<PveFreshnessLabel> createState() => _PveFreshnessLabelState();
+}
+
+class _PveFreshnessLabelState extends State<PveFreshnessLabel> {
+  Timer? _updateTimer;
+
+  @override
+  void initState() {
+    super.initState();
+    _scheduleUpdate();
+  }
+
+  @override
+  void didUpdateWidget(PveFreshnessLabel oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.refreshedAt != widget.refreshedAt) {
+      _scheduleUpdate();
+    }
+  }
+
+  @override
+  void dispose() {
+    _updateTimer?.cancel();
+    super.dispose();
+  }
+
+  void _scheduleUpdate() {
+    _updateTimer?.cancel();
+    final Duration age = DateTime.now().difference(widget.refreshedAt);
+    final Duration delay;
+    if (age.isNegative || age.inMinutes < 1) {
+      delay = const Duration(seconds: 1);
+    } else if (age.inHours < 1) {
+      delay = Duration(seconds: 60 - age.inSeconds.remainder(60));
+    } else {
+      delay = Duration(minutes: 60 - age.inMinutes.remainder(60));
+    }
+    _updateTimer = Timer(delay, () {
+      if (!mounted) return;
+      setState(() {});
+      _scheduleUpdate();
+    });
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final DateTime localTime = refreshedAt.toLocal();
+    final DateTime localTime = widget.refreshedAt.toLocal();
     final String clock =
         '${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}';
     final String date = '${localTime.month}/${localTime.day}/${localTime.year}';
-    final Duration age = DateTime.now().difference(refreshedAt);
+    final Duration age = DateTime.now().difference(widget.refreshedAt);
     final String relative = _relativeAge(age);
-    final String exact = '$prefix at $date, $clock';
+    final String exact = '${widget.prefix} at $date, $clock';
     return Semantics(
       label: exact,
       child: Tooltip(
         message: exact,
         child: ExcludeSemantics(
           child: Text(
-            '$prefix $relative',
+            '${widget.prefix} $relative',
             style: PveAppleText.caption(context),
           ),
         ),
@@ -319,7 +370,7 @@ class PveWideControlBar extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        if (constraints.maxWidth < 700) {
+        if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
           return Column(
             crossAxisAlignment: CrossAxisAlignment.stretch,
             children: <Widget>[primary, const SizedBox(height: 12), secondary],
@@ -366,7 +417,7 @@ class PveMetricStrip extends StatelessWidget {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          if (constraints.maxWidth < 700) {
+          if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
             final double cellWidth = constraints.maxWidth / 2;
             return Wrap(
               runSpacing: 14,

@@ -1,5 +1,3 @@
-import 'dart:async';
-
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
@@ -452,38 +450,28 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
             ),
             const SizedBox(width: 8),
             Expanded(
-              child: Semantics(
-                container: true,
-                excludeSemantics: true,
-                label: _freshnessSemanticsLabel(
-                  refreshing: refreshing,
-                  lastUpdatedAt: lastUpdatedAt,
-                  refreshErrorMessage: refreshErrorMessage,
-                ),
-                child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: <Widget>[
-                    Text('Connected', style: PveAppleText.caption(context)),
-                    if (refreshErrorMessage != null)
-                      Text(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: <Widget>[
+                  Text('Connected', style: PveAppleText.caption(context)),
+                  if (refreshErrorMessage != null)
+                    Semantics(
+                      liveRegion: true,
+                      child: Text(
                         'Data refresh failed',
                         style: PveAppleText.caption(context).copyWith(
                           color: PveAppleColors.warning(context),
                           fontSize: 12,
                         ),
-                      )
-                    else if (lastUpdatedAt != null)
-                      _LastUpdatedText(updatedAt: lastUpdatedAt!),
-                  ],
-                ),
+                      ),
+                    )
+                  else if (lastUpdatedAt != null)
+                    PveFreshnessLabel(refreshedAt: lastUpdatedAt!),
+                ],
               ),
             ),
-            Semantics(
-              button: true,
-              label: refreshing
-                  ? 'Refreshing datacenter'
-                  : 'Refresh datacenter',
-              child: CupertinoButton(
+            if (showRefreshLabel)
+              CupertinoButton(
                 key: const ValueKey<String>('workspace-footer-refresh'),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
                 minimumSize: const Size(44, 40),
@@ -495,107 +483,27 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
                       const CupertinoActivityIndicator(radius: 8)
                     else
                       const Icon(CupertinoIcons.refresh, size: 16),
-                    if (showRefreshLabel) ...<Widget>[
-                      const SizedBox(width: 5),
-                      Text(refreshing ? 'Updating' : 'Refresh data'),
-                    ],
+                    const SizedBox(width: 5),
+                    Text(refreshing ? 'Updating' : 'Refresh data'),
                   ],
                 ),
+              )
+            else
+              KeyedSubtree(
+                key: const ValueKey<String>('workspace-footer-refresh'),
+                child: PveIconAction(
+                  icon: refreshing
+                      ? CupertinoIcons.refresh_thick
+                      : CupertinoIcons.refresh,
+                  label: refreshing ? 'Refreshing datacenter' : 'Refresh data',
+                  onPressed: refreshing ? null : () => onRefresh(),
+                ),
               ),
-            ),
           ],
         ),
       ),
     );
   }
-}
-
-class _LastUpdatedText extends StatefulWidget {
-  const _LastUpdatedText({required this.updatedAt});
-
-  final DateTime updatedAt;
-
-  @override
-  State<_LastUpdatedText> createState() => _LastUpdatedTextState();
-}
-
-class _LastUpdatedTextState extends State<_LastUpdatedText> {
-  Timer? _timer;
-
-  @override
-  void initState() {
-    super.initState();
-    _scheduleNextUpdate();
-  }
-
-  @override
-  void didUpdateWidget(_LastUpdatedText oldWidget) {
-    super.didUpdateWidget(oldWidget);
-    if (oldWidget.updatedAt != widget.updatedAt) {
-      _scheduleNextUpdate();
-    }
-  }
-
-  void _scheduleNextUpdate() {
-    _timer?.cancel();
-    final int elapsedSeconds = DateTime.now()
-        .difference(widget.updatedAt)
-        .inSeconds;
-    final int normalizedSeconds = elapsedSeconds < 0 ? 0 : elapsedSeconds;
-    final int secondsUntilNextMinute = 60 - normalizedSeconds.remainder(60);
-    _timer = Timer(Duration(seconds: secondsUntilNextMinute), () {
-      if (!mounted) {
-        return;
-      }
-      setState(() {});
-      _scheduleNextUpdate();
-    });
-  }
-
-  @override
-  void dispose() {
-    _timer?.cancel();
-    super.dispose();
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    return Text(
-      _lastUpdatedLabel(widget.updatedAt),
-      style: PveAppleText.caption(context).copyWith(fontSize: 12),
-    );
-  }
-}
-
-String _lastUpdatedLabel(DateTime updatedAt) {
-  final Duration elapsed = DateTime.now().difference(updatedAt);
-  if (elapsed.isNegative || elapsed.inMinutes < 1) {
-    return 'Data refreshed just now';
-  }
-  if (elapsed.inHours < 1) {
-    return 'Data refreshed ${elapsed.inMinutes}m ago';
-  }
-  if (elapsed.inDays >= 1) {
-    return 'Data refreshed ${elapsed.inDays}d ago';
-  }
-  return 'Data refreshed ${elapsed.inHours}h ago';
-}
-
-String _freshnessSemanticsLabel({
-  required bool refreshing,
-  required DateTime? lastUpdatedAt,
-  required String? refreshErrorMessage,
-}) {
-  if (refreshing) {
-    return 'Data refresh in progress';
-  }
-  if (refreshErrorMessage != null) {
-    return 'Data refresh failed';
-  }
-  if (lastUpdatedAt == null) {
-    return 'Data has not been refreshed yet';
-  }
-  return 'Data last refreshed ${_lastUpdatedLabel(lastUpdatedAt).replaceFirst('Data refreshed ', '')}';
 }
 
 class _SidebarDestination extends StatelessWidget {

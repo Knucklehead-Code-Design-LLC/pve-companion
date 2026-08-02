@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Tooltip;
 
 import '../../core/presentation/pve_apple_ui.dart';
 import '../../core/presentation/pve_command_menu.dart';
@@ -98,10 +99,13 @@ class WorkspaceActionsMenu extends StatelessWidget {
           ),
       ],
       onSelected: _performAction,
-      child: Icon(
-        CupertinoIcons.ellipsis,
-        size: 21,
-        color: PveAppleColors.primary(context),
+      child: Tooltip(
+        message: 'Workspace actions and settings',
+        child: Icon(
+          CupertinoIcons.ellipsis,
+          size: 21,
+          color: PveAppleColors.primary(context),
+        ),
       ),
     );
   }

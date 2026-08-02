@@ -48,6 +48,7 @@ void main() {
 
     expect(find.byType(CupertinoNavigationBar), findsOneWidget);
     expect(find.text('Datacenter'), findsOneWidget);
+    expect(find.byTooltip('Workspace actions and settings'), findsOneWidget);
     final int initialPushCount = routeObserver.pushCount;
 
     await tester.tap(find.bySemanticsLabel('Workspace actions and settings'));

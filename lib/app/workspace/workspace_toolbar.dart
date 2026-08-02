@@ -1,13 +1,15 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../core/presentation/pve_apple_ui.dart';
 import '../../features/connection_profiles/domain/connection_profile.dart';
 import 'server_menu.dart';
 import 'workspace_actions_menu.dart';
 
 class WorkspaceToolbar extends StatelessWidget
     implements ObstructingPreferredSizeWidget {
-  static const double _minimumDesktopCommandPaneWidth = 760;
+  static const double _minimumDesktopCommandPaneWidth =
+      PveAppleLayout.compactBreakpoint;
 
   const WorkspaceToolbar({
     super.key,
