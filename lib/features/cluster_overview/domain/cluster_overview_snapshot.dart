@@ -228,6 +228,17 @@ class ClusterTask {
         normalizedType.contains('shell') ||
         normalizedType.contains('termproxy');
   }
+
+  /// Returns a guest ID only when the server-provided UPID contains one in
+  /// its documented worker-id position. A task type alone is not enough to
+  /// attribute work to a guest.
+  int? get guestVmid {
+    final List<String> parts = upid.split(':');
+    if (parts.length < 8 || parts.first != 'UPID') {
+      return null;
+    }
+    return int.tryParse(parts[6]);
+  }
 }
 
 int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {

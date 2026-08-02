@@ -80,4 +80,22 @@ void main() {
     expect(console.isInteractiveSession, isTrue);
     expect(backup.isInteractiveSession, isFalse);
   });
+
+  test('derives a guest ID only from a valid server UPID worker ID', () {
+    const ClusterTask guestTask = ClusterTask(
+      upid: 'UPID:pve-01:00000001:00000001:00000001:vzdump:101:root@pam:',
+      node: 'pve-01',
+      type: 'vzdump',
+      user: 'root@pam',
+    );
+    const ClusterTask unattributedTask = ClusterTask(
+      upid: 'UPID:running',
+      node: 'pve-01',
+      type: 'backup',
+      user: 'root@pam',
+    );
+
+    expect(guestTask.guestVmid, 101);
+    expect(unattributedTask.guestVmid, isNull);
+  });
 }

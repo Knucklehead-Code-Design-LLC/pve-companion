@@ -1,6 +1,7 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
+import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
 import '../../../core/presentation/pve_value_format.dart';
@@ -8,6 +9,10 @@ import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_load_state_view.dart';
 import '../../cluster_overview/presentation/datacenter_dashboard_visuals.dart';
+import '../../guests/domain/pve_guest.dart';
+import '../application/task_log_controller.dart';
+import '../data/proxmox_task_log_repository.dart';
+import '../domain/pve_task_log.dart';
 import 'task_activity_insights.dart';
 
 class TasksPage extends StatefulWidget {
@@ -15,6 +20,7 @@ class TasksPage extends StatefulWidget {
     super.key,
     required this.controller,
     required this.onRefresh,
+    this.session,
     this.showsSliverNavigationBar = true,
     this.navigationLeading,
     this.navigationTrailing,
@@ -22,6 +28,7 @@ class TasksPage extends StatefulWidget {
 
   final ClusterOverviewController controller;
   final Future<void> Function() onRefresh;
+  final ProxmoxSession? session;
   final bool showsSliverNavigationBar;
   final Widget? navigationLeading;
   final Widget? navigationTrailing;
@@ -37,6 +44,7 @@ class _TasksPageState extends State<TasksPage> {
   String _query = '';
   String? _node;
   String? _operator;
+  int? _guestVmid;
 
   @override
   Widget build(BuildContext context) {
@@ -68,7 +76,7 @@ class _TasksPageState extends State<TasksPage> {
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: _buildContent(
               context,
-              snapshot.tasks,
+              snapshot,
               usesExpandedPresentation: usesExpandedPresentation,
               usesDesktopTaskTable: usesDesktopTaskTable,
             ),
@@ -79,16 +87,32 @@ class _TasksPageState extends State<TasksPage> {
 
   Widget _buildContent(
     BuildContext context,
-    List<ClusterTask> tasks, {
+    ClusterOverviewSnapshot snapshot, {
     required bool usesExpandedPresentation,
     required bool usesDesktopTaskTable,
   }) {
+    final List<ClusterTask> tasks = snapshot.tasks;
     final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
       ..sort(_compareTasks);
     final List<ClusterTask> visibleTasks = orderedTasks
         .where(_matchesFilter)
         .where(_matchesDate)
         .where(_matchesQuery)
+        .where(_matchesGuest)
+        .toList(growable: false);
+    final List<ClusterTask> visibleSessions = visibleTasks
+        .where(
+          (ClusterTask task) =>
+              task.state == ClusterTaskState.running &&
+              task.isInteractiveSession,
+        )
+        .toList(growable: false);
+    final List<ClusterTask> visibleOperations = visibleTasks
+        .where(
+          (ClusterTask task) =>
+              task.state != ClusterTaskState.running ||
+              !task.isInteractiveSession,
+        )
         .toList(growable: false);
     final int runningCount = tasks
         .where(
@@ -203,13 +227,16 @@ class _TasksPageState extends State<TasksPage> {
           dateFilter: _dateFilter,
           node: _node,
           operatorName: _operator,
+          guestVmid: _guestVmid,
           nodes: tasks.map((ClusterTask task) => task.node).toSet(),
           operators: tasks.map((ClusterTask task) => task.user).toSet(),
+          guests: _knownTaskGuests(snapshot),
           onDateFilterChanged: (_TaskDateFilter value) =>
               setState(() => _dateFilter = value),
           onNodeChanged: (String? value) => setState(() => _node = value),
           onOperatorChanged: (String? value) =>
               setState(() => _operator = value),
+          onGuestChanged: (int? value) => setState(() => _guestVmid = value),
         ),
         const SizedBox(height: 16),
         if (tasks.isEmpty)
@@ -249,49 +276,67 @@ class _TasksPageState extends State<TasksPage> {
               ],
             ),
           )
-        else if (usesDesktopTaskTable)
-          _DesktopTaskTable(
-            tasks: visibleTasks,
-            sort: _sort,
-            onSortChanged: (_TaskSort value) => setState(() => _sort = value),
-            onInspect: _showTaskInspector,
-          )
-        else if (usesExpandedPresentation)
-          LayoutBuilder(
-            builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns = constraints.maxWidth >= 700;
-              final double cardWidth = twoColumns
-                  ? (constraints.maxWidth - 12) / 2
-                  : constraints.maxWidth;
-              return Wrap(
-                spacing: 12,
-                runSpacing: 12,
-                children: visibleTasks
-                    .map(
-                      (ClusterTask task) => SizedBox(
-                        width: cardWidth,
-                        child: _TaskCard(
-                          task: task,
-                          onTap: () => _showTaskInspector(task),
+        else ...<Widget>[
+          if (visibleSessions.isNotEmpty) ...<Widget>[
+            _InteractiveSessionsGroup(
+              sessions: visibleSessions,
+              onInspect: _showTaskInspector,
+            ),
+            const SizedBox(height: 16),
+          ],
+          if (visibleOperations.isEmpty)
+            PveInsetGroup(
+              padding: const EdgeInsets.all(22),
+              child: Text(
+                'No non-session operations match these controls.',
+                textAlign: TextAlign.center,
+                style: PveAppleText.secondary(context),
+              ),
+            )
+          else if (usesDesktopTaskTable)
+            _DesktopTaskTable(
+              tasks: visibleOperations,
+              sort: _sort,
+              onSortChanged: (_TaskSort value) => setState(() => _sort = value),
+              onInspect: _showTaskInspector,
+            )
+          else if (usesExpandedPresentation)
+            LayoutBuilder(
+              builder: (BuildContext context, BoxConstraints constraints) {
+                final bool twoColumns = constraints.maxWidth >= 700;
+                final double cardWidth = twoColumns
+                    ? (constraints.maxWidth - 12) / 2
+                    : constraints.maxWidth;
+                return Wrap(
+                  spacing: 12,
+                  runSpacing: 12,
+                  children: visibleOperations
+                      .map(
+                        (ClusterTask task) => SizedBox(
+                          width: cardWidth,
+                          child: _TaskCard(
+                            task: task,
+                            onTap: () => _showTaskInspector(task),
+                          ),
                         ),
-                      ),
-                    )
-                    .toList(growable: false),
-              );
-            },
-          )
-        else
-          CupertinoListSection.insetGrouped(
-            margin: EdgeInsets.zero,
-            children: visibleTasks
-                .map(
-                  (ClusterTask task) => _TaskRow(
-                    task: task,
-                    onTap: () => _showTaskInspector(task),
-                  ),
-                )
-                .toList(growable: false),
-          ),
+                      )
+                      .toList(growable: false),
+                );
+              },
+            )
+          else
+            CupertinoListSection.insetGrouped(
+              margin: EdgeInsets.zero,
+              children: visibleOperations
+                  .map(
+                    (ClusterTask task) => _TaskRow(
+                      task: task,
+                      onTap: () => _showTaskInspector(task),
+                    ),
+                  )
+                  .toList(growable: false),
+            ),
+        ],
         if (!usesExpandedPresentation) ...<Widget>[
           const SizedBox(height: 24),
           const PveSectionTitle(title: 'Activity analysis'),
@@ -349,10 +394,30 @@ class _TasksPageState extends State<TasksPage> {
     _TaskSort.operatorName => left.user.compareTo(right.user),
   };
 
+  List<PveGuest> _knownTaskGuests(ClusterOverviewSnapshot snapshot) {
+    final Set<int> taskGuestIds = snapshot.tasks
+        .map((ClusterTask task) => task.guestVmid)
+        .whereType<int>()
+        .toSet();
+    return snapshot.guests
+        .where((PveGuest guest) => taskGuestIds.contains(guest.vmid))
+        .toList(growable: false)
+      ..sort(
+        (PveGuest left, PveGuest right) => left.title.compareTo(right.title),
+      );
+  }
+
+  bool _matchesGuest(ClusterTask task) =>
+      _guestVmid == null || task.guestVmid == _guestVmid;
+
   Future<void> _showTaskInspector(ClusterTask task) => showPveModalSheet<void>(
     context: context,
     scrollableBuilder: (BuildContext context, ScrollController controller) =>
-        _TaskInspector(task: task, scrollController: controller),
+        _TaskInspector(
+          task: task,
+          session: widget.session,
+          scrollController: controller,
+        ),
   );
 }
 
@@ -390,6 +455,66 @@ class _TaskRow extends StatelessWidget {
       onTap: onTap,
     );
   }
+}
+
+class _InteractiveSessionsGroup extends StatelessWidget {
+  const _InteractiveSessionsGroup({
+    required this.sessions,
+    required this.onInspect,
+  });
+
+  final List<ClusterTask> sessions;
+  final ValueChanged<ClusterTask> onInspect;
+
+  @override
+  Widget build(BuildContext context) => PveInsetGroup(
+    key: const ValueKey<String>('interactive-sessions-group'),
+    padding: const EdgeInsets.symmetric(vertical: 6),
+    child: Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Padding(
+          padding: const EdgeInsets.fromLTRB(14, 8, 14, 6),
+          child: Text(
+            'Interactive sessions',
+            style: PveAppleText.title3(context),
+          ),
+        ),
+        for (final ClusterTask session in sessions)
+          CupertinoButton(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 9),
+            alignment: Alignment.centerLeft,
+            onPressed: () => onInspect(session),
+            child: Row(
+              children: <Widget>[
+                Icon(
+                  CupertinoIcons.desktopcomputer,
+                  color: PveAppleColors.primary(context),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: <Widget>[
+                      Text(
+                        '${session.type} on ${session.node}',
+                        style: PveAppleText.body(context),
+                      ),
+                      const SizedBox(height: 2),
+                      Text(
+                        '${session.user} · ${_taskAgeLabel(session)}',
+                        style: PveAppleText.caption(context),
+                      ),
+                    ],
+                  ),
+                ),
+                const Icon(CupertinoIcons.chevron_right, size: 16),
+              ],
+            ),
+          ),
+      ],
+    ),
+  );
 }
 
 class _TaskCard extends StatelessWidget {
@@ -460,21 +585,27 @@ class _TaskFilterControls extends StatelessWidget {
     required this.dateFilter,
     required this.node,
     required this.operatorName,
+    required this.guestVmid,
     required this.nodes,
     required this.operators,
+    required this.guests,
     required this.onDateFilterChanged,
     required this.onNodeChanged,
     required this.onOperatorChanged,
+    required this.onGuestChanged,
   });
 
   final _TaskDateFilter dateFilter;
   final String? node;
   final String? operatorName;
+  final int? guestVmid;
   final Set<String> nodes;
   final Set<String> operators;
+  final List<PveGuest> guests;
   final ValueChanged<_TaskDateFilter> onDateFilterChanged;
   final ValueChanged<String?> onNodeChanged;
   final ValueChanged<String?> onOperatorChanged;
+  final ValueChanged<int?> onGuestChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -515,7 +646,76 @@ class _TaskFilterControls extends StatelessWidget {
           choices: orderedOperators,
           onSelected: onOperatorChanged,
         ),
+        if (guests.isNotEmpty)
+          _TaskGuestChoiceMenu(
+            selectedVmid: guestVmid,
+            guests: guests,
+            onSelected: onGuestChanged,
+          )
+        else
+          const Text('Guest filtering is unavailable for these task records.'),
       ],
+    );
+  }
+}
+
+class _TaskGuestChoiceMenu extends StatelessWidget {
+  const _TaskGuestChoiceMenu({
+    required this.selectedVmid,
+    required this.guests,
+    required this.onSelected,
+  });
+
+  final int? selectedVmid;
+  final List<PveGuest> guests;
+  final ValueChanged<int?> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    final PveGuest? selected = guests.cast<PveGuest?>().firstWhere(
+      (PveGuest? guest) => guest?.vmid == selectedVmid,
+      orElse: () => null,
+    );
+    return CupertinoButton(
+      key: const ValueKey<String>('task-guest-filter'),
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+      color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
+      onPressed: () => showCupertinoModalPopup<void>(
+        context: context,
+        builder: (BuildContext popupContext) => CupertinoActionSheet(
+          title: const Text('Guest'),
+          actions: <Widget>[
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                onSelected(null);
+              },
+              child: const Text('All guests'),
+            ),
+            ...guests.map(
+              (PveGuest guest) => CupertinoActionSheetAction(
+                onPressed: () {
+                  Navigator.of(popupContext).pop();
+                  onSelected(guest.vmid);
+                },
+                child: Text('${guest.title} (${guest.vmid})'),
+              ),
+            ),
+          ],
+          cancelButton: CupertinoActionSheetAction(
+            onPressed: () => Navigator.of(popupContext).pop(),
+            child: const Text('Cancel'),
+          ),
+        ),
+      ),
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          Text(selected == null ? 'All guests' : selected.title),
+          const SizedBox(width: 4),
+          const Icon(CupertinoIcons.chevron_down, size: 13),
+        ],
+      ),
     );
   }
 }
@@ -764,12 +964,36 @@ class _DesktopTaskRow extends StatelessWidget {
   }
 }
 
-class _TaskInspector extends StatelessWidget {
-  const _TaskInspector({required this.task, required this.scrollController});
+class _TaskInspector extends StatefulWidget {
+  const _TaskInspector({
+    required this.task,
+    required this.session,
+    required this.scrollController,
+  });
   final ClusterTask task;
+  final ProxmoxSession? session;
   final ScrollController scrollController;
+
+  @override
+  State<_TaskInspector> createState() => _TaskInspectorState();
+}
+
+class _TaskInspectorState extends State<_TaskInspector> {
+  late final TaskLogController _logController = TaskLogController(
+    repository: const ProxmoxTaskLogRepository(),
+    session: widget.session,
+    task: widget.task,
+  );
+
+  @override
+  void dispose() {
+    _logController.dispose();
+    super.dispose();
+  }
+
   @override
   Widget build(BuildContext context) {
+    final ClusterTask task = widget.task;
     return CupertinoPageScaffold(
       navigationBar: CupertinoNavigationBar(
         middle: const Text('Task details'),
@@ -781,13 +1005,13 @@ class _TaskInspector extends StatelessWidget {
       ),
       child: SafeArea(
         child: ListView(
-          controller: scrollController,
+          controller: widget.scrollController,
           padding: const EdgeInsets.all(16),
           children: <Widget>[
             Text(task.type, style: PveAppleText.largeTitle(context)),
             const SizedBox(height: 6),
             Text(
-              'Read-only details from the latest task list refresh. This app has not loaded a server task log.',
+              'Read-only details from the latest task list refresh. Load the server task log only when you need it.',
               style: PveAppleText.secondary(context),
             ),
             const SizedBox(height: 18),
@@ -815,11 +1039,105 @@ class _TaskInspector extends StatelessWidget {
                 _InspectorRow(label: 'Task ID', value: task.upid),
               ],
             ),
+            const SizedBox(height: 18),
+            _TaskLogSection(controller: _logController),
           ],
         ),
       ),
     );
   }
+}
+
+class _TaskLogSection extends StatelessWidget {
+  const _TaskLogSection({required this.controller});
+
+  final TaskLogController controller;
+
+  @override
+  Widget build(BuildContext context) => ListenableBuilder(
+    listenable: controller,
+    builder: (BuildContext context, Widget? child) {
+      final PveTaskLogResult? result = controller.result;
+      final Widget content;
+      if (controller.isLoading) {
+        content = const Center(child: CupertinoActivityIndicator());
+      } else if (result == null) {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(
+              controller.canLoad
+                  ? 'The log stays on the server until you request it.'
+                  : 'Reconnect to this server to request its task log.',
+              style: PveAppleText.secondary(context),
+            ),
+            const SizedBox(height: 10),
+            CupertinoButton.filled(
+              key: const ValueKey<String>('load-task-log'),
+              onPressed: controller.canLoad ? controller.load : null,
+              child: const Text('Load server log'),
+            ),
+          ],
+        );
+      } else if (result.state == PveTaskLogState.available) {
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            for (final PveTaskLogLine line in result.lines)
+              Padding(
+                padding: const EdgeInsets.only(bottom: 8),
+                child: Text(
+                  '${line.sequence == null ? '' : '${line.sequence}: '}${line.text}',
+                  style: PveAppleText.caption(context),
+                ),
+              ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: controller.load,
+              child: const Text('Reload log'),
+            ),
+          ],
+        );
+      } else {
+        final String label = switch (result.state) {
+          PveTaskLogState.empty =>
+            'No server log lines were reported for this task.',
+          PveTaskLogState.permissionLimited =>
+            'This account cannot read this task log.',
+          PveTaskLogState.unavailable =>
+            'This server does not make this task log available.',
+          PveTaskLogState.failed =>
+            result.message ?? 'The task log could not be loaded.',
+          _ => 'The task log is unavailable.',
+        };
+        content = Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text(label, style: PveAppleText.secondary(context)),
+            if (result.state == PveTaskLogState.failed) ...<Widget>[
+              const SizedBox(height: 10),
+              CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: controller.load,
+                child: const Text('Try again'),
+              ),
+            ],
+          ],
+        );
+      }
+      return PveInsetGroup(
+        padding: const EdgeInsets.all(16),
+        child: Column(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Text('Server log', style: PveAppleText.title3(context)),
+            const SizedBox(height: 8),
+            content,
+          ],
+        ),
+      );
+    },
+  );
 }
 
 class _InspectorRow extends StatelessWidget {
@@ -882,4 +1200,15 @@ String _taskDurationLabel(ClusterTask task) {
     return '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
   }
   return '${duration.inSeconds}s';
+}
+
+String _taskAgeLabel(ClusterTask task) {
+  final DateTime? startedAt = task.startedAt;
+  if (startedAt == null) return 'Start time unavailable';
+  final Duration age = DateTime.now().difference(startedAt);
+  if (age.isNegative) return 'Start time unavailable';
+  if (age.inHours > 0)
+    return 'Active ${age.inHours}h ${age.inMinutes.remainder(60)}m';
+  if (age.inMinutes > 0) return 'Active ${age.inMinutes}m';
+  return 'Active just now';
 }

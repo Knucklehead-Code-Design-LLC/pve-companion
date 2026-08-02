@@ -204,6 +204,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       ),
       TasksPage(
         controller: widget.controller.clusterOverview,
+        session: session,
         showsSliverNavigationBar: compact,
         navigationLeading: compact ? _buildCompactLeading() : null,
         navigationTrailing: compact ? _buildCompactTrailing() : null,
