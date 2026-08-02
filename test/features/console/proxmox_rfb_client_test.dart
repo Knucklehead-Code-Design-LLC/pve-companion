@@ -1,19 +1,18 @@
-import 'dart:async';
 import 'dart:convert';
-import 'dart:typed_data';
 
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pve_companion/core/api/proxmox_session.dart';
 import 'package:pve_companion/features/console/data/proxmox_rfb_client.dart';
+
+import 'console_test_fixtures.dart';
 
 void main() {
   test('authenticates and renders a raw RFB framebuffer update', () async {
-    final _MemoryConsoleTransport transport = _MemoryConsoleTransport();
+    final MemoryConsoleTransport transport = MemoryConsoleTransport();
     final ProxmoxRfbClient client = ProxmoxRfbClient(transport: transport);
     addTearDown(client.close);
 
     final Future<void> connection = client.connect();
-    transport.addBytes(_serverHandshake(width: 2, height: 1));
+    transport.addBytes(rfbServerHandshake(width: 2, height: 1));
     await connection;
 
     expect(transport.vncChallenge, orderedEquals(List<int>.filled(16, 1)));
@@ -68,12 +67,12 @@ void main() {
   });
 
   test('forwards keyboard, pointer, and clipboard input over RFB', () async {
-    final _MemoryConsoleTransport transport = _MemoryConsoleTransport();
+    final MemoryConsoleTransport transport = MemoryConsoleTransport();
     final ProxmoxRfbClient client = ProxmoxRfbClient(transport: transport);
     addTearDown(client.close);
 
     final Future<void> connection = client.connect();
-    transport.addBytes(_serverHandshake(width: 80, height: 24));
+    transport.addBytes(rfbServerHandshake(width: 80, height: 24));
     await connection;
 
     client.sendKeyStroke(0xff0d);
@@ -94,58 +93,4 @@ void main() {
       orderedEquals(<int>[6, 0, 0, 0, 0, 0, 0, 5, 104, 101, 108, 108, 111]),
     );
   });
-}
-
-List<int> _serverHandshake({required int width, required int height}) {
-  final BytesBuilder bytes = BytesBuilder(copy: false)
-    ..add(ascii.encode('RFB 003.008\n'))
-    ..add(<int>[1, 2])
-    ..add(List<int>.filled(16, 1))
-    ..add(<int>[0, 0, 0, 0])
-    ..add(_uint16(width))
-    ..add(_uint16(height))
-    ..add(<int>[32, 24, 0, 1, 0, 255, 0, 255, 0, 255, 16, 8, 0, 0, 0, 0])
-    ..add(<int>[0, 0, 0, 4])
-    ..add(ascii.encode('test'));
-  return bytes.takeBytes();
-}
-
-List<int> _uint16(int value) => <int>[(value >> 8) & 0xff, value & 0xff];
-
-class _MemoryConsoleTransport implements ProxmoxConsoleTransport {
-  final StreamController<Uint8List> _incoming = StreamController<Uint8List>();
-  final List<Uint8List> sent = <Uint8List>[];
-  Uint8List? vncChallenge;
-  bool discardedVncTicket = false;
-  bool _closed = false;
-
-  @override
-  Stream<Uint8List> get messages => _incoming.stream;
-
-  void addBytes(List<int> bytes) {
-    _incoming.add(Uint8List.fromList(bytes));
-  }
-
-  @override
-  Uint8List respondToVncChallenge(Uint8List challenge) {
-    vncChallenge = Uint8List.fromList(challenge);
-    return Uint8List.fromList(List<int>.filled(challenge.length, 0xa5));
-  }
-
-  @override
-  void discardVncTicket() {
-    discardedVncTicket = true;
-  }
-
-  @override
-  void send(Uint8List message) => sent.add(Uint8List.fromList(message));
-
-  @override
-  Future<void> close() async {
-    if (_closed) {
-      return;
-    }
-    _closed = true;
-    await _incoming.close();
-  }
 }
