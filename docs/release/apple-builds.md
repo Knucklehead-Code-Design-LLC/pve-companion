@@ -60,9 +60,12 @@ CocoaPods. The workflows therefore do not run `pod install` or require a
   unsigned iOS release app and has no signing or App Store Connect material,
   so pull requests from public forks cannot access release credentials.
 - `ios-testflight` runs after a push to `main`. It runs the full verification
-  suite, builds a signed IPA with the next App Store Connect build number, and
-  uploads it to TestFlight. When no App Store Connect build exists yet, it
-  starts at build number `1`.
+  suite, builds a signed IPA, and uploads it to TestFlight. Its build number
+  is always at least Codemagic's monotonically increasing project build
+  number; when App Store Connect returns a numeric existing build, the next
+  higher number is used instead. This makes the first upload independent of
+  an App Store Connect lookup while preserving safe numbering for later or
+  manually uploaded builds.
 - `ios-app-store-release` runs for a newly created `v*` tag. The tag must
   exactly match the marketing version in `pubspec.yaml`, such as `v0.1.0`.
   It uploads the IPA and submits the version to App Store review. Apple keeps

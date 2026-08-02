@@ -62,14 +62,15 @@ workflows:
           set -euo pipefail
           APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
           test -n "$APP_VERSION"
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>&1)"
-          if [[ "$LATEST_BUILD_NUMBER" == "Did not find latest build for app "* ]]; then
-            LATEST_BUILD_NUMBER=0
-          fi
-          case "$LATEST_BUILD_NUMBER" in
-            (''|*[!0-9]*) echo "App Store Connect returned an invalid build number." >&2; exit 1 ;;
+          case "$PROJECT_BUILD_NUMBER" in
+            (''|*[!0-9]*) echo "Codemagic did not provide a valid project build number." >&2; exit 1 ;;
           esac
-          BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)"
+          if [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] && (( LATEST_BUILD_NUMBER >= PROJECT_BUILD_NUMBER )); then
+            BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          else
+            BUILD_NUMBER="$PROJECT_BUILD_NUMBER"
+          fi
           flutter build ipa --release \
             --build-name="$APP_VERSION" \
             --build-number="$BUILD_NUMBER" \
@@ -125,14 +126,15 @@ workflows:
         script: |
           set -euo pipefail
           APP_VERSION="$(awk '/^version:/ { split($2, version, "+"); print version[1]; exit }' pubspec.yaml)"
-          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>&1)"
-          if [[ "$LATEST_BUILD_NUMBER" == "Did not find latest build for app "* ]]; then
-            LATEST_BUILD_NUMBER=0
-          fi
-          case "$LATEST_BUILD_NUMBER" in
-            (''|*[!0-9]*) echo "App Store Connect returned an invalid build number." >&2; exit 1 ;;
+          case "$PROJECT_BUILD_NUMBER" in
+            (''|*[!0-9]*) echo "Codemagic did not provide a valid project build number." >&2; exit 1 ;;
           esac
-          BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          LATEST_BUILD_NUMBER="$(app-store-connect get-latest-app-store-build-number "$APP_STORE_APPLE_ID" 2>/dev/null || true)"
+          if [[ "$LATEST_BUILD_NUMBER" =~ ^[0-9]+$ ]] && (( LATEST_BUILD_NUMBER >= PROJECT_BUILD_NUMBER )); then
+            BUILD_NUMBER="$((LATEST_BUILD_NUMBER + 1))"
+          else
+            BUILD_NUMBER="$PROJECT_BUILD_NUMBER"
+          fi
           flutter build ipa --release \
             --build-name="$APP_VERSION" \
             --build-number="$BUILD_NUMBER" \
