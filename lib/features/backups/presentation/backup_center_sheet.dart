@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/services.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
@@ -210,19 +211,7 @@ class _BackupDestinationCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (destinations.isEmpty) {
-      return const PveInsetGroup(
-        padding: EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('No backup destination is configured.'),
-            SizedBox(height: 6),
-            Text(
-              'Add a storage target that accepts backup content in Proxmox, then refresh this center.',
-            ),
-          ],
-        ),
-      );
+      return const _BackupSetupChecklist();
     }
     return PveInsetGroup(
       padding: EdgeInsets.zero,
@@ -286,6 +275,165 @@ class _BackupDestinationCard extends StatelessWidget {
           ],
         ],
       ),
+    );
+  }
+}
+
+class _BackupSetupChecklist extends StatefulWidget {
+  const _BackupSetupChecklist();
+
+  @override
+  State<_BackupSetupChecklist> createState() => _BackupSetupChecklistState();
+}
+
+class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
+  bool _copiedStoragePath = false;
+  bool _copiedBackupPath = false;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      color: PveAppleColors.warning(context).withValues(alpha: 0.08),
+      padding: const EdgeInsets.all(16),
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Row(
+            children: <Widget>[
+              Icon(
+                CupertinoIcons.archivebox,
+                color: PveAppleColors.warning(context),
+              ),
+              const SizedBox(width: 10),
+              Text(
+                'Set up backup storage',
+                style: PveAppleText.title3(context),
+              ),
+              const Spacer(),
+              PveStatusPill(
+                label: 'Not configured',
+                color: PveAppleColors.warning(context),
+              ),
+            ],
+          ),
+          const SizedBox(height: 10),
+          Text(
+            'This app cannot create storage or schedules. Complete these safe setup steps in the Proxmox web interface, then return here to verify what is reported.',
+            style: PveAppleText.secondary(context),
+          ),
+          const SizedBox(height: 14),
+          const _BackupSetupStep(
+            number: '1',
+            title: 'Open Datacenter → Storage',
+            detail:
+                'Add or enable a storage target that accepts backup content.',
+          ),
+          const SizedBox(height: 10),
+          const _BackupSetupStep(
+            number: '2',
+            title: 'Open Datacenter → Backup',
+            detail: 'Create a schedule and select the storage destination.',
+          ),
+          const SizedBox(height: 10),
+          const _BackupSetupStep(
+            number: '3',
+            title: 'Return and refresh Backup Center',
+            detail:
+                'PVE Companion will show the destinations, schedules, and copies your account can read.',
+          ),
+          const SizedBox(height: 12),
+          Wrap(
+            spacing: 8,
+            runSpacing: 8,
+            children: <Widget>[
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                minimumSize: const Size(44, 36),
+                onPressed: () => _copyPath(
+                  label: 'Datacenter → Storage',
+                  onCopied: () => setState(() => _copiedStoragePath = true),
+                ),
+                child: Text(
+                  _copiedStoragePath
+                      ? 'Storage path copied'
+                      : 'Copy storage path',
+                ),
+              ),
+              CupertinoButton(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 10,
+                  vertical: 7,
+                ),
+                minimumSize: const Size(44, 36),
+                onPressed: () => _copyPath(
+                  label: 'Datacenter → Backup',
+                  onCopied: () => setState(() => _copiedBackupPath = true),
+                ),
+                child: Text(
+                  _copiedBackupPath ? 'Backup path copied' : 'Copy backup path',
+                ),
+              ),
+            ],
+          ),
+        ],
+      ),
+    );
+  }
+
+  Future<void> _copyPath({
+    required String label,
+    required VoidCallback onCopied,
+  }) async {
+    await Clipboard.setData(ClipboardData(text: label));
+    if (mounted) {
+      onCopied();
+    }
+  }
+}
+
+class _BackupSetupStep extends StatelessWidget {
+  const _BackupSetupStep({
+    required this.number,
+    required this.title,
+    required this.detail,
+  });
+
+  final String number;
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) {
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: PveAppleColors.primary(context).withValues(alpha: 0.12),
+            shape: BoxShape.circle,
+          ),
+          child: SizedBox.square(
+            dimension: 24,
+            child: Center(
+              child: Text(number, style: PveAppleText.caption(context)),
+            ),
+          ),
+        ),
+        const SizedBox(width: 10),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text(title, style: PveAppleText.body(context)),
+              const SizedBox(height: 2),
+              Text(detail, style: PveAppleText.secondary(context)),
+            ],
+          ),
+        ),
+      ],
     );
   }
 }

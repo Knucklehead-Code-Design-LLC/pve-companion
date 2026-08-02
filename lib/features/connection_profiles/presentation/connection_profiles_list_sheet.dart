@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../app/pve_companion_controller.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
+import '../../../core/presentation/pve_value_format.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_profile.dart';
 import 'connection_profile_form_sheet.dart';
@@ -54,6 +55,8 @@ class ConnectionProfilesListSheet extends StatelessWidget {
                 controller.connectionProfiles.profiles;
             final ConnectionProfile? selected =
                 controller.connectionProfiles.selectedProfile;
+            final ConnectionProfilesController profilesController =
+                controller.connectionProfiles;
             if (profiles.isEmpty) {
               return PveEmptyState(
                 icon: CupertinoIcons.rectangle_stack_badge_plus,
@@ -95,7 +98,12 @@ class ConnectionProfilesListSheet extends StatelessWidget {
                             _ConnectionProfileListItem(
                               profile: profile,
                               selected: selected?.id == profile.id,
-                              disabled: controller.connectionProfiles.isBusy,
+                              status: profilesController.statusForProfile(
+                                profile,
+                              ),
+                              failureMessage: profilesController
+                                  .failureMessageForProfile(profile),
+                              disabled: profilesController.isBusy,
                               onConnect: () => _connect(context, profile),
                               onRemove: () => _remove(context, profile),
                             ),
@@ -185,6 +193,8 @@ class _ConnectionProfileListItem extends StatelessWidget {
   const _ConnectionProfileListItem({
     required this.profile,
     required this.selected,
+    required this.status,
+    required this.failureMessage,
     required this.disabled,
     required this.onConnect,
     required this.onRemove,
@@ -192,6 +202,8 @@ class _ConnectionProfileListItem extends StatelessWidget {
 
   final ConnectionProfile profile;
   final bool selected;
+  final ConnectionStatus status;
+  final String? failureMessage;
   final bool disabled;
   final VoidCallback onConnect;
   final VoidCallback onRemove;
@@ -204,34 +216,102 @@ class _ConnectionProfileListItem extends StatelessWidget {
             ? CupertinoIcons.lock_shield_fill
             : CupertinoIcons.person_crop_circle_fill,
       ),
-      title: Text(profile.displayName),
-      subtitle: Text(profile.endpoint.toString()),
-      onTap: disabled ? null : onConnect,
-      trailing: Row(
-        mainAxisSize: MainAxisSize.min,
+      title: Row(
         children: <Widget>[
-          if (selected)
+          Expanded(child: Text(profile.displayName)),
+          if (selected) ...<Widget>[
+            const SizedBox(width: 8),
             Icon(
               CupertinoIcons.check_mark,
               size: 18,
               color: PveAppleColors.primary(context),
+              semanticLabel: 'Active server',
             ),
-          Semantics(
-            button: true,
-            label: 'Remove ${profile.displayName}',
-            child: CupertinoButton(
-              padding: const EdgeInsets.all(8),
-              minimumSize: const Size(44, 44),
-              onPressed: disabled ? null : onRemove,
-              child: Icon(
-                CupertinoIcons.delete,
-                size: 18,
-                color: PveAppleColors.destructive(context),
-              ),
-            ),
-          ),
+          ],
         ],
+      ),
+      subtitle: _ConnectionProfileSubtitle(
+        profile: profile,
+        status: status,
+        failureMessage: failureMessage,
+      ),
+      onTap: disabled ? null : onConnect,
+      trailing: Semantics(
+        button: true,
+        label: 'Remove ${profile.displayName}',
+        child: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+          minimumSize: const Size(44, 36),
+          onPressed: disabled ? null : onRemove,
+          child: Text(
+            'Remove',
+            style: TextStyle(color: PveAppleColors.destructive(context)),
+          ),
+        ),
       ),
     );
   }
 }
+
+class _ConnectionProfileSubtitle extends StatelessWidget {
+  const _ConnectionProfileSubtitle({
+    required this.profile,
+    required this.status,
+    required this.failureMessage,
+  });
+
+  final ConnectionProfile profile;
+  final ConnectionStatus status;
+  final String? failureMessage;
+
+  @override
+  Widget build(BuildContext context) {
+    final String? lastConnectedLabel = profile.lastConnectedAt == null
+        ? null
+        : 'Last connected ${formatPveDateTime(profile.lastConnectedAt)}';
+    final String statusDetail = switch (status) {
+      ConnectionStatus.connected => 'Connected now',
+      ConnectionStatus.connecting => 'Connecting…',
+      ConnectionStatus.failed => failureMessage ?? 'Last connection failed',
+      ConnectionStatus.disconnected => lastConnectedLabel ?? 'Not connected',
+    };
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        Text(profile.endpoint.toString()),
+        const SizedBox(height: 4),
+        Row(
+          children: <Widget>[
+            PveStatusPill(
+              label: _connectionStatusLabel(status),
+              color: _connectionStatusColor(context, status),
+            ),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                statusDetail,
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+              ),
+            ),
+          ],
+        ),
+      ],
+    );
+  }
+}
+
+String _connectionStatusLabel(ConnectionStatus status) => switch (status) {
+  ConnectionStatus.connected => 'Connected',
+  ConnectionStatus.connecting => 'Connecting',
+  ConnectionStatus.failed => 'Needs attention',
+  ConnectionStatus.disconnected => 'Offline',
+};
+
+Color _connectionStatusColor(BuildContext context, ConnectionStatus status) =>
+    switch (status) {
+      ConnectionStatus.connected => PveAppleColors.success(context),
+      ConnectionStatus.connecting => PveAppleColors.primary(context),
+      ConnectionStatus.failed => PveAppleColors.destructive(context),
+      ConnectionStatus.disconnected => PveAppleColors.secondaryLabel(context),
+    };

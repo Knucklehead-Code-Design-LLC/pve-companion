@@ -13,6 +13,7 @@ class ConnectionProfile {
     this.realm,
     this.apiTokenId,
     this.trustedCertificateSha256,
+    this.lastConnectedAt,
   });
 
   final String id;
@@ -23,6 +24,7 @@ class ConnectionProfile {
   final String? realm;
   final String? apiTokenId;
   final String? trustedCertificateSha256;
+  final DateTime? lastConnectedAt;
   final DateTime savedAt;
 
   String get principal {
@@ -55,7 +57,24 @@ class ConnectionProfile {
       trustedCertificateSha256: clearTrustedCertificate
           ? null
           : trustedCertificateSha256 ?? this.trustedCertificateSha256,
+      lastConnectedAt: lastConnectedAt ?? this.lastConnectedAt,
       savedAt: DateTime.now().toUtc(),
+    );
+  }
+
+  /// Records a successful local connection without changing server settings.
+  ConnectionProfile withLastConnectedAt(DateTime timestamp) {
+    return ConnectionProfile(
+      id: id,
+      displayName: displayName,
+      endpoint: endpoint,
+      authenticationKind: authenticationKind,
+      username: username,
+      realm: realm,
+      apiTokenId: apiTokenId,
+      trustedCertificateSha256: trustedCertificateSha256,
+      lastConnectedAt: timestamp.toUtc(),
+      savedAt: savedAt,
     );
   }
 
@@ -70,6 +89,8 @@ class ConnectionProfile {
       if (apiTokenId != null) 'apiTokenId': apiTokenId,
       if (trustedCertificateSha256 != null)
         'trustedCertificateSha256': trustedCertificateSha256,
+      if (lastConnectedAt != null)
+        'lastConnectedAt': lastConnectedAt!.toUtc().toIso8601String(),
       'savedAt': savedAt.toUtc().toIso8601String(),
     };
   }
@@ -106,6 +127,7 @@ class ConnectionProfile {
         json,
         'trustedCertificateSha256',
       ),
+      lastConnectedAt: _readOptionalDateTime(json, 'lastConnectedAt'),
       savedAt: savedAt,
     );
     profile.validate();
@@ -205,4 +227,12 @@ String _readRequiredString(Map<String, Object?> json, String key) {
 String? _readOptionalString(Map<String, Object?> json, String key) {
   final Object? value = json[key];
   return value is String && value.isNotEmpty ? value : null;
+}
+
+DateTime? _readOptionalDateTime(Map<String, Object?> json, String key) {
+  final String? value = _readOptionalString(json, key);
+  if (value == null) {
+    return null;
+  }
+  return DateTime.tryParse(value)?.toUtc();
 }

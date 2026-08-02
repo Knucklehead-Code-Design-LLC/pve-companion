@@ -79,6 +79,8 @@ class ConnectionProfilesController extends ChangeNotifier {
   String? _selectedProfileId;
   ProxmoxSession? _activeSession;
   String? _errorMessage;
+  String? _connectingProfileId;
+  String? _failedProfileId;
   bool _operationInFlight = false;
   int _operationEpoch = 0;
   bool _isDisposed = false;
@@ -109,6 +111,23 @@ class ConnectionProfilesController extends ChangeNotifier {
 
   bool get isBusy => _operationInFlight;
 
+  ConnectionStatus statusForProfile(ConnectionProfile profile) {
+    if (_connectingProfileId == profile.id && _operationInFlight) {
+      return ConnectionStatus.connecting;
+    }
+    if (_selectedProfileId == profile.id && _activeSession != null) {
+      return ConnectionStatus.connected;
+    }
+    if (_failedProfileId == profile.id) {
+      return ConnectionStatus.failed;
+    }
+    return ConnectionStatus.disconnected;
+  }
+
+  String? failureMessageForProfile(ConnectionProfile profile) {
+    return _failedProfileId == profile.id ? _errorMessage : null;
+  }
+
   Future<void> initialize() async {
     try {
       final SavedConnectionProfiles savedProfiles = await _profileRepository
@@ -138,7 +157,6 @@ class ConnectionProfilesController extends ChangeNotifier {
     return _connect(
       profile,
       credentials,
-      persistProfile: true,
       persistCredentials: persistCredentials,
     );
   }
@@ -169,12 +187,7 @@ class ConnectionProfilesController extends ChangeNotifier {
         'Credentials are unavailable in the local Keychain. Add this server again.',
       );
     }
-    return _connect(
-      profile,
-      credentials,
-      persistProfile: false,
-      persistCredentials: false,
-    );
+    return _connect(profile, credentials, persistCredentials: false);
   }
 
   /// Opens a transient authenticated session for a dashboard that reads more
@@ -258,6 +271,12 @@ class ConnectionProfilesController extends ChangeNotifier {
       _activeSession = null;
       _connectionStatus = ConnectionStatus.disconnected;
     }
+    if (_connectingProfileId == profileId) {
+      _connectingProfileId = null;
+    }
+    if (_failedProfileId == profileId) {
+      _failedProfileId = null;
+    }
     _notify();
     return true;
   }
@@ -269,13 +288,14 @@ class ConnectionProfilesController extends ChangeNotifier {
     _activeSession = null;
     _connectionStatus = ConnectionStatus.disconnected;
     _errorMessage = null;
+    _connectingProfileId = null;
+    _failedProfileId = null;
     _notify();
   }
 
   Future<ConnectionAttemptResult> _connect(
     ConnectionProfile profile,
     ConnectionCredentials credentials, {
-    required bool persistProfile,
     required bool persistCredentials,
   }) async {
     if (_operationInFlight) {
@@ -283,8 +303,15 @@ class ConnectionProfilesController extends ChangeNotifier {
     }
     _operationInFlight = true;
     final int epoch = ++_operationEpoch;
-    _connectionStatus = ConnectionStatus.connecting;
+    // Keep the current workspace available while another saved server is
+    // being checked. The per-profile state below carries the switching state
+    // without implying that the established session has gone away.
+    _connectionStatus = _activeSession == null
+        ? ConnectionStatus.connecting
+        : ConnectionStatus.connected;
     _errorMessage = null;
+    _connectingProfileId = profile.id;
+    _failedProfileId = null;
     _notify();
 
     ProxmoxSession? createdSession;
@@ -297,14 +324,15 @@ class ConnectionProfilesController extends ChangeNotifier {
         return const ConnectionAttemptResult.busy();
       }
 
-      final List<ConnectionProfile> updatedProfiles = persistProfile
-          ? <ConnectionProfile>[
-              ..._profiles.where(
-                (ConnectionProfile existing) => existing.id != profile.id,
-              ),
-              profile,
-            ]
-          : _profiles;
+      final ConnectionProfile connectedProfile = profile.withLastConnectedAt(
+        DateTime.now(),
+      );
+      final List<ConnectionProfile> updatedProfiles = <ConnectionProfile>[
+        ..._profiles.where(
+          (ConnectionProfile existing) => existing.id != connectedProfile.id,
+        ),
+        connectedProfile,
+      ];
       await _profileRepository.save(
         SavedConnectionProfiles(
           profiles: updatedProfiles,
@@ -322,26 +350,35 @@ class ConnectionProfilesController extends ChangeNotifier {
       _activeSession = createdSession;
       createdSession = null;
       _profiles = List<ConnectionProfile>.unmodifiable(updatedProfiles);
-      _selectedProfileId = profile.id;
+      _selectedProfileId = connectedProfile.id;
       _connectionStatus = ConnectionStatus.connected;
       _errorMessage = null;
+      _connectingProfileId = null;
+      _failedProfileId = null;
       _notify();
       return const ConnectionAttemptResult.connected();
     } on ProxmoxTlsTrustRequiredException catch (error) {
       if (!_isStale(epoch)) {
-        _connectionStatus = ConnectionStatus.disconnected;
+        _connectionStatus = _activeSession == null
+            ? ConnectionStatus.disconnected
+            : ConnectionStatus.connected;
+        _errorMessage =
+            'The saved certificate fingerprint no longer matches this server.';
+        _connectingProfileId = null;
+        _failedProfileId = profile.id;
         _notify();
       }
       return ConnectionAttemptResult.certificateTrustRequired(
         fingerprint: error.fingerprint,
       );
     } on ProxmoxApiException catch (error) {
-      return _handleConnectionFailure(epoch, error.message);
+      return _handleConnectionFailure(epoch, profile.id, error.message);
     } on FormatException catch (error) {
-      return _handleConnectionFailure(epoch, error.message);
+      return _handleConnectionFailure(epoch, profile.id, error.message);
     } catch (_) {
       return _handleConnectionFailure(
         epoch,
+        profile.id,
         'The connection could not be saved. Check the server details and try again.',
       );
     } finally {
@@ -353,10 +390,18 @@ class ConnectionProfilesController extends ChangeNotifier {
     }
   }
 
-  ConnectionAttemptResult _handleConnectionFailure(int epoch, String message) {
+  ConnectionAttemptResult _handleConnectionFailure(
+    int epoch,
+    String profileId,
+    String message,
+  ) {
     if (!_isStale(epoch)) {
-      _connectionStatus = ConnectionStatus.failed;
+      _connectionStatus = _activeSession == null
+          ? ConnectionStatus.failed
+          : ConnectionStatus.connected;
       _errorMessage = message;
+      _connectingProfileId = null;
+      _failedProfileId = profileId;
       _notify();
     }
     return ConnectionAttemptResult.failed(message);
