@@ -74,16 +74,24 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
-              onPressed: _controller.hasRunningTask ? null : _controller.load,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
+            Semantics(
+              button: true,
+              label: 'Refresh node details',
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                minimumSize: const Size(44, 36),
+                onPressed: _controller.hasRunningTask ? null : _controller.load,
+                child: const Icon(CupertinoIcons.refresh, size: 19),
+              ),
             ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
+            Semantics(
+              button: true,
+              label: 'Close node details',
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
             ),
           ],
         ),
@@ -94,7 +102,7 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
           animation: _controller,
           builder: (BuildContext context, Widget? child) => Center(
             child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 760),
+              constraints: const BoxConstraints(maxWidth: 1120),
               child: Padding(
                 padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                 child: _buildContent(context),
@@ -233,44 +241,212 @@ class _NodeDetailContent extends StatelessWidget {
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
       children: <Widget>[
-        _NodeStatusCard(details: details),
-        if (controller.activeTask != null) ...<Widget>[
-          const SizedBox(height: 12),
-          ProxmoxTaskStatusCard(task: controller.activeTask!),
+        _NodeDetailColumns(
+          details: details,
+          controller: controller,
+          controlsDisabled: controlsDisabled,
+          onPowerAction: onPowerAction,
+          onRestartService: onRestartService,
+          onRefreshPackageIndex: onRefreshPackageIndex,
+        ),
+      ],
+    );
+  }
+}
+
+class _NodeDetailColumns extends StatelessWidget {
+  const _NodeDetailColumns({
+    required this.details,
+    required this.controller,
+    required this.controlsDisabled,
+    required this.onPowerAction,
+    required this.onRestartService,
+    required this.onRefreshPackageIndex,
+  });
+
+  final PveNodeDetails details;
+  final NodeOperationsController controller;
+  final bool controlsDisabled;
+  final Future<void> Function(PveNodePowerAction) onPowerAction;
+  final Future<void> Function(PveNodeService) onRestartService;
+  final Future<void> Function() onRefreshPackageIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    final List<Widget> primarySections = <Widget>[
+      _NodeStatusCard(details: details),
+      if (controller.activeTask != null)
+        ProxmoxTaskStatusCard(task: controller.activeTask!),
+      if (controller.errorMessage != null)
+        _NodeInlineError(message: controller.errorMessage!),
+      _NodePowerSection(
+        enabled: !controlsDisabled,
+        isOnline: details.node.isOnline,
+        onAction: onPowerAction,
+      ),
+      _NodeSystemInformationSection(details: details),
+    ];
+    final List<Widget> secondarySections = <Widget>[
+      _NodeUpdatesSection(
+        updates: details.availablePackageUpdates,
+        enabled: !controlsDisabled,
+        onRefreshPackageIndex: onRefreshPackageIndex,
+      ),
+      _NodeServicesSection(
+        services: details.services,
+        restartEnabled: !controlsDisabled,
+        onRestartService: onRestartService,
+      ),
+    ];
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        if (constraints.maxWidth < 760) {
+          return _NodeSectionColumn(
+            sections: <Widget>[...primarySections, ...secondarySections],
+          );
+        }
+        return Row(
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: <Widget>[
+            Expanded(child: _NodeSectionColumn(sections: primarySections)),
+            const SizedBox(width: 24),
+            Expanded(child: _NodeSectionColumn(sections: secondarySections)),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _NodeSectionColumn extends StatelessWidget {
+  const _NodeSectionColumn({required this.sections});
+
+  final List<Widget> sections;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (int index = 0; index < sections.length; index++) ...<Widget>[
+          if (index > 0) const SizedBox(height: 24),
+          sections[index],
         ],
-        if (controller.errorMessage != null) ...<Widget>[
-          const SizedBox(height: 10),
-          _NodeInlineError(message: controller.errorMessage!),
-        ],
-        const SizedBox(height: 24),
-        const PveSectionTitle(title: 'Node controls'),
+      ],
+    );
+  }
+}
+
+class _NodePowerSection extends StatelessWidget {
+  const _NodePowerSection({
+    required this.enabled,
+    required this.isOnline,
+    required this.onAction,
+  });
+
+  final bool enabled;
+  final bool isOnline;
+  final Future<void> Function(PveNodePowerAction) onAction;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        const PveSectionTitle(title: 'Node power'),
         const SizedBox(height: 8),
-        _NodePowerControls(enabled: !controlsDisabled, onAction: onPowerAction),
-        if (!details.node.isOnline) ...<Widget>[
+        _NodePowerControls(enabled: enabled, onAction: onAction),
+        if (!isOnline) ...<Widget>[
           const SizedBox(height: 8),
           Text(
-            'Node power controls are unavailable while Proxmox reports this node offline.',
+            'Power controls are unavailable because Proxmox reports this node offline.',
+            style: PveAppleText.secondary(context),
+          ),
+        ] else ...<Widget>[
+          const SizedBox(height: 8),
+          Text(
+            'Restarting or shutting down this node can interrupt hosted guests and affect cluster quorum.',
             style: PveAppleText.secondary(context),
           ),
         ],
-        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _NodeSystemInformationSection extends StatelessWidget {
+  const _NodeSystemInformationSection({required this.details});
+
+  final PveNodeDetails details;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         const PveSectionTitle(title: 'System information'),
         const SizedBox(height: 8),
         _NodeSystemInformationCard(details: details),
-        const SizedBox(height: 24),
+      ],
+    );
+  }
+}
+
+class _NodeUpdatesSection extends StatelessWidget {
+  const _NodeUpdatesSection({
+    required this.updates,
+    required this.enabled,
+    required this.onRefreshPackageIndex,
+  });
+
+  final List<PveNodePackageUpdate> updates;
+  final bool enabled;
+  final Future<void> Function() onRefreshPackageIndex;
+
+  @override
+  Widget build(BuildContext context) {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
         PveSectionHeader(
           title: 'Package updates',
           actionLabel: 'Refresh Index',
           actionSemanticsLabel: 'Refresh the package index on this node',
-          onAction: controlsDisabled ? null : () => onRefreshPackageIndex(),
+          onAction: enabled ? () => onRefreshPackageIndex() : null,
         ),
-        _NodeUpdatesCard(updates: details.availablePackageUpdates),
-        const SizedBox(height: 24),
-        const PveSectionTitle(title: 'Node services'),
+        _NodeUpdatesCard(updates: updates),
+      ],
+    );
+  }
+}
+
+class _NodeServicesSection extends StatelessWidget {
+  const _NodeServicesSection({
+    required this.services,
+    required this.restartEnabled,
+    required this.onRestartService,
+  });
+
+  final List<PveNodeService> services;
+  final bool restartEnabled;
+  final Future<void> Function(PveNodeService) onRestartService;
+
+  @override
+  Widget build(BuildContext context) {
+    final int attentionCount = services
+        .where((PveNodeService service) => !service.isRunning)
+        .length;
+    final String title = attentionCount == 0
+        ? 'Node services'
+        : 'Node services · $attentionCount need attention';
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        PveSectionTitle(title: title),
         const SizedBox(height: 8),
         _NodeServicesCard(
-          services: details.services,
-          restartEnabled: !controlsDisabled,
+          services: services,
+          restartEnabled: restartEnabled,
           onRestartService: onRestartService,
         ),
       ],
@@ -544,35 +720,47 @@ class _NodeServicesCard extends StatelessWidget {
         child: Text('Service status was not reported by this Proxmox account.'),
       );
     }
+    final List<PveNodeService> scanOrderedServices =
+        List<PveNodeService>.of(services)
+          ..sort((PveNodeService first, PveNodeService second) {
+            if (first.isRunning == second.isRunning) {
+              return first.name.compareTo(second.name);
+            }
+            return first.isRunning ? 1 : -1;
+          });
     return PveInsetGroup(
       padding: EdgeInsets.zero,
       child: Column(
         children: <Widget>[
-          for (int index = 0; index < services.length; index++) ...<Widget>[
+          for (
+            int index = 0;
+            index < scanOrderedServices.length;
+            index++
+          ) ...<Widget>[
             PveListRow(
               leading: Icon(
-                services[index].isRunning
+                scanOrderedServices[index].isRunning
                     ? CupertinoIcons.check_mark_circled_solid
                     : CupertinoIcons.exclamationmark_triangle_fill,
-                color: services[index].isRunning
+                color: scanOrderedServices[index].isRunning
                     ? PveAppleColors.success(context)
                     : PveAppleColors.warning(context),
               ),
-              title: Text(services[index].name),
+              title: Text(scanOrderedServices[index].name),
               subtitle: Text(
-                services[index].description ??
-                    _nodeServiceState(services[index]),
+                scanOrderedServices[index].description ??
+                    _nodeServiceState(scanOrderedServices[index]),
               ),
               trailing: CupertinoButton(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
                 minimumSize: const Size(44, 34),
                 onPressed: restartEnabled
-                    ? () => onRestartService(services[index])
+                    ? () => onRestartService(scanOrderedServices[index])
                     : null,
                 child: const Icon(CupertinoIcons.arrow_clockwise, size: 18),
               ),
             ),
-            if (index < services.length - 1) const PveRowSeparator(),
+            if (index < scanOrderedServices.length - 1) const PveRowSeparator(),
           ],
         ],
       ),

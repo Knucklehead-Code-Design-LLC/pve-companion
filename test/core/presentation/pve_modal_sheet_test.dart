@@ -88,6 +88,53 @@ void main() {
     expect(find.text('Sheet'), findsNothing);
     expect(tester.getRect(workspace), workspaceRect);
   });
+
+  testWidgets('uses a roomy contained pane on desktop widths', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1440, 1000));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: Builder(
+            builder: (BuildContext context) => Center(
+              child: CupertinoButton(
+                onPressed: () => showPveModalSheet<void>(
+                  context: context,
+                  scrollableBuilder:
+                      (
+                        BuildContext context,
+                        ScrollController scrollController,
+                      ) => ListView(
+                        controller: scrollController,
+                        children: const <Widget>[
+                          SizedBox(
+                            key: ValueKey<String>('desktop-sheet-content'),
+                            height: 120,
+                          ),
+                        ],
+                      ),
+                ),
+                child: const Text('Show sheet'),
+              ),
+            ),
+          ),
+        ),
+      ),
+    );
+
+    await tester.tap(find.text('Show sheet'));
+    await tester.pumpAndSettle();
+
+    final Rect contentRect = tester.getRect(
+      find.byKey(const ValueKey<String>('desktop-sheet-content')),
+    );
+    expect(contentRect.width, lessThanOrEqualTo(1110));
+    expect(contentRect.center.dx, closeTo(720, 1));
+    expect(contentRect.bottom, lessThan(1000));
+  });
 }
 
 class _RouteObserver extends NavigatorObserver {

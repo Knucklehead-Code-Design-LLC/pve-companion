@@ -81,16 +81,24 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
-              onPressed: _controller.hasRunningTask ? null : _controller.load,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
+            Semantics(
+              button: true,
+              label: 'Refresh guest details',
+              child: CupertinoButton(
+                padding: const EdgeInsets.symmetric(horizontal: 7),
+                minimumSize: const Size(44, 36),
+                onPressed: _controller.hasRunningTask ? null : _controller.load,
+                child: const Icon(CupertinoIcons.refresh, size: 19),
+              ),
             ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
+            Semantics(
+              button: true,
+              label: 'Close guest details',
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
             ),
           ],
         ),
@@ -102,7 +110,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
           builder: (BuildContext context, Widget? child) {
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
+                constraints: const BoxConstraints(maxWidth: 1120),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: _buildContent(context),
