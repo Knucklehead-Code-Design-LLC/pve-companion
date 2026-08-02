@@ -71,11 +71,10 @@ class _BackupCenterSheetState extends State<_BackupCenterSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
+              label: 'Refresh backup center',
               onPressed: _controller.load,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
             ),
             CupertinoButton(
               padding: EdgeInsets.zero,

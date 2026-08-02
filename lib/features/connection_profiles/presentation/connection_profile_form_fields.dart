@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/material.dart' show Tooltip;
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../domain/connection_profile.dart';
@@ -357,13 +358,23 @@ class _SecretFormRow extends StatelessWidget {
                   onChanged: field.didChange,
                 ),
               ),
-              CupertinoButton(
-                padding: const EdgeInsets.only(left: 8),
-                minimumSize: const Size(34, 34),
-                onPressed: enabled ? onToggleVisibility : null,
-                child: Icon(
-                  visible ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
-                  size: 20,
+              Semantics(
+                button: true,
+                enabled: enabled,
+                label: visible ? 'Hide secret' : 'Show secret',
+                child: Tooltip(
+                  message: visible ? 'Hide secret' : 'Show secret',
+                  child: CupertinoButton(
+                    padding: const EdgeInsets.only(left: 8),
+                    minimumSize: const Size(34, 34),
+                    onPressed: enabled ? onToggleVisibility : null,
+                    child: ExcludeSemantics(
+                      child: Icon(
+                        visible ? CupertinoIcons.eye_slash : CupertinoIcons.eye,
+                        size: 20,
+                      ),
+                    ),
+                  ),
                 ),
               ),
             ],

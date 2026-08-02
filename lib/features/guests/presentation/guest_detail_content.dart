@@ -567,11 +567,10 @@ class _SnapshotRow extends StatelessWidget {
       leading: const Icon(CupertinoIcons.camera),
       title: Text(snapshot.name),
       subtitle: Text(_snapshotSubtitle(snapshot)),
-      trailing: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-        minimumSize: const Size(44, 34),
+      trailing: PveIconAction(
+        icon: CupertinoIcons.ellipsis_circle,
+        label: 'Snapshot actions for ${snapshot.name}',
         onPressed: enabled ? () => _showActions(context) : null,
-        child: const Icon(CupertinoIcons.ellipsis_circle, size: 20),
       ),
     );
   }
@@ -665,11 +664,10 @@ class _GuestBackupCard extends StatelessWidget {
             ),
           ),
           const SizedBox(width: 8),
-          CupertinoButton(
-            padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 6),
-            minimumSize: const Size(44, 38),
+          PveIconAction(
+            icon: CupertinoIcons.play_circle,
+            label: 'Run guest backup',
             onPressed: enabled && hasDestination ? onRunBackup : null,
-            child: const Icon(CupertinoIcons.play_circle, size: 21),
           ),
         ],
       ),

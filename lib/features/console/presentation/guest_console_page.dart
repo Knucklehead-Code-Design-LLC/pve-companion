@@ -114,13 +114,12 @@ class _GuestConsolePageState extends State<GuestConsolePage>
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Done'),
         ),
-        trailing: CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 4),
-          minimumSize: const Size(44, 36),
+        trailing: PveIconAction(
+          icon: CupertinoIcons.refresh,
+          label: 'Reconnect guest console',
           onPressed: _controller.state == GuestConsoleConnectionState.connecting
               ? null
               : _reconnect,
-          child: const Icon(CupertinoIcons.refresh, size: 19),
         ),
       ),
       child: SafeArea(

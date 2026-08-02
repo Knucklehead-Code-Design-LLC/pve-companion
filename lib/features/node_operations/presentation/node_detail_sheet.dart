@@ -75,15 +75,10 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Semantics(
-              button: true,
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
               label: 'Refresh node details',
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-                minimumSize: const Size(44, 36),
-                onPressed: _controller.hasRunningTask ? null : _controller.load,
-                child: const Icon(CupertinoIcons.refresh, size: 19),
-              ),
+              onPressed: _controller.hasRunningTask ? null : _controller.load,
             ),
             Semantics(
               button: true,
@@ -797,13 +792,12 @@ class _NodeServicesCard extends StatelessWidget {
                 visibleServices[index].description ??
                     _nodeServiceState(visibleServices[index]),
               ),
-              trailing: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 5),
-                minimumSize: const Size(44, 34),
+              trailing: PveIconAction(
+                icon: CupertinoIcons.arrow_clockwise,
+                label: 'Restart ${visibleServices[index].name}',
                 onPressed: restartEnabled
                     ? () => onRestartService(visibleServices[index])
                     : null,
-                child: const Icon(CupertinoIcons.arrow_clockwise, size: 18),
               ),
             ),
             if (index < visibleServices.length - 1) const PveRowSeparator(),

@@ -49,6 +49,8 @@ void main() {
       await tester.tap(find.text('Open Backup Center'));
       await tester.pumpAndSettle();
 
+      expect(find.byTooltip('Refresh backup center'), findsOneWidget);
+      expect(find.bySemanticsLabel('Refresh backup center'), findsOneWidget);
       expect(find.text('Set up backup storage'), findsOneWidget);
       expect(
         find.byKey(const ValueKey<String>('backup-readiness-summary')),

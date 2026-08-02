@@ -23,10 +23,10 @@ class ConnectionProfilesWelcomeScreen extends StatelessWidget {
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
         middle: const Text('PVE Companion'),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
+        trailing: PveIconAction(
+          icon: CupertinoIcons.info_circle,
+          label: 'About PVE Companion',
           onPressed: onAbout,
-          child: const Icon(CupertinoIcons.info_circle),
         ),
       ),
       child: SafeArea(

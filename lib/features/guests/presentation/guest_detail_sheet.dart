@@ -82,15 +82,10 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Semantics(
-              button: true,
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
               label: 'Refresh guest details',
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(horizontal: 7),
-                minimumSize: const Size(44, 36),
-                onPressed: _controller.hasRunningTask ? null : _controller.load,
-                child: const Icon(CupertinoIcons.refresh, size: 19),
-              ),
+              onPressed: _controller.hasRunningTask ? null : _controller.load,
             ),
             Semantics(
               button: true,
