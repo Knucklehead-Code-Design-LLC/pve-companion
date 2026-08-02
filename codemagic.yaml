@@ -14,7 +14,6 @@ workflows:
     environment:
       flutter: 3.44.8
       xcode: 26.5
-      cocoapods: default
     scripts:
       - name: Install Flutter dependencies
         script: flutter pub get
@@ -47,10 +46,6 @@ workflows:
         APP_STORE_APPLE_ID: "6797252365"
       flutter: 3.44.8
       xcode: 26.5
-      cocoapods: default
-    cache:
-      cache_paths:
-        - $HOME/Library/Caches/CocoaPods
     scripts:
       - name: Install Flutter dependencies
         script: flutter pub get
@@ -60,8 +55,6 @@ workflows:
           dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze
           flutter test
-      - name: Install CocoaPods dependencies
-        script: (cd ios && pod install)
       - name: Apply App Store signing profiles
         script: xcode-project use-profiles --project ios/Runner.xcodeproj
       - name: Build signed IPA with the next App Store build number
@@ -108,10 +101,6 @@ workflows:
         APP_STORE_APPLE_ID: "6797252365"
       flutter: 3.44.8
       xcode: 26.5
-      cocoapods: default
-    cache:
-      cache_paths:
-        - $HOME/Library/Caches/CocoaPods
     scripts:
       - name: Verify the release tag matches pubspec.yaml
         script: |
@@ -127,8 +116,6 @@ workflows:
           dart format --output=none --set-exit-if-changed lib test tool
           flutter analyze
           flutter test
-      - name: Install CocoaPods dependencies
-        script: (cd ios && pod install)
       - name: Apply App Store signing profiles
         script: xcode-project use-profiles --project ios/Runner.xcodeproj
       - name: Build signed IPA with the next App Store build number
