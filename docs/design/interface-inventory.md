@@ -18,10 +18,10 @@ available.
 
 | Destination | Information hierarchy | Primary interactions |
 | --- | --- | --- |
-| Overview | Proxmox version context; compact health drill-in; current CPU, memory, and disk pressure; workload composition; storage capacity; node pressure; recent activity. | Pull/footer refresh; open health, guests, storage, nodes, or tasks. Charts show current composition and pressure, never invented history. |
-| Guests | Four-metric status strip; aggregate CPU, memory, and disk footprint; VM/LXC composition and placement; search and status filter; running-first inventory with per-guest pressure on wide screens. iPhone puts inventory before deeper analysis. | Search by name, node, VMID, or kind; filter; open guest detail. |
-| Nodes | Four-metric status strip; cluster pressure and node-availability analysis; search and attention filter; attention-first cards with CPU, memory, disk, cores, and uptime. iPhone puts node cards before deeper analysis. | Search by node name; filter; pull/footer refresh. |
-| Storage | Configured, fully available, used, and free metrics; effective-capacity and topology analysis; pool utilization; local/shared filter; per-node pool coverage. iPhone puts pool cards before deeper analysis. | Filter and refresh. Pool state distinguishes fully available, partially available, unavailable, and unreported. Capacity and availability remain explicitly unreported when the API account does not provide that telemetry. |
+| Overview | Proxmox version context; incident highlights; compact health drill-in; current CPU, memory, and disk pressure; workload composition; storage capacity; node pressure; recent activity. | Pull/footer refresh; open incident targets, guests, storage, nodes, or tasks. Charts show current composition and pressure, never invented history. |
+| Guests | Four-metric status strip; aggregate CPU, memory, and disk footprint; VM/LXC composition and placement; search and status filter; running-first inventory with per-guest pressure on wide screens. iPhone puts inventory before deeper analysis. | Search by name, node, VMID, or kind; filter; open a task-aware guest detail surface. |
+| Nodes | Four-metric status strip; cluster pressure and node-availability analysis; search and attention filter; attention-first cards with CPU, memory, disk, cores, and uptime. iPhone puts node cards before deeper analysis. | Search by node name; filter; pull/footer refresh; open guarded node operations when connected. |
+| Storage | Configured, fully available, used, and free metrics; Backup Center; effective-capacity and topology analysis; pool utilization; local/shared filter; per-node pool coverage. iPhone puts pool cards before deeper analysis. | Open Backup Center; filter and refresh. Pool state distinguishes fully available, partially available, unavailable, and unreported. Capacity and availability remain explicitly unreported when the API account does not provide that telemetry. |
 | Tasks | Four-metric outcome strip; outcome rate and activity profile; type, node, user, time, duration, and state inventory. iPhone puts recent operations before deeper analysis. | Filter and refresh. |
 
 ## Scoped and secondary surfaces
@@ -32,7 +32,13 @@ available.
 | Disconnected workspace | Selected-server context with Connect and Add Another Server actions. | No selection, ready, connecting, and connection error. |
 | Add server | Cupertino sheet with Server, Sign In, and On This Device form sections. | Password/API token, validation, submitting, server error, certificate trust. |
 | Manage servers | Cupertino sheet with add, select/connect, selected state, and delete. | Empty, populated, busy, connection failure, removal confirmation. |
-| Guest detail | Cupertino sheet with one navigation title, guest context, runtime metrics, confirmed power controls, and safe configuration form rows. | Loading, loaded/stopped/running/template, action busy/error/success, load failure. |
+| Guest detail | Cupertino sheet with guest runtime, task status, confirmed power controls, snapshot/backup workflows, safe configuration form rows, recent guest activity, and credential-free browser console handoff. | Loading, loaded/stopped/running/template, action busy/error/success, load failure, no backup destination, console-handoff failure. |
+| Incident Center | Cupertino sheet with prioritized critical/attention incidents and target-specific drill-ins. | Healthy empty state, critical/warning mix, and every target navigation. |
+| Node detail | Cupertino sheet with system/version information, service state, package-update inventory, task status, and guarded node/service actions. | Loading, unavailable/offline, permission-limited details, action busy/error/success, load failure. |
+| Backup Center | Cupertino sheet with configured destinations, scheduled jobs, discovered copies, and recent backup task state. | Loading, no backup storage, no schedules/copies, permission-limited data, and load failure. |
+| Datacenter Portfolio | Cupertino sheet with short-lived, read-only health refreshes for every saved profile. | Loading, healthy/attention/critical/unavailable rows, no profiles, and active-workspace switching. |
+| Notifications | Cupertino sheet with local-alert permission, critical/attention preferences, and foreground-monitoring boundaries. | Undetermined, authorized, denied, unsupported, busy, and persistence/delivery failure. |
+| Cluster Administration | Cupertino sheet with read-only membership, quorum, HA, and safe datacenter-option audit. | Loading, permission-limited values, quorate/non-quorate, HA attention, and load failure. |
 | Datacenter Watch | Cupertino sheet explaining visible data and a time-bounded start action. | Available, busy, start failure, active/end command. |
 | About and privacy | Cupertino alert with version, independence, security, privacy, and project links. | Default and link launch failure where applicable. |
 
@@ -55,5 +61,6 @@ production widgets. The capture pipeline produces five iPhone, five portrait
 iPad, and five Mac review images. Before release, also exercise landscape iPad,
 scrolling title collapse,
 pull to refresh, sidebar footer refresh, search results, every filter, empty results, critical health,
-Dynamic Type, light/dark appearance, and the secondary sheets on simulators or
+Dynamic Type, light/dark appearance, guarded-operation confirmation, task state,
+and the secondary sheets on simulators or
 physical devices.

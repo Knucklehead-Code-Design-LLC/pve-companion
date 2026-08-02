@@ -2,13 +2,17 @@ import 'package:flutter/cupertino.dart';
 
 import '../core/api/proxmox_session.dart';
 import '../core/presentation/pve_apple_ui.dart';
+import '../features/cluster_administration/presentation/cluster_administration_sheet.dart';
 import '../features/cluster_overview/application/cluster_overview_controller.dart';
+import '../features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../features/cluster_overview/presentation/cluster_nodes_page.dart';
 import '../features/cluster_overview/presentation/cluster_overview_page.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
 import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
+import '../features/fleet/presentation/fleet_workspace_sheet.dart';
 import '../features/guests/presentation/guest_list_page.dart';
+import '../features/notifications/presentation/datacenter_notifications_sheet.dart';
 import '../features/storage/presentation/storage_page.dart';
 import '../features/system_surfaces/presentation/datacenter_watch_sheet.dart';
 import '../features/tasks/presentation/tasks_page.dart';
@@ -132,6 +136,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       GuestListPage(
         overviewController: widget.controller.clusterOverview,
         session: session,
+        consoleEndpoint:
+            widget.controller.connectionProfiles.selectedProfile?.endpoint,
         showsSliverNavigationBar: compact,
         navigationLeading: compact ? _buildCompactLeading() : null,
         navigationTrailing: compact ? _buildCompactTrailing() : null,
@@ -140,13 +146,16 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       ),
       ClusterNodesPage(
         controller: widget.controller.clusterOverview,
+        session: session,
         showsSliverNavigationBar: compact,
         navigationLeading: compact ? _buildCompactLeading() : null,
         navigationTrailing: compact ? _buildCompactTrailing() : null,
         onRefresh: widget.controller.refreshCluster,
+        onNodeOperation: widget.controller.refreshCluster,
       ),
       StoragePage(
         controller: widget.controller.clusterOverview,
+        session: session,
         showsSliverNavigationBar: compact,
         navigationLeading: compact ? _buildCompactLeading() : null,
         navigationTrailing: compact ? _buildCompactTrailing() : null,
@@ -181,6 +190,9 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       onManageServers: () =>
           showConnectionProfilesSheet(context, controller: widget.controller),
       onAbout: () => showPveCompanionAboutDialog(context),
+      onViewFleet: _showFleetWorkspace,
+      onManageNotifications: _showNotifications,
+      onClusterAdministration: _showClusterAdministration,
       liveActivitiesAvailable:
           widget.controller.systemSurfaces.liveActivitiesAvailable,
       datacenterWatchActive:
@@ -213,6 +225,9 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       onManageServers: () =>
           showConnectionProfilesSheet(context, controller: widget.controller),
       onAbout: () => showPveCompanionAboutDialog(context),
+      onViewFleet: _showFleetWorkspace,
+      onManageNotifications: _showNotifications,
+      onClusterAdministration: _showClusterAdministration,
       showServerMenu: showServerMenu,
       includeRefreshMenuAction: includeRefreshMenuAction,
       liveActivitiesAvailable:
@@ -289,6 +304,38 @@ class _PveWorkspaceState extends State<PveWorkspace> {
           ),
         ],
       ),
+    );
+  }
+
+  Future<void> _showFleetWorkspace() {
+    return showFleetWorkspaceSheet(
+      context,
+      controller: widget.controller.fleetOverview,
+      activeProfileId: widget.controller.connectionProfiles.selectedProfile?.id,
+      onOpenProfile: _connectToProfile,
+    );
+  }
+
+  Future<void> _showNotifications() {
+    return showDatacenterNotificationsSheet(
+      context,
+      controller: widget.controller.notifications,
+    );
+  }
+
+  Future<void> _showClusterAdministration() async {
+    final ProxmoxSession? session =
+        widget.controller.connectionProfiles.activeSession;
+    final ClusterOverviewSnapshot? overview =
+        widget.controller.clusterOverview.snapshot;
+    if (session == null || overview == null) {
+      return;
+    }
+    await showClusterAdministrationSheet(
+      context,
+      session: session,
+      overview: overview,
+      onViewNodes: () => _selectSection(WorkspaceSection.nodes),
     );
   }
 }

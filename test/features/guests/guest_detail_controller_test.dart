@@ -2,6 +2,7 @@ import 'dart:async';
 
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
+import 'package:pve_companion/core/api/proxmox_task.dart';
 import 'package:pve_companion/features/guests/application/guest_detail_controller.dart';
 import 'package:pve_companion/features/guests/data/proxmox_guest_repository.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
@@ -41,7 +42,8 @@ void main() {
 }
 
 class _ControlledGuestRepository implements PveGuestRepository {
-  final Completer<void> actionCompleter = Completer<void>();
+  final Completer<ProxmoxTaskReference?> actionCompleter =
+      Completer<ProxmoxTaskReference?>();
   int powerRequests = 0;
 
   @override
@@ -52,11 +54,12 @@ class _ControlledGuestRepository implements PveGuestRepository {
     return PveGuestDetails(
       guest: guest,
       configuration: const <String, String>{},
+      runtime: PveGuestRuntime.fromGuest(guest),
     );
   }
 
   @override
-  Future<void> runPowerAction(
+  Future<ProxmoxTaskReference?> runPowerAction(
     ProxmoxSession session,
     PveGuest guest,
     GuestPowerAction action,
@@ -64,6 +67,43 @@ class _ControlledGuestRepository implements PveGuestRepository {
     powerRequests += 1;
     return actionCompleter.future;
   }
+
+  @override
+  Future<ProxmoxTaskReference> createBackup(
+    ProxmoxSession session,
+    PveGuest guest,
+    PveGuestBackupRequest request,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<ProxmoxTaskReference> createSnapshot(
+    ProxmoxSession session,
+    PveGuest guest, {
+    required String name,
+    String? description,
+    required bool includeMemoryState,
+  }) => throw UnimplementedError();
+
+  @override
+  Future<ProxmoxTaskReference> deleteSnapshot(
+    ProxmoxSession session,
+    PveGuest guest,
+    PveGuestSnapshot snapshot,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<ProxmoxTaskReference> rollbackSnapshot(
+    ProxmoxSession session,
+    PveGuest guest,
+    PveGuestSnapshot snapshot,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<void> updateConfiguration(
+    ProxmoxSession session,
+    PveGuest guest,
+    PveGuestConfigurationChange change,
+  ) => throw UnimplementedError();
 }
 
 class _FakeSession implements ProxmoxSession {

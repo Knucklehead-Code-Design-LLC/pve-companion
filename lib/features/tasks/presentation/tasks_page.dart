@@ -130,7 +130,6 @@ class _TasksPageState extends State<TasksPage> {
               label: 'Running',
               value: '$runningCount',
               icon: CupertinoIcons.arrow_2_circlepath,
-              color: PveAppleColors.warning(context),
             ),
             PveMetricStripItem(
               label: 'Successful',
@@ -143,7 +142,7 @@ class _TasksPageState extends State<TasksPage> {
               value: '$failedCount',
               icon: CupertinoIcons.xmark_circle_fill,
               color: failedCount == 0
-                  ? PveAppleColors.success(context)
+                  ? PveAppleColors.secondaryLabel(context)
                   : PveAppleColors.destructive(context),
             ),
           ],

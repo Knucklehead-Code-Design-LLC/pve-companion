@@ -207,50 +207,52 @@ private struct MediumStatusView: View {
   let isStale: Bool
 
   var body: some View {
-    VStack(alignment: .leading, spacing: 12) {
-      DatacenterWidgetHeader(isStale: isStale)
-      HStack(alignment: .top, spacing: 16) {
-        VStack(alignment: .leading, spacing: 5) {
-          Label(
-            snapshot.healthLabel,
-            systemImage: statusSymbolName(snapshot.healthCode)
-          )
-          .font(.title3.weight(.bold))
-          .foregroundStyle(statusColor(snapshot.healthCode))
-          .widgetAccentable()
-          Text(issueSummary(snapshot))
-            .font(.caption)
-            .foregroundStyle(.secondary)
-            .lineLimit(2)
-          Spacer(minLength: 0)
-          UpdatedLabel(snapshot: snapshot, isStale: isStale)
-        }
-        .frame(maxWidth: .infinity, alignment: .leading)
-        .accessibilityElement(children: .contain)
+    VStack(alignment: .leading, spacing: 8) {
+      HStack(alignment: .firstTextBaseline) {
+        DatacenterWidgetHeader(isStale: isStale)
+        Spacer(minLength: 8)
+        CompactUpdatedLabel(snapshot: snapshot, isStale: isStale)
+      }
 
+      VStack(alignment: .leading, spacing: 2) {
+        Label(
+          snapshot.healthLabel,
+          systemImage: statusSymbolName(snapshot.healthCode)
+        )
+        .font(.title3.weight(.bold))
+        .foregroundStyle(statusColor(snapshot.healthCode))
+        .widgetAccentable()
+        .lineLimit(1)
+        Text(issueSummary(snapshot))
+          .font(.caption)
+          .foregroundStyle(.secondary)
+          .lineLimit(1)
+      }
+      .accessibilityElement(children: .contain)
+
+      HStack(spacing: 8) {
+        DestinationMetric(
+          destination: .nodes,
+          symbol: "server.rack",
+          value: "\(snapshot.onlineNodeCount)/\(snapshot.nodeCount)",
+          label: "Nodes"
+        )
         Divider()
-
-        HStack(spacing: 14) {
-          DestinationMetric(
-            destination: .nodes,
-            symbol: "server.rack",
-            value: "\(snapshot.onlineNodeCount)/\(snapshot.nodeCount)",
-            label: "Nodes"
-          )
-          DestinationMetric(
-            destination: .guests,
-            symbol: "rectangle.3.group.fill",
-            value: "\(snapshot.runningGuestCount)/\(snapshot.guestCount)",
-            label: "Guests"
-          )
-          DestinationMetric(
-            destination: .tasks,
-            symbol: "arrow.triangle.2.circlepath",
-            value: "\(snapshot.runningTaskCount)",
-            label: "Tasks"
-          )
-        }
-        .frame(maxWidth: .infinity)
+          .frame(height: 34)
+        DestinationMetric(
+          destination: .guests,
+          symbol: "rectangle.3.group.fill",
+          value: "\(snapshot.runningGuestCount)/\(snapshot.guestCount)",
+          label: "Guests"
+        )
+        Divider()
+          .frame(height: 34)
+        DestinationMetric(
+          destination: .tasks,
+          symbol: "arrow.triangle.2.circlepath",
+          value: "\(snapshot.runningTaskCount)",
+          label: "Tasks"
+        )
       }
     }
   }
@@ -359,23 +361,43 @@ private struct DatacenterWidgetHeader: View {
 
   var body: some View {
     HStack(spacing: 6) {
-      Image(systemName: "square.grid.2x2.fill")
+      Image(systemName: "server.rack")
+        .font(.caption.weight(.semibold))
         .foregroundStyle(Color.pveAccent)
         .widgetAccentable()
-      Text("PVE COMPANION")
-        .font(.caption2.weight(.semibold))
+      Text("PVE Companion")
+        .font(.caption2.weight(.medium))
         .foregroundStyle(.secondary)
-        .tracking(0.3)
         .lineLimit(1)
-      Spacer(minLength: 4)
       if isStale {
-        Text("STALE")
+        Text("Stale")
           .font(.caption2.weight(.bold))
           .foregroundStyle(.orange)
           .widgetAccentable()
           .accessibilityLabel("Data is stale")
       }
     }
+  }
+}
+
+private struct CompactUpdatedLabel: View {
+  let snapshot: DatacenterSurfaceSnapshot
+  let isStale: Bool
+
+  var body: some View {
+    HStack(spacing: 3) {
+      Image(systemName: isStale ? "clock.fill" : "clock")
+      Text(
+        snapshot.updatedAt,
+        format: .relative(presentation: .numeric, unitsStyle: .abbreviated)
+      )
+    }
+    .font(.caption2)
+    .foregroundStyle(isStale ? .orange : .secondary)
+    .widgetAccentable(isStale)
+    .lineLimit(1)
+    .minimumScaleFactor(0.8)
+    .accessibilityLabel("Updated \(snapshot.updatedAt.formatted(.relative(presentation: .numeric, unitsStyle: .wide)))")
   }
 }
 
@@ -414,10 +436,14 @@ private struct CompactWidgetMetric: View {
           .widgetAccentable()
         Text(value)
           .font(.subheadline.monospacedDigit().weight(.semibold))
+          .lineLimit(1)
+          .minimumScaleFactor(0.75)
       }
       Text(label)
         .font(.caption2)
         .foregroundStyle(.secondary)
+        .lineLimit(1)
+        .minimumScaleFactor(0.8)
     }
     .frame(maxWidth: .infinity, alignment: .leading)
     .accessibilityElement(children: .ignore)
@@ -434,19 +460,23 @@ private struct DestinationMetric: View {
 
   var body: some View {
     Link(destination: DatacenterSurfaceSnapshot.deepLink(for: destination)) {
-      VStack(alignment: .leading, spacing: 4) {
+      HStack(spacing: 4) {
         Image(systemName: symbol)
-          .font(.system(size: 16, weight: .medium))
+          .font(.caption.weight(.semibold))
           .foregroundStyle(Color.pveAccent)
           .widgetAccentable()
-        Text(value)
-          .font(.title3.monospacedDigit().weight(.semibold))
-          .lineLimit(1)
-          .minimumScaleFactor(0.72)
-        Text(label)
-          .font(.caption2)
-          .foregroundStyle(.secondary)
-          .lineLimit(2)
+          .frame(width: 14)
+        VStack(alignment: .leading, spacing: 1) {
+          Text(value)
+            .font(.subheadline.monospacedDigit().weight(.semibold))
+            .lineLimit(1)
+            .minimumScaleFactor(0.75)
+          Text(label)
+            .font(.caption2)
+            .foregroundStyle(.secondary)
+            .lineLimit(1)
+            .minimumScaleFactor(0.8)
+        }
       }
       .frame(maxWidth: .infinity, alignment: .leading)
     }

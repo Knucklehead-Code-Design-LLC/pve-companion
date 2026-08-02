@@ -2,6 +2,7 @@ import 'package:flutter/cupertino.dart';
 
 import '../../../app/pve_companion_controller.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_modal_sheet.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_credentials.dart';
 import '../domain/connection_profile.dart';
@@ -12,9 +13,8 @@ Future<void> showAddConnectionProfileSheet(
   BuildContext context, {
   required PveCompanionController controller,
 }) {
-  return showCupertinoSheet<void>(
+  return showPveModalSheet<void>(
     context: context,
-    useNestedNavigation: true,
     scrollableBuilder:
         (BuildContext sheetContext, ScrollController scrollController) {
           return AddConnectionProfileSheet(
@@ -74,6 +74,10 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        // An opaque bar tells CupertinoPageScaffold to reserve its height for
+        // the form. The default translucent bar lets the first child scroll
+        // beneath it, which clipped the connection security mark on iPhone.
+        backgroundColor: PveAppleColors.page(context),
         middle: const Text('Add Server'),
         leading: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -93,7 +97,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
         child: SingleChildScrollView(
           controller: widget.scrollController,
           padding: EdgeInsets.only(
-            top: 14,
+            top: 20,
             bottom: 28 + MediaQuery.viewInsetsOf(context).bottom,
           ),
           child: Center(
@@ -106,41 +110,9 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
                   children: <Widget>[
                     Padding(
                       padding: const EdgeInsets.symmetric(horizontal: 28),
-                      child: Column(
-                        children: <Widget>[
-                          Container(
-                            width: 54,
-                            height: 54,
-                            decoration: BoxDecoration(
-                              color: PveAppleColors.primary(
-                                context,
-                              ).withValues(alpha: 0.12),
-                              shape: BoxShape.circle,
-                            ),
-                            alignment: Alignment.center,
-                            child: Icon(
-                              CupertinoIcons.lock_shield_fill,
-                              size: 27,
-                              color: PveAppleColors.primary(context),
-                            ),
-                          ),
-                          const SizedBox(height: 12),
-                          Text(
-                            'Connect securely',
-                            style: PveAppleText.title2(context),
-                          ),
-                          const SizedBox(height: 6),
-                          Text(
-                            'PVE Companion verifies the server before saving '
-                            'anything. Credentials never go into preferences '
-                            'or logs.',
-                            textAlign: TextAlign.center,
-                            style: PveAppleText.secondary(context),
-                          ),
-                        ],
-                      ),
+                      child: const _SecureConnectionIntro(),
                     ),
-                    const SizedBox(height: 8),
+                    const SizedBox(height: 12),
                     ConnectionProfileFormFields(
                       authenticationKind: _authenticationKind,
                       nameController: _nameController,
@@ -275,5 +247,48 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
       return;
     }
     await _submit(profile.copyWith(trustedCertificateSha256: fingerprint));
+  }
+}
+
+class _SecureConnectionIntro extends StatelessWidget {
+  const _SecureConnectionIntro();
+
+  @override
+  Widget build(BuildContext context) {
+    final Color accent = PveAppleColors.primary(context);
+    return Row(
+      crossAxisAlignment: CrossAxisAlignment.start,
+      children: <Widget>[
+        DecoratedBox(
+          decoration: BoxDecoration(
+            color: accent.withValues(alpha: 0.12),
+            borderRadius: BorderRadius.circular(12),
+          ),
+          child: SizedBox.square(
+            dimension: 42,
+            child: Icon(
+              CupertinoIcons.lock_shield_fill,
+              size: 22,
+              color: accent,
+            ),
+          ),
+        ),
+        const SizedBox(width: 12),
+        Expanded(
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              Text('Connect securely', style: PveAppleText.title2(context)),
+              const SizedBox(height: 4),
+              Text(
+                'We verify the server before saving it. Credentials never go '
+                'into preferences or logs.',
+                style: PveAppleText.secondary(context),
+              ),
+            ],
+          ),
+        ),
+      ],
+    );
   }
 }

@@ -3,7 +3,7 @@
 Effective August 1, 2026
 
 PVE Companion is an open-source client that connects directly from your Apple
-device to Proxmox VE servers that you configure. Knucklehead Code Design LLC
+device to Proxmox VE servers that you configure. Knucklehead Code & Design LLC
 does not operate a relay, account service, analytics service, advertising
 service, or telemetry backend for the app.
 
@@ -37,6 +37,13 @@ Island on supported iPhones, and in other system locations Apple supports.
 Visible system surfaces can be seen by someone with physical access to your
 device. Datacenter Watch can be ended from the app.
 
+If you enable local datacenter alerts, the app stores only the identifiers of
+currently active incidents in device preferences so it does not repeat the
+same alert during subsequent foreground refreshes. A visible alert can include
+the profile display name and an incident title, which may contain a node or
+storage name. Alerts are evaluated after a signed-in, foreground refresh; the
+app does not operate a background monitoring or push-notification service.
+
 You can remove stored profile metadata and its associated Keychain credential
 by deleting the server profile in the app. Deleting the app also removes its
 app container; Keychain behavior is controlled by Apple and the operating
@@ -48,6 +55,11 @@ Cluster, node, guest, storage, task, and authentication data travels directly
 between your device and the Proxmox VE endpoint you configure. The developer
 does not receive that traffic. Your Proxmox administrator's policies govern
 data held by that server.
+
+When you choose **Open Proxmox Console**, the app opens an HTTPS noVNC route
+in your system browser. The app does not transfer its password, API-token
+secret, session ticket, or CSRF token to the browser; the browser may ask you
+to authenticate to Proxmox separately.
 
 Use HTTPS over a trusted private network or VPN. Do not expose the Proxmox
 management port directly to the public internet.

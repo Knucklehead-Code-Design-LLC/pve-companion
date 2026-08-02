@@ -11,6 +11,9 @@ class WorkspaceActionsMenu extends StatelessWidget {
     required this.onDisconnect,
     required this.onManageServers,
     required this.onAbout,
+    this.onViewFleet,
+    this.onManageNotifications,
+    this.onClusterAdministration,
     this.includeRefreshAction = true,
     this.liveActivitiesAvailable = false,
     this.datacenterWatchActive = false,
@@ -23,6 +26,9 @@ class WorkspaceActionsMenu extends StatelessWidget {
   final VoidCallback onDisconnect;
   final VoidCallback onManageServers;
   final VoidCallback onAbout;
+  final VoidCallback? onViewFleet;
+  final VoidCallback? onManageNotifications;
+  final VoidCallback? onClusterAdministration;
   final bool includeRefreshAction;
   final bool liveActivitiesAvailable;
   final bool datacenterWatchActive;
@@ -59,6 +65,24 @@ class WorkspaceActionsMenu extends StatelessWidget {
           label: 'Manage Servers',
           icon: CupertinoIcons.rectangle_stack_badge_plus,
         ),
+        if (onViewFleet != null)
+          const PveCommandMenuItem<_WorkspaceAction>(
+            value: _WorkspaceAction.viewFleet,
+            label: 'Datacenter Portfolio',
+            icon: CupertinoIcons.rectangle_stack_badge_person_crop,
+          ),
+        if (onManageNotifications != null)
+          const PveCommandMenuItem<_WorkspaceAction>(
+            value: _WorkspaceAction.manageNotifications,
+            label: 'Notifications',
+            icon: CupertinoIcons.bell,
+          ),
+        if (connected && onClusterAdministration != null)
+          const PveCommandMenuItem<_WorkspaceAction>(
+            value: _WorkspaceAction.clusterAdministration,
+            label: 'Cluster Administration',
+            icon: CupertinoIcons.shield_lefthalf_fill,
+          ),
         const PveCommandMenuItem<_WorkspaceAction>(
           value: _WorkspaceAction.about,
           label: 'About & Privacy',
@@ -90,6 +114,12 @@ class WorkspaceActionsMenu extends StatelessWidget {
         onDisconnect();
       case _WorkspaceAction.manageServers:
         onManageServers();
+      case _WorkspaceAction.viewFleet:
+        onViewFleet?.call();
+      case _WorkspaceAction.manageNotifications:
+        onManageNotifications?.call();
+      case _WorkspaceAction.clusterAdministration:
+        onClusterAdministration?.call();
       case _WorkspaceAction.about:
         onAbout();
       case _WorkspaceAction.startDatacenterWatch:
@@ -106,5 +136,8 @@ enum _WorkspaceAction {
   endDatacenterWatch,
   disconnect,
   manageServers,
+  viewFleet,
+  manageNotifications,
+  clusterAdministration,
   about,
 }

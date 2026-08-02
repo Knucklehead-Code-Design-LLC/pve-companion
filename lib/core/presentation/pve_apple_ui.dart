@@ -8,8 +8,8 @@ abstract final class PveAppleLayout {
 }
 
 abstract final class PveAppleColors {
-  static const Color accent = Color(0xFF087E8B);
-  static const Color accentDark = Color(0xFF55D6DF);
+  static const Color accent = Color(0xFF007AFF);
+  static const Color accentDark = Color(0xFF0A84FF);
 
   static Color primary(BuildContext context) {
     return MediaQuery.platformBrightnessOf(context) == Brightness.dark
@@ -300,17 +300,11 @@ class _PveMetricStripCell extends StatelessWidget {
         padding: const EdgeInsets.symmetric(horizontal: 12),
         child: Row(
           children: <Widget>[
-            DecoratedBox(
-              decoration: BoxDecoration(
-                color: color.withValues(alpha: 0.11),
-                borderRadius: BorderRadius.circular(9),
-              ),
-              child: SizedBox.square(
-                dimension: 34,
-                child: Icon(item.icon, size: 18, color: color),
-              ),
+            SizedBox.square(
+              dimension: 28,
+              child: Center(child: Icon(item.icon, size: 18, color: color)),
             ),
-            const SizedBox(width: 10),
+            const SizedBox(width: 8),
             Expanded(
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -465,7 +459,7 @@ class PveInsetGroup extends StatelessWidget {
           pressedOpacity: 0.72,
           onPressed: onTap,
           child: DefaultTextStyle.merge(
-            style: TextStyle(color: PveAppleColors.label(context)),
+            style: PveAppleText.body(context),
             child: child,
           ),
         ),
@@ -473,9 +467,12 @@ class PveInsetGroup extends StatelessWidget {
     } else {
       content = DecoratedBox(
         decoration: decoration,
-        child: padding == null
-            ? child
-            : Padding(padding: padding!, child: child),
+        child: DefaultTextStyle.merge(
+          style: PveAppleText.body(context),
+          child: padding == null
+              ? child
+              : Padding(padding: padding!, child: child),
+        ),
       );
     }
     return Semantics(

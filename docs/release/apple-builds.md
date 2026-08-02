@@ -30,6 +30,22 @@ Keep the application identifier as
 `com.knuckleheadcodedesign.pvecompanion` unless a deliberate migration is
 planned.
 
+## Local iOS signing
+
+The iOS app and widget both use automatic signing. On a publishing Mac, make a
+machine-local signing file once:
+
+```sh
+cp ios/Flutter/Signing.xcconfig.example ios/Flutter/Signing.xcconfig
+```
+
+Set `DEVELOPMENT_TEAM` in that ignored file to the publishing organization’s
+team ID, then sign in to that organization in Xcode. The same local setting is
+inherited by Runner and PVECompanionWidgets, while the repository remains free
+of team IDs, certificates, provisioning profile names, credentials, and server
+configuration. Let Xcode create or refresh automatic distribution profiles;
+never add a manual `PROVISIONING_PROFILE_SPECIFIER` to the project.
+
 The targets include an app-level privacy manifest and declare
 `ITSAppUsesNonExemptEncryption = false`. That declaration reflects the current
 implementation, which uses platform TLS, Keychain, and SHA-256 certificate
@@ -39,10 +55,20 @@ cryptographic or transport behavior changes.
 The iOS workspace also contains the `PVECompanionWidgets` extension with
 bundle ID `com.knuckleheadcodedesign.pvecompanion.widgets`. The main app and
 extension require the registered App Group
-`group.com.knuckleheadcodedesign.pvecompanion`; the main App ID also requires
-the Live Activities capability. Both targets must use the publishing team and
-matching version/build numbers. The checked-in privacy manifests declare the
-App Group UserDefaults reason `1C8F.1`.
+`group.com.knuckleheadcodedesign.pvecompanion`. The main app declares
+`NSSupportsLiveActivities = true`; local Live Activities do not add a separate
+App ID capability. Add Push Notifications only when remote ActivityKit updates
+are introduced. Both targets inherit the Flutter version and build number, and
+the checked-in privacy manifests declare the App Group UserDefaults reason
+`1C8F.1`.
+
+## Initial TestFlight record
+
+The initial App Store Connect app is an iOS/iPadOS record with SKU
+`pve-companion-ios` and App Store Connect ID `6797252365`. Version 0.1.0
+(build 1) was uploaded on August 2, 2026 and must finish processing before it
+can be assigned to testers. The macOS target is quality-qualified locally but
+is not yet configured as an App Store Connect distribution platform.
 
 ## Codemagic delivery
 
@@ -60,12 +86,11 @@ CocoaPods. The workflows therefore do not run `pod install` or require a
   unsigned iOS release app and has no signing or App Store Connect material,
   so pull requests from public forks cannot access release credentials.
 - `ios-testflight` runs after a push to `main`. It runs the full verification
-  suite, builds a signed IPA, and uploads it to TestFlight. Its build number
-  is always at least Codemagic's monotonically increasing project build
-  number; when App Store Connect returns a numeric existing build, the next
-  higher number is used instead. This makes the first upload independent of
-  an App Store Connect lookup while preserving safe numbering for later or
-  manually uploaded builds.
+  suite, builds a signed IPA, and uploads it to internal TestFlight. Its build
+  number uses Codemagic's monotonically increasing project number when App
+  Store Connect has no usable build response; otherwise it increments the
+  newer App Store Connect build. This supports the first upload and later or
+  manually uploaded builds without reusing a build number.
 - `ios-app-store-release` runs for a newly created `v*` tag. The tag must
   exactly match the marketing version in `pubspec.yaml`, such as `v0.1.0`.
   It uploads the IPA and submits the version to App Store review. Apple keeps
@@ -102,11 +127,15 @@ launch.
    states.
 3. Test a valid HTTPS server and a self-signed server. Independently verify the
    shown fingerprint before trusting it.
-4. Confirm no profile export, diagnostics, screenshot, or log includes a
+4. On an isolated test guest, smoke-test every state-changing guest/node
+   operation and verify its tracked task status. Exercise Backup Center,
+   Portfolio, Cluster Administration, notification permission, and browser
+   console handoff on each Apple platform.
+5. Confirm no profile export, diagnostics, screenshot, or log includes a
    password, token secret, ticket, CSRF token, private hostname, or IP address.
-5. Configure App Store signing in Xcode or the approved release system; never
+6. Configure App Store signing in Xcode or the approved release system; never
    commit it here.
-6. On a physical iPhone, qualify every widget family and the complete
+7. On a physical iPhone, qualify every widget family and the complete
    Datacenter Watch lifecycle. Simulator builds prove compilation and basic
    rendering, but do not replace Dynamic Island, Lock Screen, Always-On, and
    signing-capability testing on hardware.

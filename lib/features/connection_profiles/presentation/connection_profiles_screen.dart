@@ -77,7 +77,7 @@ class ConnectionProfilesWelcomeScreen extends StatelessWidget {
                         icon: CupertinoIcons.lock_shield_fill,
                         title: 'Keep access private',
                         message:
-                            'HTTPS is required and saved secrets use Apple Keychain.',
+                            'HTTPS and Apple Keychain protect credentials.',
                       ),
                       _WelcomeFeature(
                         icon: CupertinoIcons.device_phone_portrait,

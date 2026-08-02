@@ -10,8 +10,9 @@ the live App Store Connect record synchronized when product behavior changes.
 | Primary category | Developer Tools |
 | Secondary category | Utilities |
 | Bundle ID | `com.knuckleheadcodedesign.pvecompanion` |
-| SKU | `pve-companion-apple-001` |
-| Copyright | 2026 Knucklehead Code Design LLC |
+| SKU | `pve-companion-ios` |
+| Initial TestFlight platforms | iOS and iPadOS |
+| Copyright | 2026 Knucklehead Code & Design LLC |
 | Privacy policy URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/blob/main/PRIVACY.md` |
 | Support URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/issues` |
 | Marketing URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion` |

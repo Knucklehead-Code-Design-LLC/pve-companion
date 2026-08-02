@@ -42,6 +42,24 @@ class ConnectionAttemptResult {
   final String? certificateFingerprint;
 }
 
+/// An authenticated session created for a short-lived background read. Unlike
+/// [ConnectionAttemptResult], it never changes the active workspace or the
+/// selected profile. Its caller must close a successful [session].
+class BackgroundSessionAttempt {
+  const BackgroundSessionAttempt._({this.session, this.message});
+
+  const BackgroundSessionAttempt.connected(ProxmoxSession session)
+    : this._(session: session);
+
+  const BackgroundSessionAttempt.unavailable(String message)
+    : this._(message: message);
+
+  final ProxmoxSession? session;
+  final String? message;
+
+  bool get isConnected => session != null;
+}
+
 class ConnectionProfilesController extends ChangeNotifier {
   ConnectionProfilesController({
     required ConnectionProfileRepository profileRepository,
@@ -157,6 +175,57 @@ class ConnectionProfilesController extends ChangeNotifier {
       persistProfile: false,
       persistCredentials: false,
     );
+  }
+
+  /// Opens a transient authenticated session for a dashboard that reads more
+  /// than one saved datacenter. It intentionally does not persist selection,
+  /// mutate the active session, or retain a credential outside the call.
+  Future<BackgroundSessionAttempt> openBackgroundSession(
+    ConnectionProfile profile,
+  ) async {
+    if (_isDisposed) {
+      return const BackgroundSessionAttempt.unavailable(
+        'The app is no longer available to connect.',
+      );
+    }
+    ConnectionCredentials? credentials;
+    try {
+      credentials = await _credentialStore.read(profile);
+    } catch (_) {
+      return const BackgroundSessionAttempt.unavailable(
+        'Credentials could not be read from the local Keychain.',
+      );
+    }
+    if (credentials == null) {
+      return const BackgroundSessionAttempt.unavailable(
+        'Credentials are not saved on this device.',
+      );
+    }
+    try {
+      final ProxmoxSession session = await _connectionRepository.authenticate(
+        profile,
+        credentials,
+      );
+      if (_isDisposed) {
+        session.close();
+        return const BackgroundSessionAttempt.unavailable(
+          'The app is no longer available to connect.',
+        );
+      }
+      return BackgroundSessionAttempt.connected(session);
+    } on ProxmoxTlsTrustRequiredException {
+      return const BackgroundSessionAttempt.unavailable(
+        'The saved certificate fingerprint no longer matches this server.',
+      );
+    } on ProxmoxApiException catch (error) {
+      return BackgroundSessionAttempt.unavailable(error.message);
+    } on FormatException catch (error) {
+      return BackgroundSessionAttempt.unavailable(error.message);
+    } catch (_) {
+      return const BackgroundSessionAttempt.unavailable(
+        'A background connection could not be established.',
+      );
+    }
   }
 
   Future<bool> removeProfile(String profileId) async {

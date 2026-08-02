@@ -1,11 +1,15 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/api/proxmox_session.dart';
+import '../../../core/platform/external_url_launcher.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_modal_sheet.dart';
+import '../../console/domain/proxmox_console_handoff.dart';
 import '../application/guest_detail_controller.dart';
 import '../data/proxmox_guest_repository.dart';
 import '../domain/pve_guest.dart';
 import 'guest_detail_content.dart';
+import 'guest_operation_forms.dart';
 import 'guest_power_action_dialog.dart';
 
 Future<void> showGuestDetailSheet(
@@ -13,10 +17,11 @@ Future<void> showGuestDetailSheet(
   required PveGuest guest,
   required ProxmoxSession session,
   required Future<void> Function() onGuestPowerAction,
+  required List<String> backupStorageNames,
+  Uri? consoleEndpoint,
 }) {
-  return showCupertinoSheet<void>(
+  return showPveModalSheet<void>(
     context: context,
-    useNestedNavigation: true,
     scrollableBuilder:
         (BuildContext sheetContext, ScrollController scrollController) {
           return _GuestDetailSheet(
@@ -24,6 +29,8 @@ Future<void> showGuestDetailSheet(
             session: session,
             scrollController: scrollController,
             onGuestPowerAction: onGuestPowerAction,
+            backupStorageNames: backupStorageNames,
+            consoleEndpoint: consoleEndpoint,
           );
         },
   );
@@ -35,12 +42,16 @@ class _GuestDetailSheet extends StatefulWidget {
     required this.session,
     required this.scrollController,
     required this.onGuestPowerAction,
+    required this.backupStorageNames,
+    required this.consoleEndpoint,
   });
 
   final PveGuest guest;
   final ProxmoxSession session;
   final ScrollController scrollController;
   final Future<void> Function() onGuestPowerAction;
+  final List<String> backupStorageNames;
+  final Uri? consoleEndpoint;
 
   @override
   State<_GuestDetailSheet> createState() => _GuestDetailSheetState();
@@ -72,10 +83,21 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
         middle: Text(widget.guest.title),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text('Done'),
+        trailing: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 7),
+              minimumSize: const Size(44, 36),
+              onPressed: _controller.hasRunningTask ? null : _controller.load,
+              child: const Icon(CupertinoIcons.refresh, size: 19),
+            ),
+            CupertinoButton(
+              padding: EdgeInsets.zero,
+              onPressed: () => Navigator.of(context).pop(),
+              child: const Text('Done'),
+            ),
+          ],
         ),
       ),
       child: SafeArea(
@@ -116,7 +138,13 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       GuestDetailLoadState.ready => GuestDetailContent(
         controller: _controller,
         scrollController: widget.scrollController,
+        backupStorageNames: widget.backupStorageNames,
         onPowerAction: _confirmAndRunPowerAction,
+        onCreateSnapshot: _createSnapshot,
+        onSnapshotAction: _handleSnapshotAction,
+        onRunBackup: _runBackup,
+        onEditConfiguration: _editConfiguration,
+        onOpenConsole: widget.consoleEndpoint == null ? null : _openConsole,
       ),
     };
   }
@@ -136,23 +164,175 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     }
     if (didRequestAction) {
       await widget.onGuestPowerAction();
-      if (!mounted) {
+    }
+  }
+
+  Future<void> _createSnapshot() async {
+    final PveGuestSnapshotRequest? request = await showGuestSnapshotForm(
+      context,
+      guest: widget.guest,
+    );
+    if (request == null || !mounted) {
+      return;
+    }
+    final bool submitted = await _controller.createSnapshot(request: request);
+    if (submitted && mounted) {
+      await widget.onGuestPowerAction();
+    }
+  }
+
+  Future<void> _handleSnapshotAction(
+    PveGuestSnapshot snapshot,
+    GuestSnapshotAction action,
+  ) async {
+    final bool approved = await _confirmSnapshotAction(snapshot, action);
+    if (!approved || !mounted) {
+      return;
+    }
+    final bool submitted = switch (action) {
+      GuestSnapshotAction.rollback => await _controller.rollbackSnapshot(
+        snapshot,
+      ),
+      GuestSnapshotAction.delete => await _controller.deleteSnapshot(snapshot),
+    };
+    if (submitted && mounted) {
+      await widget.onGuestPowerAction();
+    }
+  }
+
+  Future<void> _runBackup() async {
+    if (widget.backupStorageNames.isEmpty) {
+      return;
+    }
+    final PveGuestBackupRequest? request = await showGuestBackupForm(
+      context,
+      storageNames: widget.backupStorageNames,
+    );
+    if (request == null || !mounted) {
+      return;
+    }
+    if (request.mode == PveGuestBackupMode.stop) {
+      final bool approved = await _confirmBackupStopMode();
+      if (!approved || !mounted) {
         return;
       }
-      await showCupertinoDialog<void>(
-        context: context,
-        builder: (BuildContext dialogContext) => CupertinoAlertDialog(
-          title: const Text('Request Sent'),
-          content: Text('${action.label} was requested through Proxmox.'),
-          actions: <Widget>[
-            CupertinoDialogAction(
-              isDefaultAction: true,
-              onPressed: () => Navigator.of(dialogContext).pop(),
-              child: const Text('OK'),
-            ),
-          ],
-        ),
-      );
     }
+    final bool submitted = await _controller.createBackup(request);
+    if (submitted && mounted) {
+      await widget.onGuestPowerAction();
+    }
+  }
+
+  Future<void> _editConfiguration() async {
+    final PveGuestDetails? details = _controller.details;
+    if (details == null) {
+      return;
+    }
+    final PveGuestConfigurationChange? change =
+        await showGuestConfigurationForm(
+          context,
+          configuration: details.configuration,
+        );
+    if (change == null || !mounted) {
+      return;
+    }
+    final bool saved = await _controller.updateConfiguration(change);
+    if (saved && mounted) {
+      await widget.onGuestPowerAction();
+    }
+  }
+
+  Future<bool> _confirmSnapshotAction(
+    PveGuestSnapshot snapshot,
+    GuestSnapshotAction action,
+  ) async {
+    final bool rollback = action == GuestSnapshotAction.rollback;
+    final bool? approved = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+        title: Text(
+          rollback
+              ? 'Roll back ${widget.guest.title}?'
+              : 'Delete ${snapshot.name}?',
+        ),
+        content: Text(
+          rollback
+              ? 'Proxmox will replace the current guest state with snapshot “${snapshot.name}”. This cannot be undone.'
+              : 'This permanently removes the “${snapshot.name}” snapshot from Proxmox.',
+        ),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: Text(rollback ? 'Roll Back' : 'Delete'),
+          ),
+        ],
+      ),
+    );
+    return approved == true;
+  }
+
+  Future<bool> _confirmBackupStopMode() async {
+    final bool? approved = await showCupertinoDialog<bool>(
+      context: context,
+      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+        title: const Text('Stop guest for backup?'),
+        content: const Text(
+          'Stop mode powers down the guest before the backup begins. Active users and workloads will be interrupted.',
+        ),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            onPressed: () => Navigator.of(dialogContext).pop(false),
+            child: const Text('Cancel'),
+          ),
+          CupertinoDialogAction(
+            isDestructiveAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(true),
+            child: const Text('Stop and Back Up'),
+          ),
+        ],
+      ),
+    );
+    return approved == true;
+  }
+
+  Future<void> _openConsole() async {
+    final Uri? endpoint = widget.consoleEndpoint;
+    if (endpoint == null) {
+      return;
+    }
+    final Uri uri = ProxmoxConsoleHandoff.uriForGuest(
+      endpoint: endpoint,
+      guest: widget.guest,
+    );
+    bool didOpen = false;
+    try {
+      didOpen = await AppleExternalUrlLauncher().open(uri);
+    } catch (_) {
+      didOpen = false;
+    }
+    if (didOpen || !mounted) {
+      return;
+    }
+    await showCupertinoDialog<void>(
+      context: context,
+      builder: (BuildContext dialogContext) => CupertinoAlertDialog(
+        title: const Text('Couldn’t Open Console'),
+        content: const Text(
+          'PVE Companion could not open your browser. You can open this guest from the Proxmox web interface instead.',
+        ),
+        actions: <Widget>[
+          CupertinoDialogAction(
+            isDefaultAction: true,
+            onPressed: () => Navigator.of(dialogContext).pop(),
+            child: const Text('OK'),
+          ),
+        ],
+      ),
+    );
   }
 }

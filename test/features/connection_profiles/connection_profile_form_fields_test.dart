@@ -24,7 +24,7 @@ void main() {
       expect(find.text('Token ID'), findsOneWidget);
       expect(find.text('Remember credential'), findsOneWidget);
       expect(
-        find.textContaining('dedicated, least-privilege Proxmox API token'),
+        find.textContaining('only the permissions this app needs'),
         findsOneWidget,
       );
     },

@@ -1,6 +1,8 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../incidents/domain/datacenter_incident_evaluator.dart';
+import '../../incidents/presentation/datacenter_incident_center.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
 import 'cluster_load_state_view.dart';
@@ -42,6 +44,7 @@ class DatacenterDashboard extends StatelessWidget {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
         final bool wideLayout = constraints.maxWidth >= 760;
+        final incidents = DatacenterIncidentEvaluator.evaluate(snapshot);
         final EdgeInsets padding = EdgeInsets.symmetric(
           horizontal: wideLayout ? 28 : 16,
           vertical: wideLayout ? 24 : 16,
@@ -80,6 +83,34 @@ class DatacenterDashboard extends StatelessWidget {
                         DatacenterHealthBanner(
                           health: health,
                           onViewNodes: onViewNodes,
+                        ),
+                        const SizedBox(height: 28),
+                        PveSectionHeader(
+                          title: 'Incident Center',
+                          actionLabel: incidents.isEmpty ? null : 'View All',
+                          actionSemanticsLabel: 'View all datacenter incidents',
+                          onAction: incidents.isEmpty
+                              ? null
+                              : () => showDatacenterIncidentCenter(
+                                  context,
+                                  snapshot: incidents,
+                                  onViewNodes: onViewNodes,
+                                  onViewStorage: onViewStorage,
+                                  onViewTasks: onViewTasks,
+                                ),
+                        ),
+                        DatacenterIncidentHighlights(
+                          snapshot: incidents,
+                          onViewAll: () => showDatacenterIncidentCenter(
+                            context,
+                            snapshot: incidents,
+                            onViewNodes: onViewNodes,
+                            onViewStorage: onViewStorage,
+                            onViewTasks: onViewTasks,
+                          ),
+                          onViewNodes: onViewNodes,
+                          onViewStorage: onViewStorage,
+                          onViewTasks: onViewTasks,
                         ),
                         const SizedBox(height: 28),
                         const PveSectionHeader(title: 'Operational Summary'),

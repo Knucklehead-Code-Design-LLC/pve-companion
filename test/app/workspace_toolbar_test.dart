@@ -9,6 +9,8 @@ void main() {
   testWidgets('uses a navigation bar and anchored command menus', (
     WidgetTester tester,
   ) async {
+    bool refreshed = false;
+    final _RoutePushObserver routeObserver = _RoutePushObserver();
     final ConnectionProfile profile = ConnectionProfile.apiToken(
       displayName: 'Pennsylvania Lab',
       endpoint: Uri.parse('https://pve-01.example.com:8006'),
@@ -18,6 +20,7 @@ void main() {
     await tester.pumpWidget(
       MaterialApp(
         theme: PveCompanionTheme.light(),
+        navigatorObservers: <NavigatorObserver>[routeObserver],
         home: CupertinoPageScaffold(
           navigationBar: WorkspaceToolbar(
             profiles: <ConnectionProfile>[profile],
@@ -25,10 +28,13 @@ void main() {
             title: 'Datacenter',
             connected: true,
             onConnectToProfile: (_) {},
-            onRefresh: () {},
+            onRefresh: () => refreshed = true,
             onDisconnect: () {},
             onManageServers: () {},
             onAbout: () {},
+            onViewFleet: () {},
+            onManageNotifications: () {},
+            onClusterAdministration: () {},
           ),
           child: const SizedBox.expand(),
         ),
@@ -37,12 +43,34 @@ void main() {
 
     expect(find.byType(CupertinoNavigationBar), findsOneWidget);
     expect(find.text('Datacenter'), findsOneWidget);
+    final int initialPushCount = routeObserver.pushCount;
 
     await tester.tap(find.bySemanticsLabel('More datacenter actions'));
     await tester.pumpAndSettle();
 
     expect(find.text('Refresh Datacenter'), findsOneWidget);
     expect(find.text('Manage Servers'), findsOneWidget);
+    expect(find.text('Datacenter Portfolio'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('Cluster Administration'), findsOneWidget);
     expect(find.byType(CupertinoActionSheet), findsNothing);
+    expect(routeObserver.pushCount, initialPushCount);
+
+    await tester.tap(find.text('Refresh Datacenter'));
+    await tester.pump();
+
+    expect(refreshed, isTrue);
+    expect(find.text('Refresh Datacenter'), findsNothing);
+    expect(routeObserver.pushCount, initialPushCount);
   });
+}
+
+class _RoutePushObserver extends NavigatorObserver {
+  int pushCount = 0;
+
+  @override
+  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
+    pushCount += 1;
+    super.didPush(route, previousRoute);
+  }
 }

@@ -1,15 +1,15 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_modal_sheet.dart';
 import '../application/system_surfaces_controller.dart';
 
 Future<void> showDatacenterWatchSheet(
   BuildContext context, {
   required SystemSurfacesController controller,
 }) {
-  return showCupertinoSheet<void>(
+  return showPveModalSheet<void>(
     context: context,
-    useNestedNavigation: true,
     scrollableBuilder:
         (BuildContext sheetContext, ScrollController scrollController) {
           return DatacenterWatchSheet(

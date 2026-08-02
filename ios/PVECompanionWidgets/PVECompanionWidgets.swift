@@ -1,4 +1,5 @@
 import SwiftUI
+import UIKit
 import WidgetKit
 
 @main
@@ -28,5 +29,5 @@ func statusColor(_ healthCode: String) -> Color {
 }
 
 extension Color {
-  static let pveAccent = Color(red: 0.03, green: 0.49, blue: 0.55)
+  static let pveAccent = Color(uiColor: .systemBlue)
 }

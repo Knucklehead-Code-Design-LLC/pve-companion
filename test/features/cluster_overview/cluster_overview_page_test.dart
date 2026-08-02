@@ -98,6 +98,32 @@ void main() {
     );
   });
 
+  testWidgets('routes an incident directly to its operational destination', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      criticalDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+    int nodeDrillDownCount = 0;
+
+    await tester.pumpWidget(
+      _DashboardTestApp(
+        controller: controller,
+        onViewNodes: () => nodeDrillDownCount += 1,
+      ),
+    );
+    await tester.pump();
+
+    expect(find.text('Incident Center'), findsOneWidget);
+    await tester.tap(find.textContaining('compute-a CPU is'));
+
+    expect(nodeDrillDownCount, 1);
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('keeps the compact command center usable with larger text', (
     WidgetTester tester,
   ) async {
@@ -119,6 +145,28 @@ void main() {
     expect(tester.takeException(), isNull);
     expect(find.text('Datacenter'), findsOneWidget);
     expect(find.text('All systems operational'), findsOneWidget);
+  });
+
+  testWidgets('keeps critical compact node summaries usable with larger text', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 844));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final ClusterOverviewController controller = await readyDashboardController(
+      criticalDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(
+      _DashboardTestApp(
+        controller: controller,
+        textScaler: const TextScaler.linear(2),
+      ),
+    );
+    await tester.pump();
+
+    expect(tester.takeException(), isNull);
+    expect(find.text('Incident Center'), findsOneWidget);
   });
 
   testWidgets('keeps the wide command center usable with larger text', (

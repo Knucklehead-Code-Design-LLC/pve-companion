@@ -110,9 +110,13 @@ private struct LiveMetric: View {
       VStack(alignment: .leading, spacing: 0) {
         Text(value)
           .font(.subheadline.monospacedDigit().weight(.semibold))
+          .lineLimit(1)
+          .minimumScaleFactor(0.75)
         Text(label)
           .font(.caption2)
           .foregroundStyle(.secondary)
+          .lineLimit(1)
+          .minimumScaleFactor(0.8)
       }
     }
     .frame(maxWidth: .infinity, alignment: .leading)

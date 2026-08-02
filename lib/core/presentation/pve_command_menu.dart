@@ -50,125 +50,161 @@ class PveCommandMenuButton<T> extends StatefulWidget {
 
 class _PveCommandMenuButtonState<T> extends State<PveCommandMenuButton<T>> {
   final GlobalKey _buttonKey = GlobalKey();
+  final LayerLink _menuLayerLink = LayerLink();
+  OverlayEntry? _menuEntry;
+
+  @override
+  void dispose() {
+    _dismissMenu();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
     return Semantics(
       button: true,
       label: widget.semanticLabel,
-      child: CupertinoButton(
+      child: CompositedTransformTarget(
         key: _buttonKey,
-        padding: widget.padding,
-        minimumSize: widget.minimumSize,
-        onPressed: _showMenu,
-        child: widget.child,
+        link: _menuLayerLink,
+        child: CupertinoButton(
+          padding: widget.padding,
+          minimumSize: widget.minimumSize,
+          onPressed: _showMenu,
+          child: widget.child,
+        ),
       ),
     );
   }
 
-  Future<void> _showMenu() async {
-    final RenderBox? button =
-        _buttonKey.currentContext?.findRenderObject() as RenderBox?;
-    if (button == null) {
+  void _showMenu() {
+    if (_menuEntry != null) {
       return;
     }
+    final RenderObject? renderObject = _buttonKey.currentContext
+        ?.findRenderObject();
+    if (renderObject is! RenderBox) {
+      return;
+    }
+    final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+    if (overlay == null) {
+      return;
+    }
+    final RenderBox button = renderObject;
     final Offset origin = button.localToGlobal(Offset.zero);
     final Rect anchor = origin & button.size;
-    final Alignment transitionAlignment =
-        anchor.center.dx < MediaQuery.sizeOf(context).width / 2
-        ? Alignment.topLeft
-        : Alignment.topRight;
-    final T? selected = await showGeneralDialog<T>(
-      context: context,
-      barrierDismissible: true,
-      barrierLabel: CupertinoLocalizations.of(context).modalBarrierDismissLabel,
-      barrierColor: CupertinoColors.transparent,
-      transitionDuration: const Duration(milliseconds: 160),
-      pageBuilder:
-          (
-            BuildContext dialogContext,
-            Animation<double> animation,
-            Animation<double> secondaryAnimation,
-          ) {
-            return _PveCommandMenuRoute<T>(
-              anchor: anchor,
-              width: widget.menuWidth,
-              items: widget.items,
-            );
-          },
-      transitionBuilder:
-          (
-            BuildContext context,
-            Animation<double> animation,
-            Animation<double> secondaryAnimation,
-            Widget child,
-          ) {
-            final Animation<double> curved = CurvedAnimation(
-              parent: animation,
-              curve: Curves.easeOutCubic,
-              reverseCurve: Curves.easeInCubic,
-            );
-            return FadeTransition(
-              opacity: curved,
-              child: ScaleTransition(
-                scale: Tween<double>(begin: 0.96, end: 1).animate(curved),
-                alignment: transitionAlignment,
-                child: child,
-              ),
-            );
-          },
+    final bool alignsToLeadingEdge =
+        anchor.center.dx < MediaQuery.sizeOf(context).width / 2;
+    final OverlayEntry entry = OverlayEntry(
+      builder: (BuildContext overlayContext) => _PveCommandMenuOverlay<T>(
+        layerLink: _menuLayerLink,
+        alignsToLeadingEdge: alignsToLeadingEdge,
+        width: widget.menuWidth,
+        items: widget.items,
+        onDismiss: _dismissMenu,
+        onSelected: _select,
+      ),
     );
-    if (selected != null && mounted) {
-      widget.onSelected(selected);
-    }
+    _menuEntry = entry;
+    overlay.insert(entry);
+  }
+
+  void _dismissMenu() {
+    final OverlayEntry? entry = _menuEntry;
+    _menuEntry = null;
+    entry?.remove();
+    entry?.dispose();
+  }
+
+  void _select(T value) {
+    _dismissMenu();
+    WidgetsBinding.instance.addPostFrameCallback((Duration _) {
+      if (mounted) {
+        widget.onSelected(value);
+      }
+    });
   }
 }
 
-class _PveCommandMenuRoute<T> extends StatelessWidget {
-  const _PveCommandMenuRoute({
-    required this.anchor,
+class _PveCommandMenuOverlay<T> extends StatelessWidget {
+  const _PveCommandMenuOverlay({
+    required this.layerLink,
+    required this.alignsToLeadingEdge,
     required this.width,
     required this.items,
+    required this.onDismiss,
+    required this.onSelected,
   });
 
-  final Rect anchor;
+  final LayerLink layerLink;
+  final bool alignsToLeadingEdge;
   final double width;
   final List<PveCommandMenuItem<T>> items;
+  final VoidCallback onDismiss;
+  final ValueChanged<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
-    final Size screen = MediaQuery.sizeOf(context);
-    final EdgeInsets safeArea = MediaQuery.paddingOf(context);
-    final double resolvedWidth = math.min(width, screen.width - 24);
-    final double left = (anchor.right - resolvedWidth).clamp(
-      12,
-      screen.width - resolvedWidth - 12,
-    );
-    final double top = math.max(anchor.bottom + 6, safeArea.top + 6);
-    final double maxHeight = math.max(
-      120,
-      screen.height - top - safeArea.bottom - 12,
-    );
-    return Stack(
-      children: <Widget>[
-        Positioned(
-          left: left,
-          top: top,
-          width: resolvedWidth,
-          child: ConstrainedBox(
-            constraints: BoxConstraints(maxHeight: maxHeight),
-            child: _PveCommandMenuPanel<T>(items: items),
-          ),
-        ),
-      ],
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final EdgeInsets safeArea = MediaQuery.paddingOf(context);
+        final double resolvedWidth = math.min(
+          width,
+          math.max(0, constraints.maxWidth - 24),
+        );
+        final double maxHeight = math.max(
+          120,
+          constraints.maxHeight - safeArea.top - safeArea.bottom - 18,
+        );
+        final Alignment targetAnchor = alignsToLeadingEdge
+            ? Alignment.bottomLeft
+            : Alignment.bottomRight;
+        final Alignment followerAnchor = alignsToLeadingEdge
+            ? Alignment.topLeft
+            : Alignment.topRight;
+        return Stack(
+          fit: StackFit.expand,
+          children: <Widget>[
+            Semantics(
+              label: CupertinoLocalizations.of(
+                context,
+              ).modalBarrierDismissLabel,
+              button: true,
+              onTap: onDismiss,
+              child: GestureDetector(
+                behavior: HitTestBehavior.opaque,
+                onTap: onDismiss,
+              ),
+            ),
+            CompositedTransformFollower(
+              link: layerLink,
+              showWhenUnlinked: false,
+              targetAnchor: targetAnchor,
+              followerAnchor: followerAnchor,
+              offset: const Offset(0, 6),
+              child: SizedBox(
+                width: resolvedWidth,
+                child: ConstrainedBox(
+                  constraints: BoxConstraints(maxHeight: maxHeight),
+                  child: _PveCommandMenuPanel<T>(
+                    items: items,
+                    onSelected: onSelected,
+                  ),
+                ),
+              ),
+            ),
+          ],
+        );
+      },
     );
   }
 }
 
 class _PveCommandMenuPanel<T> extends StatelessWidget {
-  const _PveCommandMenuPanel({required this.items});
+  const _PveCommandMenuPanel({required this.items, required this.onSelected});
 
   final List<PveCommandMenuItem<T>> items;
+  final ValueChanged<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -209,7 +245,10 @@ class _PveCommandMenuPanel<T> extends StatelessWidget {
                   ) ...<Widget>[
                     if (items[index].startsNewSection)
                       const PveRowSeparator(leadingIndent: 0),
-                    _PveCommandMenuRow<T>(item: items[index]),
+                    _PveCommandMenuRow<T>(
+                      item: items[index],
+                      onSelected: onSelected,
+                    ),
                   ],
                 ],
               ),
@@ -222,9 +261,10 @@ class _PveCommandMenuPanel<T> extends StatelessWidget {
 }
 
 class _PveCommandMenuRow<T> extends StatelessWidget {
-  const _PveCommandMenuRow({required this.item});
+  const _PveCommandMenuRow({required this.item, required this.onSelected});
 
   final PveCommandMenuItem<T> item;
+  final ValueChanged<T> onSelected;
 
   @override
   Widget build(BuildContext context) {
@@ -236,7 +276,7 @@ class _PveCommandMenuRow<T> extends StatelessWidget {
       minimumSize: const Size(44, 44),
       borderRadius: BorderRadius.zero,
       pressedOpacity: 0.58,
-      onPressed: () => Navigator.of(context).pop(item.value),
+      onPressed: () => onSelected(item.value),
       child: Row(
         children: <Widget>[
           if (item.icon != null) ...<Widget>[

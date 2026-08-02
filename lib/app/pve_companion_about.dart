@@ -37,7 +37,7 @@ Future<void> showPveCompanionAboutDialog(BuildContext context) {
           ),
           const SizedBox(height: 12),
           Text(
-            '© 2026 Knucklehead Code Design LLC · Apache-2.0',
+            '© 2026 Knucklehead Code & Design LLC · Apache-2.0',
             style: PveAppleText.caption(dialogContext),
           ),
         ],
