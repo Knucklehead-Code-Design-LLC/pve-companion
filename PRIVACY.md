@@ -25,7 +25,8 @@ remain in memory for the current app session.
 When the app receives a datacenter snapshot, it stores a sanitized aggregate
 summary in an Apple App Group shared only with the PVE Companion widget
 extension. The summary contains a health state and counts for issues, online
-nodes, running guests, and tasks. It does not contain
+nodes, running guests, and tasks, plus current aggregate CPU, memory, and
+root-disk utilization percentages. It does not contain
 the server URL, hostname, IP address, username, password, token secret,
 authentication ticket, CSRF token, or guest and node names.
 

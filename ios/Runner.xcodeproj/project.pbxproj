@@ -24,6 +24,7 @@
 		97C146FE1CF9000F007C117D /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FD1CF9000F007C117D /* Assets.xcassets */; };
 		97C147011CF9000F007C117D /* LaunchScreen.storyboard in Resources */ = {isa = PBXBuildFile; fileRef = 97C146FF1CF9000F007C117D /* LaunchScreen.storyboard */; };
 		A11000000000000000000001 /* PrivacyInfo.xcprivacy in Resources */ = {isa = PBXBuildFile; fileRef = A11000000000000000000002 /* PrivacyInfo.xcprivacy */; };
+		AC14CA2E2534F678AA6BEB15 /* DatacenterStatusWidget.swift in Sources */ = {isa = PBXBuildFile; fileRef = BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */; };
 		AD7A6FED841F004D8061B76A /* DatacenterSurfaceSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */; };
 		BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */ = {isa = PBXBuildFile; fileRef = 97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */; };
 /* End PBXBuildFile section */
@@ -95,6 +96,7 @@
 		97C147021CF9000F007C117D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		97DE7A5411C29E7A7E67F24E /* DatacenterWatchLiveActivity.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterWatchLiveActivity.swift; sourceTree = "<group>"; };
 		A11000000000000000000002 /* PrivacyInfo.xcprivacy */ = {isa = PBXFileReference; lastKnownFileType = text.xml; path = PrivacyInfo.xcprivacy; sourceTree = "<group>"; };
+		BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterStatusWidget.swift; sourceTree = "<group>"; };
 		C4149F85D7799DD2868100B2 /* Info.plist */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = text.plist.xml; path = Info.plist; sourceTree = "<group>"; };
 		F625A2DFC7E20E5A1182A831 /* DatacenterSurfaceSnapshot.swift */ = {isa = PBXFileReference; includeInIndex = 1; lastKnownFileType = sourcecode.swift; path = DatacenterSurfaceSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
@@ -220,6 +222,7 @@
 				0D9CACE7B603BDAC18167B47 /* PrivacyInfo.xcprivacy */,
 				C4149F85D7799DD2868100B2 /* Info.plist */,
 				03404809E6BCB42D4F47C8DE /* PVECompanionWidgets.entitlements */,
+				BB30A7C79E2F8845CF4229CC /* DatacenterStatusWidget.swift */,
 			);
 			name = PVECompanionWidgets;
 			path = PVECompanionWidgets;
@@ -408,6 +411,7 @@
 				BB939586792D852E59497354 /* DatacenterWatchLiveActivity.swift in Sources */,
 				1C2524F72F017E3EC62B29AA /* DatacenterSurfaceSnapshot.swift in Sources */,
 				43D509FD2E7ED39BEA369514 /* DatacenterWatchAttributes.swift in Sources */,
+				AC14CA2E2534F678AA6BEB15 /* DatacenterStatusWidget.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};

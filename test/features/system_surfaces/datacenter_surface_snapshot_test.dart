@@ -25,6 +25,9 @@ void main() {
     expect(snapshot.guestCount, 4);
     expect(snapshot.runningTaskCount, 1);
     expect(snapshot.failedTaskCount, 0);
+    expect(snapshot.cpuFraction, 0.58);
+    expect(snapshot.memoryFraction, 30 / 64);
+    expect(snapshot.rootDiskFraction, 0.4);
     expect(snapshot.toPlatformMap(), <String, Object>{
       'healthCode': 'healthy',
       'healthLabel': 'Healthy',
@@ -36,6 +39,28 @@ void main() {
       'runningTaskCount': 1,
       'failedTaskCount': 0,
       'updatedAt': updatedAt.millisecondsSinceEpoch / 1000,
+      'cpuFraction': 0.58,
+      'memoryFraction': 30 / 64,
+      'rootDiskFraction': 0.4,
     });
+  });
+
+  test('omits unavailable pressure instead of inventing widget values', () {
+    final DatacenterSurfaceSnapshot snapshot = DatacenterSurfaceSnapshot(
+      healthCode: 'healthy',
+      healthLabel: 'Healthy',
+      issueCount: 0,
+      onlineNodeCount: 1,
+      nodeCount: 1,
+      runningGuestCount: 0,
+      guestCount: 0,
+      runningTaskCount: 0,
+      failedTaskCount: 0,
+      updatedAt: DateTime.utc(2026, 8, 1),
+    );
+
+    expect(snapshot.toPlatformMap(), isNot(contains('cpuFraction')));
+    expect(snapshot.toPlatformMap(), isNot(contains('memoryFraction')));
+    expect(snapshot.toPlatformMap(), isNot(contains('rootDiskFraction')));
   });
 }

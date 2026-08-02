@@ -32,8 +32,11 @@ parity:
   filters, inset grouped data, scoped sheets, clear confirmations, Dynamic
   Type support, and system light/dark appearance.
 - Privacy-safe WidgetKit views for the iPhone and iPad Home Screen and Lock
-  Screen. Widgets show the last snapshot the app received; they never store or
-  display a server URL, hostname, username, credential, ticket, or CSRF token.
+  Screen. Dedicated small, medium, and large Home Screen layouts summarize
+  health, nodes, guests, tasks, and aggregate resource pressure; metric links
+  open the matching app destination. Widgets identify data older than one hour
+  as stale and never store or display a server URL, hostname, username,
+  credential, ticket, or CSRF token.
 - An optional four-hour **Datacenter Watch** Live Activity for maintenance and
   incident windows. It appears on the Lock Screen and, on supported iPhones,
   in the Dynamic Island, and updates whenever the app refreshes the cluster.

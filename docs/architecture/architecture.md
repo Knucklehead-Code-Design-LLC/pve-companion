@@ -44,24 +44,31 @@ generic service locator, speculative shared `utils`, or code generation.
 ## Apple system surfaces
 
 `system_surfaces` converts a loaded cluster snapshot into a deliberately small
-aggregate model. The projection includes only health and counts; it excludes
-server endpoints, host and guest names, users, credentials, tickets, and CSRF
-values. `PveCompanionController` publishes that model after a successful
-cluster refresh.
+aggregate model. The projection includes health, counts, and current aggregate
+CPU, memory, and root-disk pressure; it excludes server endpoints, host and
+guest names, users, credentials, tickets, and CSRF values.
+`PveCompanionController` publishes that model after a successful cluster
+refresh.
 
 One Flutter method channel forwards the model to native iOS code. The native
 host writes JSON to the private
-`group.com.knuckleheadcodedesign.pvecompanion` App Group and asks WidgetKit to
-reload its timeline. The SwiftUI extension owns Home Screen, Lock Screen, and
-Live Activity rendering. No Flutter engine or third-party widget package runs
-inside the extension.
+`group.com.knuckleheadcodedesign.pvecompanion` App Group and reloads only the
+datacenter widget timeline. The SwiftUI extension owns Home Screen, Lock
+Screen, and Live Activity rendering. No Flutter engine or third-party widget
+package runs inside the extension.
 
-Widgets display the latest app-provided snapshot and make its age visible.
-They do not promise real-time status. Datacenter Watch is a user-started,
-four-hour ActivityKit session for a defined maintenance or incident window;
-it updates when the app refreshes and supports Lock Screen plus compact,
-minimal, and expanded Dynamic Island presentations. A future remote-update
-service would require an explicit APNs design and privacy review.
+Widgets display the latest app-provided snapshot and make its age visible. A
+two-entry timeline changes fresh data to stale after one hour without polling;
+no-data and already-stale timelines wait for the app's next successful publish.
+Small, medium, and large Home Screen families use dedicated layouts and native
+accent groups so WidgetKit can adapt them to full-color, tinted, clear-glass,
+and vibrant contexts. Widget and metric URLs route to the corresponding
+Flutter workspace destination. Widgets do not promise real-time status.
+Datacenter Watch is a user-started, four-hour ActivityKit session for a defined
+maintenance or incident window; it updates when the app refreshes and supports
+Lock Screen plus compact, minimal, and expanded Dynamic Island presentations.
+A future remote-update service would require an explicit APNs design and
+privacy review.
 
 ## Dashboard derivation
 

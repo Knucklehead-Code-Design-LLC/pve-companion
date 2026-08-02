@@ -20,8 +20,9 @@ claiming parity before it exists.
       visualizations without a charting dependency or implied historical data.
 - [x] Storage configuration merged with reported per-node capacity telemetry,
       including shared-capacity de-duplication and node coverage.
-- [x] Home and Lock Screen status widgets using a privacy-safe last-known
-      datacenter snapshot.
+- [x] Small, medium, and large Home Screen layouts plus Lock Screen status
+      widgets using a privacy-safe last-known datacenter snapshot, honest stale
+      state, and destination-specific links.
 - [x] Time-bounded Datacenter Watch Live Activity for Lock Screen and Dynamic
       Island maintenance monitoring.
 

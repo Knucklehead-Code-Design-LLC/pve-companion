@@ -118,23 +118,3 @@ private struct LiveMetric: View {
     .frame(maxWidth: .infinity, alignment: .leading)
   }
 }
-
-func statusSymbolName(_ healthCode: String) -> String {
-  switch healthCode {
-  case "critical": "xmark.octagon.fill"
-  case "warning": "exclamationmark.triangle.fill"
-  default: "checkmark.circle.fill"
-  }
-}
-
-func statusColor(_ healthCode: String) -> Color {
-  switch healthCode {
-  case "critical": .red
-  case "warning": .orange
-  default: .green
-  }
-}
-
-private extension Color {
-  static let pveAccent = Color(red: 0.03, green: 0.49, blue: 0.55)
-}

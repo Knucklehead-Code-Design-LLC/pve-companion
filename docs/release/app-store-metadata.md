@@ -40,7 +40,8 @@ Core version 0.1 features:
 - Read-only storage and task views
 - Apple-native tabs, sidebar, sheets, and adaptive layouts for iPhone, iPad,
   and Mac
-- Home and Lock Screen widgets for last-known datacenter health
+- Small, medium, and large Home Screen widgets for last-known datacenter
+  health, workload, activity, and aggregate resource pressure
 - Optional four-hour Datacenter Watch on the Lock Screen and Dynamic Island
 - No ads, analytics, tracking, or developer-operated cloud service
 

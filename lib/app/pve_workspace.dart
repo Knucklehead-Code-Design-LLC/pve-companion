@@ -31,7 +31,36 @@ class PveWorkspace extends StatefulWidget {
 }
 
 class _PveWorkspaceState extends State<PveWorkspace> {
-  WorkspaceSection _section = WorkspaceSection.overview;
+  late WorkspaceSection _section;
+  late int _handledNavigationRequestId;
+
+  @override
+  void initState() {
+    super.initState();
+    _section = widget.controller.requestedWorkspaceSection;
+    _handledNavigationRequestId =
+        widget.controller.workspaceNavigationRequestId;
+    widget.controller.addListener(_handleWorkspaceNavigationRequest);
+  }
+
+  @override
+  void didUpdateWidget(PveWorkspace oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    if (oldWidget.controller == widget.controller) {
+      return;
+    }
+    oldWidget.controller.removeListener(_handleWorkspaceNavigationRequest);
+    _section = widget.controller.requestedWorkspaceSection;
+    _handledNavigationRequestId =
+        widget.controller.workspaceNavigationRequestId;
+    widget.controller.addListener(_handleWorkspaceNavigationRequest);
+  }
+
+  @override
+  void dispose() {
+    widget.controller.removeListener(_handleWorkspaceNavigationRequest);
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -203,6 +232,19 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       return;
     }
     setState(() => _section = section);
+  }
+
+  void _handleWorkspaceNavigationRequest() {
+    final int requestId = widget.controller.workspaceNavigationRequestId;
+    if (requestId == _handledNavigationRequestId) {
+      return;
+    }
+    _handledNavigationRequestId = requestId;
+    final WorkspaceSection requestedSection =
+        widget.controller.requestedWorkspaceSection;
+    if (requestedSection != _section && mounted) {
+      setState(() => _section = requestedSection);
+    }
   }
 
   Future<void> _connectToProfile(String profileId) async {

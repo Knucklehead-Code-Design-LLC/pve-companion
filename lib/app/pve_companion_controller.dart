@@ -14,6 +14,7 @@ import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/system_surfaces/application/system_surfaces_controller.dart';
 import '../features/system_surfaces/data/system_surfaces_repository.dart';
 import '../features/system_surfaces/domain/datacenter_surface_snapshot.dart';
+import 'workspace/workspace_section.dart';
 
 class PveCompanionController extends ChangeNotifier {
   PveCompanionController({
@@ -64,6 +65,8 @@ class PveCompanionController extends ChangeNotifier {
   final ConnectionProfilesController _connectionProfiles;
   final ClusterOverviewController _clusterOverview;
   final SystemSurfacesController _systemSurfaces;
+  WorkspaceSection _requestedWorkspaceSection = WorkspaceSection.overview;
+  int _workspaceNavigationRequestId = 0;
   bool _isDisposed = false;
 
   ConnectionProfilesController get connectionProfiles => _connectionProfiles;
@@ -72,11 +75,18 @@ class PveCompanionController extends ChangeNotifier {
 
   SystemSurfacesController get systemSurfaces => _systemSurfaces;
 
+  WorkspaceSection get requestedWorkspaceSection => _requestedWorkspaceSection;
+
+  int get workspaceNavigationRequestId => _workspaceNavigationRequestId;
+
   Future<void> initialize() async {
     await Future.wait<void>(<Future<void>>[
       _connectionProfiles.initialize(),
       _systemSurfaces.initialize(),
     ]);
+    if (_connectionProfiles.profiles.isEmpty) {
+      await _systemSurfaces.clearSnapshot();
+    }
   }
 
   Future<ConnectionAttemptResult> saveAndConnect({
@@ -91,6 +101,7 @@ class PveCompanionController extends ChangeNotifier {
           persistCredentials: persistCredentials,
         );
     if (result.kind == ConnectionAttemptKind.connected) {
+      await _systemSurfaces.clearSnapshot();
       await refreshCluster();
     }
     return result;
@@ -113,6 +124,7 @@ class PveCompanionController extends ChangeNotifier {
     final ConnectionAttemptResult result = await _connectionProfiles
         .connectProfile(profile);
     if (result.kind == ConnectionAttemptKind.connected) {
+      await _systemSurfaces.clearSnapshot();
       await refreshCluster();
     }
     return result;
@@ -123,6 +135,7 @@ class PveCompanionController extends ChangeNotifier {
     final ConnectionAttemptResult result = await _connectionProfiles
         .connectSelectedProfile();
     if (result.kind == ConnectionAttemptKind.connected) {
+      await _systemSurfaces.clearSnapshot();
       await refreshCluster();
     }
     return result;
@@ -145,15 +158,26 @@ class PveCompanionController extends ChangeNotifier {
     );
   }
 
+  void openWorkspaceSection(WorkspaceSection section) {
+    _requestedWorkspaceSection = section;
+    _workspaceNavigationRequestId += 1;
+    _notifyFromChild();
+  }
+
   void disconnect() {
     _connectionProfiles.disconnect();
     _clusterOverview.clear();
   }
 
   Future<bool> removeProfile(String profileId) async {
+    final bool removesSelectedProfile =
+        _connectionProfiles.selectedProfile?.id == profileId;
     final bool removed = await _connectionProfiles.removeProfile(profileId);
     if (removed && _connectionProfiles.activeSession == null) {
       _clusterOverview.clear();
+    }
+    if (removed && removesSelectedProfile) {
+      await _systemSurfaces.clearSnapshot();
     }
     return removed;
   }

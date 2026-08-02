@@ -44,9 +44,11 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 - [ ] Verify profile deletion removes the profile and its remembered secret.
 - [ ] Exercise overview, every drill-down, and guest power confirmations on an
       iPhone, iPad, and Mac.
-- [ ] Add each supported Home/Lock Screen widget family on iPhone and iPad;
-      verify placeholder, populated, stale, tinted, dark, and Always-On
-      appearances.
+- [ ] Add the small, medium, and large Home Screen families plus every Lock
+      Screen family on iPhone and iPad. Verify placeholder, no-data, populated,
+      stale, critical, full-color, tinted, clear-glass, dark, and Always-On
+      appearances. Confirm the whole widget opens Overview and each metric link
+      opens Nodes, Guests, or Tasks as labeled.
 - [ ] Start, update, open, and end Datacenter Watch on a Dynamic
       Island-capable physical iPhone. Verify Lock Screen, compact, minimal, and
       expanded presentations contain no sensitive identifiers.

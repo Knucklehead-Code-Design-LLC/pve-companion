@@ -53,6 +53,30 @@ void main() {
     expect(repository.endCount, 1);
     expect(controller.datacenterWatchActive, isFalse);
   });
+
+  test('clears a stale server snapshot and ends its active watch', () async {
+    final _RecordingSystemSurfacesRepository repository =
+        _RecordingSystemSurfacesRepository(
+          capabilities: const SystemSurfaceCapabilities(
+            widgetsAvailable: true,
+            liveActivitiesAvailable: true,
+            datacenterWatchActive: true,
+          ),
+        );
+    final SystemSurfacesController controller = SystemSurfacesController(
+      repository,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.publish(_snapshot);
+    await controller.clearSnapshot();
+
+    expect(repository.clearCount, 1);
+    expect(repository.endCount, 1);
+    expect(controller.datacenterWatchActive, isFalse);
+    expect(controller.canStartDatacenterWatch, isFalse);
+  });
 }
 
 final DatacenterSurfaceSnapshot _snapshot = DatacenterSurfaceSnapshot(
@@ -83,6 +107,7 @@ class _RecordingSystemSurfacesRepository implements SystemSurfacesRepository {
       <DatacenterSurfaceSnapshot>[];
   Duration? startedDuration;
   int endCount = 0;
+  int clearCount = 0;
 
   @override
   Future<SystemSurfaceCapabilities> loadCapabilities() async => capabilities;
@@ -90,6 +115,11 @@ class _RecordingSystemSurfacesRepository implements SystemSurfacesRepository {
   @override
   Future<void> publishSnapshot(DatacenterSurfaceSnapshot snapshot) async {
     publishedSnapshots.add(snapshot);
+  }
+
+  @override
+  Future<void> clearSnapshot() async {
+    clearCount += 1;
   }
 
   @override

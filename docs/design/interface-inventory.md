@@ -38,11 +38,15 @@ available.
 
 ## Apple system surfaces
 
-WidgetKit owns small/medium Home Screen widgets, inline/circular/rectangular
-Lock Screen widgets, and the Datacenter Watch Live Activity. Test placeholder,
-populated, stale, tinted, dark, reduced-transparency, and Always-On variants.
-Visible snapshots contain aggregate status and counts only; they never contain
-server endpoints, host/guest names, users, or credentials.
+WidgetKit owns dedicated small, medium, and large Home Screen layouts,
+inline/circular/rectangular Lock Screen widgets, and the Datacenter Watch Live
+Activity. Small emphasizes health and essential counts; medium adds linked
+node, guest, and task metrics; large adds resource pressure and failed-task
+context. Test placeholder, no-data, populated, stale, critical, full-color,
+tinted, clear-glass, dark, reduced-transparency, and Always-On variants. Widget
+and metric taps open the relevant Flutter workspace destination. Visible
+snapshots contain aggregate status, counts, and current pressure only; they
+never contain server endpoints, host/guest names, users, or credentials.
 
 ## Visual qualification
 
