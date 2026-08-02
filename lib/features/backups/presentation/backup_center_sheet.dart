@@ -149,6 +149,8 @@ class _BackupCenterContent extends StatelessWidget {
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
+        _BackupReadinessSummary(snapshot: snapshot),
+        const SizedBox(height: 18),
         PveMetricStrip(
           items: <PveMetricStripItem>[
             PveMetricStripItem(
@@ -199,6 +201,105 @@ class _BackupCenterContent extends StatelessWidget {
         const SizedBox(height: 8),
         _BackupTasksCard(tasks: snapshot.recentTasks),
       ],
+    );
+  }
+}
+
+class _BackupReadinessSummary extends StatelessWidget {
+  const _BackupReadinessSummary({required this.snapshot});
+
+  final PveBackupCenterSnapshot snapshot;
+
+  @override
+  Widget build(BuildContext context) {
+    final PveBackupReadiness readiness = snapshot.readiness;
+    final ({String title, String detail, Color color, IconData icon})
+    content = switch (readiness) {
+      PveBackupReadiness.noDestination => (
+        title: 'No backup destination reported',
+        detail:
+            'No storage accepting backup content is reported. Set up a destination before expecting scheduled copies.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.archivebox,
+      ),
+      PveBackupReadiness.configurationUnreadable => (
+        title: 'Backup configuration unreadable',
+        detail:
+            'This account cannot read backup schedules, so readiness cannot be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.lock,
+      ),
+      PveBackupReadiness.configurationUnavailable => (
+        title: 'Backup configuration unavailable',
+        detail:
+            'The server did not make backup schedules available, so readiness cannot be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.noSchedule => (
+        title: 'No backup schedule reported',
+        detail:
+            'A destination is reported, but no backup schedule is currently reported.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.calendar_badge_minus,
+      ),
+      PveBackupReadiness.copiesUnreadable => (
+        title: 'Backup copies unreadable',
+        detail:
+            'This account cannot read stored backup copies. Access is needed to verify reported copies.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.lock,
+      ),
+      PveBackupReadiness.copiesUnavailable => (
+        title: 'Backup copies unavailable',
+        detail:
+            'The server did not make stored backup copies available, so no copy coverage can be verified.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.copiesPartiallyReported => (
+        title: 'Backup copies only partially reported',
+        detail:
+            '${snapshot.records.length} ${snapshot.records.length == 1 ? 'copy is' : 'copies are'} reported, but one or more destinations could not be checked. Reported copies do not prove restore readiness.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+      PveBackupReadiness.copiesReported => (
+        title: 'Backup copies reported',
+        detail:
+            '${snapshot.records.length} ${snapshot.records.length == 1 ? 'copy is' : 'copies are'} reported. Reported copies do not prove restore readiness.',
+        color: PveAppleColors.success(context),
+        icon: CupertinoIcons.check_mark_circled,
+      ),
+      PveBackupReadiness.copiesNotReported => (
+        title: 'No backup copies reported',
+        detail:
+            'Backup configuration is reported, but no copies are currently reported by readable destinations.',
+        color: PveAppleColors.warning(context),
+        icon: CupertinoIcons.exclamationmark_triangle,
+      ),
+    };
+    return PveInsetGroup(
+      key: const ValueKey<String>('backup-readiness-summary'),
+      color: content.color.withValues(alpha: 0.08),
+      padding: const EdgeInsets.all(16),
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.start,
+        children: <Widget>[
+          Icon(content.icon, color: content.color),
+          const SizedBox(width: 12),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: <Widget>[
+                Text(content.title, style: PveAppleText.title3(context)),
+                const SizedBox(height: 4),
+                Text(content.detail, style: PveAppleText.secondary(context)),
+              ],
+            ),
+          ),
+        ],
+      ),
     );
   }
 }
@@ -377,6 +478,11 @@ class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
                 ),
               ),
             ],
+          ),
+          const SizedBox(height: 4),
+          Text(
+            'These buttons copy navigation text; they do not open or change Proxmox.',
+            style: PveAppleText.caption(context),
           ),
         ],
       ),

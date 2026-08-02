@@ -50,6 +50,11 @@ void main() {
       await tester.pumpAndSettle();
 
       expect(find.text('Set up backup storage'), findsOneWidget);
+      expect(
+        find.byKey(const ValueKey<String>('backup-readiness-summary')),
+        findsOneWidget,
+      );
+      expect(find.text('No backup destination reported'), findsOneWidget);
       expect(find.text('Open Datacenter → Storage'), findsOneWidget);
       expect(find.text('Open Datacenter → Backup'), findsOneWidget);
       expect(find.text('Copy storage path'), findsOneWidget);
