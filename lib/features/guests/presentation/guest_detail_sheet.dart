@@ -62,6 +62,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       repository: ProxmoxGuestRepository(),
       session: widget.session,
       guest: widget.guest,
+      onTaskTerminal: widget.onGuestPowerAction,
     );
     _controller.load();
   }
@@ -163,13 +164,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (!approved || !mounted) {
       return;
     }
-    final bool didRequestAction = await _controller.runPowerAction(action);
-    if (!mounted) {
-      return;
-    }
-    if (didRequestAction) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.runPowerAction(action);
   }
 
   Future<void> _createSnapshot() async {
@@ -180,10 +175,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (request == null || !mounted) {
       return;
     }
-    final bool submitted = await _controller.createSnapshot(request: request);
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.createSnapshot(request: request);
   }
 
   Future<void> _handleSnapshotAction(
@@ -194,15 +186,12 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (!approved || !mounted) {
       return;
     }
-    final bool submitted = switch (action) {
+    await switch (action) {
       GuestSnapshotAction.rollback => await _controller.rollbackSnapshot(
         snapshot,
       ),
       GuestSnapshotAction.delete => await _controller.deleteSnapshot(snapshot),
     };
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
   }
 
   Future<void> _runBackup() async {
@@ -222,10 +211,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         return;
       }
     }
-    final bool submitted = await _controller.createBackup(request);
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.createBackup(request);
   }
 
   Future<void> _editConfiguration() async {

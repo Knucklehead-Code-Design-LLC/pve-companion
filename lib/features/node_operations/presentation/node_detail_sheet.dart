@@ -55,6 +55,7 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
       repository: ProxmoxNodeRepository(),
       session: widget.session,
       seed: widget.seed,
+      onTaskTerminal: widget.onNodeOperation,
     );
     _controller.load();
   }
@@ -144,13 +145,10 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
     if (!approved || !mounted) {
       return;
     }
-    final bool submitted = switch (action) {
+    await switch (action) {
       PveNodePowerAction.reboot => await _controller.restartNode(),
       PveNodePowerAction.shutdown => await _controller.shutdownNode(),
     };
-    if (submitted && mounted) {
-      await widget.onNodeOperation();
-    }
   }
 
   Future<void> _restartService(PveNodeService service) async {
@@ -177,17 +175,11 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
     if (approved != true || !mounted) {
       return;
     }
-    final bool submitted = await _controller.restartService(service);
-    if (submitted && mounted) {
-      await widget.onNodeOperation();
-    }
+    await _controller.restartService(service);
   }
 
   Future<void> _refreshPackageIndex() async {
-    final bool submitted = await _controller.refreshPackageIndex();
-    if (submitted && mounted) {
-      await widget.onNodeOperation();
-    }
+    await _controller.refreshPackageIndex();
   }
 
   Future<bool> _confirmNodePowerAction(PveNodePowerAction action) async {
