@@ -56,6 +56,66 @@ void main() {
     expect(find.text('Snapshots'), findsOneWidget);
     expect(find.text('Backup'), findsOneWidget);
   });
+
+  testWidgets('keeps Console primary and presents power actions in one menu', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1200, 900));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    const PveGuest guest = PveGuest(
+      vmid: 101,
+      node: 'pve-01',
+      kind: GuestKind.virtualMachine,
+      status: 'running',
+      name: 'app-01',
+    );
+    final GuestDetailController controller = GuestDetailController(
+      repository: _TemplateGuestRepository(),
+      session: const _GuestSession(),
+      guest: guest,
+    );
+    addTearDown(controller.dispose);
+    await controller.load();
+    final ScrollController scrollController = ScrollController();
+    addTearDown(scrollController.dispose);
+    GuestPowerAction? selectedAction;
+
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: GuestDetailContent(
+            controller: controller,
+            scrollController: scrollController,
+            backupStorageNames: const <String>['backup'],
+            onPowerAction: (GuestPowerAction action) async {
+              selectedAction = action;
+            },
+            onCreateSnapshot: () async {},
+            onSnapshotAction: (_, _) async {},
+            onRunBackup: () async {},
+            onEditConfiguration: () async {},
+            onOpenConsole: () async {},
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Open Guest Console'), findsOneWidget);
+    final Finder powerMenu = find.byKey(
+      const ValueKey<String>('guest-power-menu'),
+    );
+    await tester.ensureVisible(powerMenu);
+    await tester.tap(powerMenu);
+    await tester.pumpAndSettle();
+
+    expect(find.text('Power actions'), findsOneWidget);
+    expect(find.text('Shut down'), findsOneWidget);
+    expect(find.text('Restart'), findsOneWidget);
+    expect(find.text('Force Stop'), findsOneWidget);
+    await tester.tap(find.text('Shut down'));
+    await tester.pumpAndSettle();
+    expect(selectedAction, GuestPowerAction.shutdown);
+  });
 }
 
 class _TemplateGuestRepository implements PveGuestRepository {

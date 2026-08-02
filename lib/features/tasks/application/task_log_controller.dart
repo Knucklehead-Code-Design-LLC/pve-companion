@@ -30,7 +30,14 @@ class TaskLogController extends ChangeNotifier {
     if (session == null || _loading) return;
     _loading = true;
     notifyListeners();
-    final PveTaskLogResult result = await _repository.load(session, _task);
+    late final PveTaskLogResult result;
+    try {
+      result = await _repository.load(session, _task);
+    } catch (_) {
+      result = const PveTaskLogResult.failed(
+        'The task log could not be loaded.',
+      );
+    }
     if (_disposed) return;
     _result = result;
     _loading = false;

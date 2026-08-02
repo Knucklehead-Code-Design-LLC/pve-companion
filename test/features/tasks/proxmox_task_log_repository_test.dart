@@ -17,8 +17,7 @@ void main() {
     final _TaskLogSession session = _TaskLogSession(
       response: <Object?>[
         <Object?, Object?>{'n': 1, 't': 'starting backup'},
-        <Object?, Object?>{'n': '2', 't': 'completed'},
-        <Object?, Object?>{'n': 3},
+        <Object?, Object?>{'n': 2, 't': 'completed'},
       ],
     );
 
@@ -33,6 +32,7 @@ void main() {
       'completed',
     ]);
     expect(session.requestedResource, 'nodes/pve-01/tasks/${task.upid}/log');
+    expect(session.query, <String, String>{'start': '0', 'limit': '200'});
   });
 
   test(
@@ -63,6 +63,23 @@ void main() {
       expect(unavailable.state, PveTaskLogState.unavailable);
     },
   );
+
+  test(
+    'reports malformed log data as a failure instead of an empty log',
+    () async {
+      final PveTaskLogResult result = await const ProxmoxTaskLogRepository()
+          .load(
+            _TaskLogSession(
+              response: <Object?>[
+                <Object?, Object?>{'n': '1', 't': 'bad'},
+              ],
+            ),
+            task,
+          );
+
+      expect(result.state, PveTaskLogState.failed);
+    },
+  );
 }
 
 class _TaskLogSession implements ProxmoxSession {
@@ -71,6 +88,7 @@ class _TaskLogSession implements ProxmoxSession {
   final Object? response;
   final Object? error;
   String? requestedResource;
+  Map<String, String>? query;
 
   @override
   Future<Object?> getData(
@@ -78,6 +96,7 @@ class _TaskLogSession implements ProxmoxSession {
     Map<String, String> query = const <String, String>{},
   }) async {
     requestedResource = resource;
+    this.query = query;
     if (error != null) throw error!;
     return response;
   }

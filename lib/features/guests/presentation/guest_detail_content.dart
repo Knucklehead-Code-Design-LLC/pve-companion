@@ -460,56 +460,42 @@ class _GuestPowerControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<GuestPowerAction> directActions = guest.isRunning
-        ? <GuestPowerAction>[GuestPowerAction.shutdown, GuestPowerAction.reboot]
-        : <GuestPowerAction>[GuestPowerAction.start];
-    return Wrap(
-      spacing: 10,
-      runSpacing: 10,
-      children: <Widget>[
-        for (final GuestPowerAction action in directActions)
-          _GuestPowerButton(
-            action: action,
-            runningAction: runningAction,
-            enabled: !disabled,
-            filled: action == GuestPowerAction.start,
-            onPressed: () => onPowerAction(action),
-          ),
-        if (guest.isRunning)
-          CupertinoButton.tinted(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-            minimumSize: const Size(44, 44),
-            onPressed: disabled ? null : () => _showMorePowerActions(context),
-            child: const Row(
-              mainAxisSize: MainAxisSize.min,
-              children: <Widget>[
-                Icon(CupertinoIcons.ellipsis_circle, size: 17),
-                SizedBox(width: 7),
-                Text('More'),
-              ],
-            ),
-          ),
-      ],
+    return CupertinoButton.tinted(
+      key: const ValueKey<String>('guest-power-menu'),
+      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+      minimumSize: const Size(44, 44),
+      onPressed: disabled ? null : () => _showPowerActions(context),
+      child: _PowerActionLabel(
+        action: guest.isRunning
+            ? GuestPowerAction.shutdown
+            : GuestPowerAction.start,
+        runningAction: runningAction,
+        label: 'Power',
+      ),
     );
   }
 
-  Future<void> _showMorePowerActions(BuildContext context) async {
-    final List<GuestPowerAction> actions = <GuestPowerAction>[
-      GuestPowerAction.stop,
-      if (GuestPowerAction.reset.supports(guest)) GuestPowerAction.reset,
-    ];
+  Future<void> _showPowerActions(BuildContext context) async {
+    final List<GuestPowerAction> actions = guest.isRunning
+        ? <GuestPowerAction>[
+            GuestPowerAction.shutdown,
+            GuestPowerAction.reboot,
+            GuestPowerAction.stop,
+            if (GuestPowerAction.reset.supports(guest)) GuestPowerAction.reset,
+          ]
+        : <GuestPowerAction>[GuestPowerAction.start];
     final GuestPowerAction?
     selection = await showCupertinoModalPopup<GuestPowerAction>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
-        title: const Text('More power actions'),
+        title: const Text('Power actions'),
         message: const Text(
-          'Force actions can interrupt writes and active users. Use them only when a guest cannot shut down normally.',
+          'Normal actions are confirmed before they run. Force actions can interrupt writes and active users.',
         ),
         actions: actions
             .map(
               (GuestPowerAction action) => CupertinoActionSheetAction(
-                isDestructiveAction: true,
+                isDestructiveAction: action.isPotentiallyDisruptive,
                 onPressed: () => Navigator.of(popupContext).pop(action),
                 child: Text(action.label),
               ),
@@ -524,45 +510,6 @@ class _GuestPowerControls extends StatelessWidget {
     if (selection != null) {
       await onPowerAction(selection);
     }
-  }
-}
-
-class _GuestPowerButton extends StatelessWidget {
-  const _GuestPowerButton({
-    required this.action,
-    required this.runningAction,
-    required this.enabled,
-    required this.filled,
-    required this.onPressed,
-  });
-
-  final GuestPowerAction action;
-  final GuestPowerAction? runningAction;
-  final bool enabled;
-  final bool filled;
-  final VoidCallback onPressed;
-
-  @override
-  Widget build(BuildContext context) {
-    final Widget child = _PowerActionLabel(
-      action: action,
-      runningAction: runningAction,
-      label: action.label,
-    );
-    if (filled) {
-      return CupertinoButton.filled(
-        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-        minimumSize: const Size(44, 44),
-        onPressed: enabled ? onPressed : null,
-        child: child,
-      );
-    }
-    return CupertinoButton.tinted(
-      padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
-      minimumSize: const Size(44, 44),
-      onPressed: enabled ? onPressed : null,
-      child: child,
-    );
   }
 }
 
