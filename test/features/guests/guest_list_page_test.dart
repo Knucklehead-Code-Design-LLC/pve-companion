@@ -46,7 +46,8 @@ void main() {
     expect(find.text('Showing 1 of 4 guests'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    await tester.tap(find.text('Stopped').first);
+    final Finder stoppedFilter = find.text('Stopped').first;
+    await tester.tap(stoppedFilter);
     await tester.pump();
 
     expect(find.text('app-prod-01'), findsNothing);
@@ -94,7 +95,8 @@ void main() {
     expect(find.text('Templates'), findsWidgets);
     expect(find.text('Showing all 5 guests'), findsOneWidget);
 
-    await tester.tap(find.text('Stopped').first);
+    final Finder stoppedFilter = find.text('Stopped').first;
+    await tester.tap(stoppedFilter);
     await tester.pump();
 
     expect(find.text('gh-runner-01'), findsOneWidget);
@@ -227,6 +229,12 @@ void main() {
       find.byKey(const ValueKey<String>('desktop-guest-inspector-101')),
       findsOneWidget,
     );
+    expect(
+      find.byKey(const ValueKey<String>('desktop-guest-table')),
+      findsOneWidget,
+    );
+    expect(find.text('Status'), findsOneWidget);
+    expect(find.text('Uptime'), findsWidgets);
     expect(find.text('Open operational details'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), 'runner');

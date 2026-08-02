@@ -79,7 +79,7 @@ class _GuestListPageState extends State<GuestListPage> {
           )
         else
           PveCenteredSliver(
-            maxWidth: 980,
+            maxWidth: usesDesktopInspector ? 1280 : 980,
             padding: const EdgeInsets.fromLTRB(16, 12, 16, 32),
             child: _buildGuestContent(
               context,
@@ -115,6 +115,12 @@ class _GuestListPageState extends State<GuestListPage> {
     final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
       key: const ValueKey<String>('guest-status-filter'),
       groupValue: _filter,
+      semanticLabels: const <_GuestFilter, String>{
+        _GuestFilter.all: 'All guests',
+        _GuestFilter.running: 'Running guests',
+        _GuestFilter.stopped: 'Stopped guests',
+        _GuestFilter.templates: 'Templates',
+      },
       children: const <_GuestFilter, Widget>{
         _GuestFilter.all: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -162,31 +168,30 @@ class _GuestListPageState extends State<GuestListPage> {
               label: 'Workloads',
               value: '${workloads.length}',
               icon: CupertinoIcons.cube_box,
+              scope: 'Non-template guests reported',
             ),
             PveMetricStripItem(
               label: 'Running',
               value: '$runningCount',
               icon: CupertinoIcons.play_fill,
               color: PveAppleColors.success(context),
+              scope: 'Current reported guest state',
             ),
             PveMetricStripItem(
               label: 'Virtual machines',
               value: '$virtualMachineCount',
               icon: CupertinoIcons.desktopcomputer,
+              scope: 'Of ${workloads.length} workloads',
             ),
             PveMetricStripItem(
               label: 'Containers',
               value: '$containerCount',
               icon: CupertinoIcons.cube_box_fill,
+              scope: 'Of ${workloads.length} workloads',
             ),
           ],
         ),
-        if (usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 16),
-          GuestInventoryInsights(guests: guests),
-          const SizedBox(height: 24),
-        ] else
-          const SizedBox(height: 20),
+        const SizedBox(height: 20),
         const PveSectionTitle(title: 'Guest inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
@@ -246,12 +251,10 @@ class _GuestListPageState extends State<GuestListPage> {
                 )
                 .toList(growable: false),
           ),
-        if (!usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 24),
-          const PveSectionTitle(title: 'Workload analysis'),
-          const SizedBox(height: 12),
-          GuestInventoryInsights(guests: guests),
-        ],
+        const SizedBox(height: 24),
+        const PveSectionTitle(title: 'Workload analysis'),
+        const SizedBox(height: 12),
+        GuestInventoryInsights(guests: guests),
       ],
     );
   }
@@ -264,8 +267,16 @@ class _GuestListPageState extends State<GuestListPage> {
       (PveGuest guest) => guest.vmid == _selectedGuestId,
       orElse: () => visibleGuests.first,
     );
-    final Widget cards = LayoutBuilder(
+    final Widget inventory = LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
+        if (usesDesktopInspector) {
+          return _DesktopGuestTable(
+            guests: visibleGuests,
+            selectedGuestId: selectedGuest.vmid,
+            onSelected: (PveGuest guest) =>
+                setState(() => _selectedGuestId = guest.vmid),
+          );
+        }
         final bool twoColumns = constraints.maxWidth >= 700;
         final double cardWidth = twoColumns
             ? (constraints.maxWidth - 12) / 2
@@ -292,9 +303,9 @@ class _GuestListPageState extends State<GuestListPage> {
         );
       },
     );
-    if (!usesDesktopInspector) return cards;
+    if (!usesDesktopInspector) return inventory;
     return PveInspectorLayout(
-      primary: cards,
+      primary: inventory,
       inspector: _GuestInventoryInspector(
         guest: selectedGuest,
         onOpenDetails: () => _showGuest(selectedGuest),
@@ -403,6 +414,156 @@ class _GuestListPageState extends State<GuestListPage> {
         guest.node.toLowerCase().contains(query) ||
         guest.vmid.toString().contains(query) ||
         guest.kind.label.toLowerCase().contains(query);
+  }
+}
+
+class _DesktopGuestTable extends StatelessWidget {
+  const _DesktopGuestTable({
+    required this.guests,
+    required this.selectedGuestId,
+    required this.onSelected,
+  });
+
+  final List<PveGuest> guests;
+  final int selectedGuestId;
+  final ValueChanged<PveGuest> onSelected;
+
+  @override
+  Widget build(BuildContext context) {
+    return PveInsetGroup(
+      key: const ValueKey<String>('desktop-guest-table'),
+      child: SingleChildScrollView(
+        scrollDirection: Axis.horizontal,
+        child: ConstrainedBox(
+          constraints: const BoxConstraints(minWidth: 790),
+          child: Column(
+            children: <Widget>[
+              const _DesktopGuestTableHeader(),
+              const PveRowSeparator(),
+              for (
+                int index = 0;
+                index < guests.length;
+                index += 1
+              ) ...<Widget>[
+                _DesktopGuestTableRow(
+                  guest: guests[index],
+                  selected: guests[index].vmid == selectedGuestId,
+                  onTap: () => onSelected(guests[index]),
+                ),
+                if (index < guests.length - 1) const PveRowSeparator(),
+              ],
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _DesktopGuestTableHeader extends StatelessWidget {
+  const _DesktopGuestTableHeader();
+
+  @override
+  Widget build(BuildContext context) => Padding(
+    padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+    child: Row(
+      children: <Widget>[
+        _GuestTableCell(label: 'Status', width: 82, header: true),
+        _GuestTableCell(label: 'Guest', width: 240, header: true),
+        _GuestTableCell(label: 'Host', width: 140, header: true),
+        _GuestTableCell(label: 'CPU', width: 56, header: true),
+        _GuestTableCell(label: 'Memory', width: 72, header: true),
+        _GuestTableCell(label: 'Disk', width: 62, header: true),
+        _GuestTableCell(label: 'Uptime', width: 86, header: true),
+      ],
+    ),
+  );
+}
+
+class _DesktopGuestTableRow extends StatelessWidget {
+  const _DesktopGuestTableRow({
+    required this.guest,
+    required this.selected,
+    required this.onTap,
+  });
+
+  final PveGuest guest;
+  final bool selected;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    final String status = guest.isTemplate
+        ? 'Template'
+        : _statusLabel(guest.status);
+    return Semantics(
+      button: true,
+      selected: selected,
+      label: 'Inspect ${guest.title} on ${guest.node}',
+      child: DecoratedBox(
+        decoration: BoxDecoration(
+          color: selected
+              ? PveAppleColors.primary(context).withValues(alpha: 0.09)
+              : null,
+        ),
+        child: CupertinoButton(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 11),
+          alignment: Alignment.centerLeft,
+          onPressed: onTap,
+          child: Row(
+            children: <Widget>[
+              _GuestTableCell(label: status, width: 82),
+              _GuestTableCell(
+                label:
+                    '${guest.title} · ${guest.kind.shortLabel} ${guest.vmid}',
+                width: 240,
+              ),
+              _GuestTableCell(label: guest.node, width: 140),
+              _GuestTableCell(
+                label: formatPvePercent(guest.cpuFraction),
+                width: 56,
+              ),
+              _GuestTableCell(
+                label: _resourcePercent(
+                  guest.memoryBytes,
+                  guest.memoryLimitBytes,
+                ),
+                width: 72,
+              ),
+              _GuestTableCell(
+                label: _resourcePercent(guest.diskBytes, guest.diskLimitBytes),
+                width: 62,
+              ),
+              _GuestTableCell(
+                label: formatPveUptime(guest.uptimeSeconds),
+                width: 86,
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _GuestTableCell extends StatelessWidget {
+  const _GuestTableCell({required this.label, this.width, this.header = false});
+
+  final String label;
+  final double? width;
+  final bool header;
+
+  @override
+  Widget build(BuildContext context) {
+    final Widget text = Text(
+      label,
+      overflow: TextOverflow.ellipsis,
+      style: header
+          ? PveAppleText.caption(context)
+          : PveAppleText.body(context),
+    );
+    if (width != null) return SizedBox(width: width, child: text);
+    return text;
   }
 }
 

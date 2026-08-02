@@ -230,6 +230,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
         navigationTrailing: compact ? _buildCompactTrailing() : null,
         onRefresh: widget.controller.refreshCluster,
         onNodeOperation: widget.controller.refreshCluster,
+        onViewGuests: () => _selectSection(WorkspaceSection.guests),
+        onViewTasks: () => _selectSection(WorkspaceSection.tasks),
       ),
       StoragePage(
         controller: widget.controller.clusterOverview,

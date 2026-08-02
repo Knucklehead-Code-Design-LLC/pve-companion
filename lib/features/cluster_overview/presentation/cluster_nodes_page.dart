@@ -27,6 +27,8 @@ class ClusterNodesPage extends StatefulWidget {
     this.navigationTrailing,
     this.session,
     this.onNodeOperation,
+    this.onViewGuests,
+    this.onViewTasks,
   });
 
   final ClusterOverviewController controller;
@@ -36,6 +38,8 @@ class ClusterNodesPage extends StatefulWidget {
   final Widget? navigationTrailing;
   final ProxmoxSession? session;
   final Future<void> Function()? onNodeOperation;
+  final VoidCallback? onViewGuests;
+  final VoidCallback? onViewTasks;
 
   @override
   State<ClusterNodesPage> createState() => _ClusterNodesPageState();
@@ -83,8 +87,6 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   }
 
   Widget _buildContent(BuildContext context, ClusterOverviewSnapshot snapshot) {
-    final bool usesExpandedPresentation =
-        PveAppleLayout.usesExpandedPresentation(context);
     final bool usesDesktopInspector =
         Theme.of(context).platform == TargetPlatform.macOS &&
         PveAppleLayout.usesWidePresentation(context);
@@ -116,11 +118,16 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               node.state != DatacenterHealthState.healthy,
         )
         .length;
-    final int totalCores = nodes.fold<int>(
-      0,
-      (int total, DatacenterNodeHealth node) =>
-          total + (node.node.cpuCores ?? 0),
-    );
+    final List<DatacenterNodeHealth> nodesWithCpuCores = nodes
+        .where((DatacenterNodeHealth node) => node.node.cpuCores != null)
+        .toList(growable: false);
+    final int? totalCores = nodesWithCpuCores.isEmpty
+        ? null
+        : nodesWithCpuCores.fold<int>(
+            0,
+            (int total, DatacenterNodeHealth node) =>
+                total + node.node.cpuCores!,
+          );
     final bool canOpenNodeOperations =
         widget.session != null && widget.onNodeOperation != null;
     final Widget search = CupertinoSearchTextField(
@@ -132,6 +139,10 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     final Widget filter = PveSlidingSegmentedControl<_NodeFilter>(
       key: const ValueKey<String>('node-status-filter'),
       groupValue: _filter,
+      semanticLabels: const <_NodeFilter, String>{
+        _NodeFilter.all: 'All nodes',
+        _NodeFilter.attention: 'Nodes needing attention',
+      },
       children: const <_NodeFilter, Widget>{
         _NodeFilter.all: Padding(
           padding: EdgeInsets.symmetric(horizontal: 12),
@@ -165,12 +176,14 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               label: 'Nodes',
               value: '${nodes.length}',
               icon: CupertinoIcons.rectangle_stack,
+              scope: 'Reported by this server',
             ),
             PveMetricStripItem(
               label: 'Online',
               value: '$onlineCount',
               icon: CupertinoIcons.check_mark_circled_solid,
               color: PveAppleColors.success(context),
+              scope: 'Currently reported online',
             ),
             PveMetricStripItem(
               label: 'Attention',
@@ -179,20 +192,22 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               color: attentionCount == 0
                   ? PveAppleColors.success(context)
                   : PveAppleColors.warning(context),
+              scope: 'Derived from the latest health report',
             ),
             PveMetricStripItem(
-              label: 'CPU cores',
-              value: '$totalCores',
+              label: 'CPU cores reported',
+              value: totalCores == null ? '—' : '$totalCores',
               icon: CupertinoIcons.speedometer,
+              color: totalCores == null
+                  ? PveAppleColors.secondaryLabel(context)
+                  : null,
+              scope: totalCores == null
+                  ? 'No nodes report CPU cores'
+                  : '${nodesWithCpuCores.length} of ${nodes.length} nodes report cores',
             ),
           ],
         ),
-        if (usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 16),
-          NodeInventoryInsights(health: health),
-          const SizedBox(height: 24),
-        ] else
-          const SizedBox(height: 20),
+        const SizedBox(height: 20),
         const PveSectionTitle(title: 'Node inventory'),
         const SizedBox(height: 12),
         PveWideControlBar(primary: search, secondary: filter),
@@ -204,6 +219,15 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
             onPressed: () => _showSortPicker(context),
             child: Text('Sort: ${_sort.label}'),
           ),
+        ),
+        const SizedBox(height: 8),
+        Text(
+          _nodeInventoryCountLabel(
+            visibleCount: visibleNodes.length,
+            totalCount: nodes.length,
+          ),
+          key: const ValueKey<String>('node-inventory-result-count'),
+          style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 16),
         if (nodes.isEmpty)
@@ -238,12 +262,10 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
             canOpenNodeOperations: canOpenNodeOperations,
             usesDesktopInspector: usesDesktopInspector,
           ),
-        if (!usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 24),
-          const PveSectionTitle(title: 'Cluster analysis'),
-          const SizedBox(height: 12),
-          NodeInventoryInsights(health: health),
-        ],
+        const SizedBox(height: 24),
+        const PveSectionTitle(title: 'Cluster analysis'),
+        const SizedBox(height: 12),
+        NodeInventoryInsights(health: health),
       ],
     );
   }
@@ -298,6 +320,8 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
         onOpenDetails: canOpenNodeOperations
             ? () => _showNode(selectedNode)
             : null,
+        onViewGuests: widget.onViewGuests,
+        onViewTasks: widget.onViewTasks,
       ),
     );
   }
@@ -358,6 +382,17 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       DatacenterHealthState.warning => 2,
       DatacenterHealthState.healthy => 3,
     };
+  }
+
+  String _nodeInventoryCountLabel({
+    required int visibleCount,
+    required int totalCount,
+  }) {
+    final String noun = totalCount == 1 ? 'node' : 'nodes';
+    if (visibleCount == totalCount) {
+      return 'Showing all $totalCount $noun';
+    }
+    return 'Showing $visibleCount of $totalCount $noun';
   }
 
   double _nodeResourceUse(DatacenterNodeHealth node) =>
@@ -476,11 +511,15 @@ class _NodeInventoryInspector extends StatefulWidget {
     required this.node,
     required this.snapshot,
     this.onOpenDetails,
+    this.onViewGuests,
+    this.onViewTasks,
   });
 
   final DatacenterNodeHealth node;
   final ClusterOverviewSnapshot snapshot;
   final VoidCallback? onOpenDetails;
+  final VoidCallback? onViewGuests;
+  final VoidCallback? onViewTasks;
 
   @override
   State<_NodeInventoryInspector> createState() =>
@@ -532,6 +571,26 @@ class _NodeInventoryInspectorState extends State<_NodeInventoryInspector> {
               _statusLabel(widget.node),
               style: PveAppleText.secondary(context),
             ),
+            if (hostedGuests.isNotEmpty && widget.onViewGuests != null)
+              CupertinoButton.tinted(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                alignment: Alignment.centerLeft,
+                onPressed: widget.onViewGuests,
+                child: Text('View ${hostedGuests.length} hosted guests'),
+              ),
+            if (recentTasks.isNotEmpty && widget.onViewTasks != null)
+              CupertinoButton.tinted(
+                padding: const EdgeInsets.symmetric(
+                  horizontal: 12,
+                  vertical: 9,
+                ),
+                alignment: Alignment.centerLeft,
+                onPressed: widget.onViewTasks,
+                child: Text('View ${recentTasks.length} node tasks'),
+              ),
             const SizedBox(height: 18),
             _NodeInspectorValue(
               label: 'Hosted guests',

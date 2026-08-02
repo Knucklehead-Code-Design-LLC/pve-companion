@@ -34,6 +34,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('pve-01'), findsNothing);
+    expect(find.text('Showing 1 of 2 nodes'), findsOneWidget);
     expect(
       find.byWidgetPredicate(
         (Widget widget) => widget is Text && widget.data == 'pve-02',
@@ -42,15 +43,15 @@ void main() {
     );
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const ValueKey<String>('node-status-filter')),
-        matching: find.text('Attention'),
-      ),
+    final Finder attentionFilter = find.descendant(
+      of: find.byKey(const ValueKey<String>('node-status-filter')),
+      matching: find.text('Attention'),
     );
+    await tester.tap(attentionFilter);
     await tester.pump();
 
     expect(find.text('No nodes need attention'), findsOneWidget);
+    expect(find.text('Showing 0 of 2 nodes'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('node-cluster-pressure')),
       findsOneWidget,
@@ -160,6 +161,8 @@ void main() {
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
+    int guestDrillThroughs = 0;
+    int taskDrillThroughs = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -172,6 +175,8 @@ void main() {
             body: ClusterNodesPage(
               controller: controller,
               onRefresh: () async {},
+              onViewGuests: () => guestDrillThroughs += 1,
+              onViewTasks: () => taskDrillThroughs += 1,
             ),
           ),
         ),
@@ -184,10 +189,22 @@ void main() {
     );
     expect(find.text('Hosted guests'), findsWidgets);
     expect(find.text('Recent activity'), findsOneWidget);
+    expect(find.textContaining('View 2 hosted guests'), findsOneWidget);
+    expect(find.textContaining('View 3 node tasks'), findsOneWidget);
 
-    await tester.tap(
-      find.byKey(const ValueKey<String>('node-inventory-pve-02')),
+    final Finder hostedGuestsAction = find.textContaining(
+      'View 2 hosted guests',
     );
+    final Finder nodeTasksAction = find.textContaining('View 3 node tasks');
+    await tester.tap(hostedGuestsAction);
+    await tester.tap(nodeTasksAction);
+    expect(guestDrillThroughs, 1);
+    expect(taskDrillThroughs, 1);
+
+    final Finder pve02 = find.byKey(
+      const ValueKey<String>('node-inventory-pve-02'),
+    );
+    await tester.tap(pve02);
     await tester.pump();
 
     expect(
@@ -224,8 +241,8 @@ void main() {
       ),
     );
 
-    expect(find.textContaining('CPU cores not reported'), findsOneWidget);
-    expect(find.textContaining('0 cores'), findsNothing);
+    expect(find.text('CPU cores reported'), findsOneWidget);
+    expect(find.text('No nodes report CPU cores'), findsOneWidget);
   });
 }
 

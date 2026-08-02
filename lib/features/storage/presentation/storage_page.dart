@@ -102,9 +102,23 @@ class _StoragePageState extends State<StoragePage> {
       (int total, ClusterStorage storage) =>
           total + (storage.availableBytes ?? 0),
     );
+    final List<ClusterStorage> backupDestinations = storages
+        .where(_supportsBackup)
+        .toList(growable: false);
+    final List<ClusterStorage> availableBackupDestinations = backupDestinations
+        .where(_isAvailableBackupDestination)
+        .toList(growable: false);
+    final int backupDestinationsWithUnknownAvailability = backupDestinations
+        .where((ClusterStorage storage) => !storage.hasAvailabilityTelemetry)
+        .length;
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
       key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
+      semanticLabels: const <_StorageFilter, String>{
+        _StorageFilter.all: 'All storage pools',
+        _StorageFilter.shared: 'Shared storage pools',
+        _StorageFilter.local: 'Local storage pools',
+      },
       children: const <_StorageFilter, Widget>{
         _StorageFilter.all: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
@@ -194,6 +208,7 @@ class _StoragePageState extends State<StoragePage> {
             onTap: _showBackupCenter,
             padding: const EdgeInsets.all(16),
             child: Row(
+              crossAxisAlignment: CrossAxisAlignment.start,
               children: <Widget>[
                 DecoratedBox(
                   decoration: BoxDecoration(
@@ -220,9 +235,17 @@ class _StoragePageState extends State<StoragePage> {
                         'Backup Center',
                         style: PveAppleText.title3(context),
                       ),
-                      const SizedBox(height: 2),
+                      const SizedBox(height: 5),
+                      _BackupDestinationReadiness(
+                        configuredDestinations: backupDestinations.length,
+                        availableDestinations:
+                            availableBackupDestinations.length,
+                        unknownAvailabilityDestinations:
+                            backupDestinationsWithUnknownAvailability,
+                      ),
+                      const SizedBox(height: 6),
                       Text(
-                        'Backup readiness has not been evaluated on this page. Open Backup Center to review destinations, schedules, copies, and activity.',
+                        'Destination availability is based on the latest storage report. Open Backup Center to review schedules, copies, and backup activity.',
                         style: PveAppleText.secondary(context),
                       ),
                     ],
@@ -318,6 +341,17 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.local => !storage.shared,
   };
 
+  bool _supportsBackup(ClusterStorage storage) => storage.content
+      .toLowerCase()
+      .split(',')
+      .map((String item) => item.trim())
+      .contains('backup');
+
+  bool _isAvailableBackupDestination(ClusterStorage storage) =>
+      _supportsBackup(storage) &&
+      storage.hasAvailabilityTelemetry &&
+      storage.isAvailable;
+
   int _compareStorageRisk(ClusterStorage left, ClusterStorage right) {
     final int riskComparison = _storageRiskRank(
       left,
@@ -341,6 +375,53 @@ class _StoragePageState extends State<StoragePage> {
       return;
     }
     await showBackupCenterSheet(context, session: session, overview: overview);
+  }
+}
+
+class _BackupDestinationReadiness extends StatelessWidget {
+  const _BackupDestinationReadiness({
+    required this.configuredDestinations,
+    required this.availableDestinations,
+    required this.unknownAvailabilityDestinations,
+  });
+
+  final int configuredDestinations;
+  final int availableDestinations;
+  final int unknownAvailabilityDestinations;
+
+  @override
+  Widget build(BuildContext context) {
+    final bool hasAvailableDestination = availableDestinations > 0;
+    final bool hasConfiguredDestination = configuredDestinations > 0;
+    final bool hasUnknownAvailability = unknownAvailabilityDestinations > 0;
+    final String label = hasAvailableDestination
+        ? 'Destination ready'
+        : hasUnknownAvailability
+        ? 'Availability not reported'
+        : hasConfiguredDestination
+        ? 'Destination needs attention'
+        : 'Backup setup needed';
+    final Color color = hasAvailableDestination
+        ? PveAppleColors.success(context)
+        : hasUnknownAvailability
+        ? PveAppleColors.secondaryLabel(context)
+        : hasConfiguredDestination
+        ? PveAppleColors.warning(context)
+        : PveAppleColors.destructive(context);
+    final String detail = hasAvailableDestination
+        ? '$availableDestinations ${availableDestinations == 1 ? 'available destination' : 'available destinations'} reported.'
+        : hasUnknownAvailability
+        ? '$unknownAvailabilityDestinations ${unknownAvailabilityDestinations == 1 ? 'configured destination does' : 'configured destinations do'} not report availability.'
+        : hasConfiguredDestination
+        ? '$configuredDestinations ${configuredDestinations == 1 ? 'configured destination is' : 'configured destinations are'} not currently reported available.'
+        : 'No storage reports backup content.';
+    return Row(
+      children: <Widget>[
+        PveStatusPill(label: label, color: color),
+        const SizedBox(width: 8),
+        Expanded(child: Text(detail, style: PveAppleText.caption(context))),
+      ],
+    );
   }
 }
 
