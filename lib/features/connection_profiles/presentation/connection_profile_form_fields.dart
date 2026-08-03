@@ -38,7 +38,7 @@ class ConnectionProfileFormFields extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool passwordAuthentication =
+    final passwordAuthentication =
         authenticationKind == ConnectionAuthenticationKind.password;
     return AutofillGroup(
       child: Column(
@@ -131,7 +131,7 @@ class ConnectionProfileFormFields extends StatelessWidget {
                   enableSuggestions: false,
                   enabled: enabled,
                   validator: (String? value) {
-                    final String tokenId = value?.trim() ?? '';
+                    final tokenId = value?.trim() ?? '';
                     return tokenId.isNotEmpty && tokenId.contains('!')
                         ? null
                         : 'Use user@realm!token-name.';
@@ -217,7 +217,7 @@ class _AuthenticationKindPicker extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesLargeText = MediaQuery.textScalerOf(context).scale(17) >= 22;
+    final usesLargeText = MediaQuery.textScalerOf(context).scale(17) >= 22;
     if (!usesLargeText) {
       return Opacity(
         opacity: enabled ? 1 : 0.55,
@@ -280,7 +280,7 @@ class _AuthenticationKindChoice extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = PveAppleColors.primary(context);
+    final accent = PveAppleColors.primary(context);
     return Semantics(
       button: true,
       selected: selected,

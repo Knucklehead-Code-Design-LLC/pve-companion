@@ -16,10 +16,10 @@ import '../features/cluster_overview/datacenter_dashboard_fixture.dart';
 
 void main() {
   test('keeps the current overview when switching servers fails', () async {
-    final ConnectionProfile currentProfile = _profile('current');
-    final ConnectionProfile failedProfile = _profile('failed');
-    final ClusterOverviewSnapshot currentSnapshot = healthyDatacenterSnapshot();
-    final PveCompanionController controller = await _buildController(
+    final currentProfile = _profile('current');
+    final failedProfile = _profile('failed');
+    final currentSnapshot = healthyDatacenterSnapshot();
+    final controller = await _buildController(
       profiles: <ConnectionProfile>[currentProfile, failedProfile],
       selectedProfileId: currentProfile.id,
       snapshots: <ClusterOverviewSnapshot>[currentSnapshot],
@@ -35,9 +35,7 @@ void main() {
     );
     expect(controller.clusterOverview.snapshot, same(currentSnapshot));
 
-    final ConnectionAttemptResult result = await controller.connectProfile(
-      failedProfile.id,
-    );
+    final result = await controller.connectProfile(failedProfile.id);
 
     expect(result.kind, ConnectionAttemptKind.failed);
     expect(controller.clusterOverview.snapshot, same(currentSnapshot));
@@ -48,11 +46,11 @@ void main() {
   });
 
   test('replaces the overview only after a server switch succeeds', () async {
-    final ConnectionProfile currentProfile = _profile('current');
-    final ConnectionProfile nextProfile = _profile('next');
-    final ClusterOverviewSnapshot currentSnapshot = healthyDatacenterSnapshot();
-    final ClusterOverviewSnapshot nextSnapshot = healthyDatacenterSnapshot();
-    final PveCompanionController controller = await _buildController(
+    final currentProfile = _profile('current');
+    final nextProfile = _profile('next');
+    final currentSnapshot = healthyDatacenterSnapshot();
+    final nextSnapshot = healthyDatacenterSnapshot();
+    final controller = await _buildController(
       profiles: <ConnectionProfile>[currentProfile, nextProfile],
       selectedProfileId: currentProfile.id,
       snapshots: <ClusterOverviewSnapshot>[currentSnapshot, nextSnapshot],
@@ -62,9 +60,7 @@ void main() {
     await controller.connectSelectedProfile();
     expect(controller.clusterOverview.snapshot, same(currentSnapshot));
 
-    final ConnectionAttemptResult result = await controller.connectProfile(
-      nextProfile.id,
-    );
+    final result = await controller.connectProfile(nextProfile.id);
 
     expect(result.kind, ConnectionAttemptKind.connected);
     expect(controller.clusterOverview.snapshot, same(nextSnapshot));
@@ -79,24 +75,20 @@ Future<PveCompanionController> _buildController({
   Map<String, ProxmoxApiException> failuresByProfileId =
       const <String, ProxmoxApiException>{},
 }) async {
-  final ConnectionProfilesController connectionProfiles =
-      ConnectionProfilesController(
-        profileRepository: _ProfileRepository(
-          SavedConnectionProfiles(
-            profiles: profiles,
-            selectedProfileId: selectedProfileId,
-          ),
-        ),
-        credentialStore: const _CredentialStore(),
-        connectionRepository: _ConnectionRepository(failuresByProfileId),
-      );
-  final PveCompanionController controller =
-      PveCompanionController.createForTesting(
-        connectionProfiles: connectionProfiles,
-        clusterOverview: ClusterOverviewController(
-          _ClusterRepository(snapshots),
-        ),
-      );
+  final connectionProfiles = ConnectionProfilesController(
+    profileRepository: _ProfileRepository(
+      SavedConnectionProfiles(
+        profiles: profiles,
+        selectedProfileId: selectedProfileId,
+      ),
+    ),
+    credentialStore: const _CredentialStore(),
+    connectionRepository: _ConnectionRepository(failuresByProfileId),
+  );
+  final controller = PveCompanionController.createForTesting(
+    connectionProfiles: connectionProfiles,
+    clusterOverview: ClusterOverviewController(_ClusterRepository(snapshots)),
+  );
   await controller.initialize();
   return controller;
 }
@@ -152,7 +144,7 @@ class _ConnectionRepository implements ProxmoxConnectionRepository {
     ConnectionProfile profile,
     ConnectionCredentials credentials,
   ) async {
-    final ProxmoxApiException? failure = failuresByProfileId[profile.id];
+    final failure = failuresByProfileId[profile.id];
     if (failure != null) {
       throw failure;
     }
@@ -168,7 +160,7 @@ class _ClusterRepository implements ClusterOverviewRepository {
 
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
-    final ClusterOverviewSnapshot snapshot = snapshots[_nextSnapshotIndex];
+    final snapshot = snapshots[_nextSnapshotIndex];
     _nextSnapshotIndex += 1;
     return snapshot;
   }

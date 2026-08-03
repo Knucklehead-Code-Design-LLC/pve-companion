@@ -21,7 +21,7 @@ class ProxmoxTaskLogRepository implements PveTaskLogRepository {
     ClusterTask task,
   ) async {
     try {
-      final List<ProxmoxTaskLogLine> lines = await _taskClient.loadLog(
+      final lines = await _taskClient.loadLog(
         session,
         ProxmoxTaskReference(
           upid: task.upid,

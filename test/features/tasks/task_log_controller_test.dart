@@ -9,7 +9,7 @@ void main() {
   test(
     'converts an unexpected repository failure into a visible failed state',
     () async {
-      final TaskLogController controller = TaskLogController(
+      final controller = TaskLogController(
         repository: const _ThrowingTaskLogRepository(),
         session: const _Session(),
         task: const ClusterTask(

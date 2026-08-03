@@ -156,13 +156,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1024, 768));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final DateTime updatedAt = DateTime.now().subtract(
-      const Duration(minutes: 2),
-    );
+    final updatedAt = DateTime.now().subtract(const Duration(minutes: 2));
 
     await tester.pumpWidget(_NavigationHarness(lastUpdatedAt: updatedAt));
     expect(find.text('Data refreshed 2m ago'), findsOneWidget);
-    final String freshnessLabel = tester
+    final freshnessLabel = tester
         .getSemantics(find.byType(PveFreshnessLabel))
         .label;
     expect(freshnessLabel, startsWith('Data refreshed at '));

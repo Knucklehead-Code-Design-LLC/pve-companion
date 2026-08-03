@@ -51,16 +51,15 @@ class _GuestListPageState extends State<GuestListPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesExpandedPresentation =
-        PveAppleLayout.usesExpandedPresentation(context);
-    final bool usesDesktopInspector =
+    final usesExpandedPresentation = PveAppleLayout.usesExpandedPresentation(
+      context,
+    );
+    final usesDesktopInspector =
         Theme.of(context).platform == TargetPlatform.macOS &&
         PveAppleLayout.usesWidePresentation(context);
-    final ClusterOverviewSnapshot? snapshot =
-        widget.overviewController.snapshot;
-    final List<PveGuest> guests = List<PveGuest>.of(
-      snapshot?.guests ?? const <PveGuest>[],
-    )..sort(_compareGuests);
+    final snapshot = widget.overviewController.snapshot;
+    final guests = List<PveGuest>.of(snapshot?.guests ?? const <PveGuest>[])
+      ..sort(_compareGuests);
 
     return PvePrimaryScrollView(
       title: 'Guests',
@@ -99,20 +98,20 @@ class _GuestListPageState extends State<GuestListPage> {
     required bool usesExpandedPresentation,
     required bool usesDesktopInspector,
   }) {
-    final List<PveGuest> visibleGuests = guests
+    final visibleGuests = guests
         .where(_matchesFilter)
         .where(_matchesSearch)
         .toList(growable: false);
-    final List<PveGuest> workloads = guests
+    final workloads = guests
         .where((PveGuest guest) => !guest.isTemplate)
         .toList(growable: false);
-    final int runningCount = workloads
+    final runningCount = workloads
         .where((PveGuest guest) => guest.isRunning)
         .length;
-    final int virtualMachineCount = workloads
+    final virtualMachineCount = workloads
         .where((PveGuest guest) => guest.kind == GuestKind.virtualMachine)
         .length;
-    final int containerCount = workloads.length - virtualMachineCount;
+    final containerCount = workloads.length - virtualMachineCount;
     final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
       key: const ValueKey<String>('guest-status-filter'),
       groupValue: _filter,
@@ -243,14 +242,10 @@ class _GuestListPageState extends State<GuestListPage> {
         else
           CupertinoListSection.insetGrouped(
             margin: EdgeInsets.zero,
-            children: visibleGuests
-                .map(
-                  (PveGuest guest) => _GuestListItem(
-                    guest: guest,
-                    onTap: () => _showGuest(guest),
-                  ),
-                )
-                .toList(growable: false),
+            children: <Widget>[
+              for (final guest in visibleGuests)
+                _GuestListItem(guest: guest, onTap: () => _showGuest(guest)),
+            ],
           ),
         const SizedBox(height: 24),
         const PveSectionTitle(title: 'Workload analysis'),
@@ -264,7 +259,7 @@ class _GuestListPageState extends State<GuestListPage> {
     List<PveGuest> visibleGuests, {
     required bool usesDesktopInspector,
   }) {
-    final PveGuest selectedGuest = visibleGuests.firstWhere(
+    final selectedGuest = visibleGuests.firstWhere(
       (PveGuest guest) => guest.vmid == _selectedGuestId,
       orElse: () => visibleGuests.first,
     );
@@ -278,29 +273,27 @@ class _GuestListPageState extends State<GuestListPage> {
                 setState(() => _selectedGuestId = guest.vmid),
           );
         }
-        final bool twoColumns = constraints.maxWidth >= 700;
-        final double cardWidth = twoColumns
+        final twoColumns = constraints.maxWidth >= 700;
+        final cardWidth = twoColumns
             ? (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: visibleGuests
-              .map(
-                (PveGuest guest) => SizedBox(
-                  width: cardWidth,
-                  child: _GuestCard(
-                    guest: guest,
-                    selected:
-                        usesDesktopInspector &&
-                        guest.vmid == selectedGuest.vmid,
-                    onTap: usesDesktopInspector
-                        ? () => setState(() => _selectedGuestId = guest.vmid)
-                        : () => _showGuest(guest),
-                  ),
+          children: <Widget>[
+            for (final guest in visibleGuests)
+              SizedBox(
+                width: cardWidth,
+                child: _GuestCard(
+                  guest: guest,
+                  selected:
+                      usesDesktopInspector && guest.vmid == selectedGuest.vmid,
+                  onTap: usesDesktopInspector
+                      ? () => setState(() => _selectedGuestId = guest.vmid)
+                      : () => _showGuest(guest),
                 ),
-              )
-              .toList(growable: false),
+              ),
+          ],
         );
       },
     );
@@ -315,10 +308,7 @@ class _GuestListPageState extends State<GuestListPage> {
   }
 
   void _showGuest(PveGuest guest) {
-    final List<String> backupStorageNames = widget
-        .overviewController
-        .snapshot!
-        .storages
+    final backupStorageNames = widget.overviewController.snapshot!.storages
         .where(PveBackupDestination.isAvailableForExecution)
         .map((ClusterStorage storage) => storage.name)
         .toList(growable: false);
@@ -342,7 +332,7 @@ class _GuestListPageState extends State<GuestListPage> {
     if (left.isTemplate != right.isTemplate) {
       return left.isTemplate ? 1 : -1;
     }
-    final int result = switch (_sort) {
+    final result = switch (_sort) {
       _GuestInventorySort.status => _statusRank(
         left,
       ).compareTo(_statusRank(right)),
@@ -365,39 +355,37 @@ class _GuestListPageState extends State<GuestListPage> {
   int _statusRank(PveGuest guest) => guest.isRunning ? 0 : 1;
 
   double _resourceUse(PveGuest guest) {
-    final double memory =
+    final memory =
         _resourceFraction(guest.memoryBytes, guest.memoryLimitBytes) ?? -1;
     return guest.cpuFraction ?? memory;
   }
 
   Future<void> _showSortPicker(BuildContext context) async {
-    final _GuestInventorySort? sort =
-        await showCupertinoModalPopup<_GuestInventorySort>(
-          context: context,
-          builder: (BuildContext popupContext) => CupertinoActionSheet(
-            title: const Text('Sort guest inventory'),
-            actions: _GuestInventorySort.values
-                .map(
-                  (_GuestInventorySort value) => CupertinoActionSheetAction(
-                    isDefaultAction: value == _sort,
-                    onPressed: () => Navigator.of(popupContext).pop(value),
-                    child: Text(value.label),
-                  ),
-                )
-                .toList(growable: false),
-            cancelButton: CupertinoActionSheetAction(
-              onPressed: () => Navigator.of(popupContext).pop(),
-              child: const Text('Cancel'),
+    final sort = await showCupertinoModalPopup<_GuestInventorySort>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Sort guest inventory'),
+        actions: <Widget>[
+          for (final value in _GuestInventorySort.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _sort,
+              onPressed: () => Navigator.of(popupContext).pop(value),
+              child: Text(value.label),
             ),
-          ),
-        );
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
     if (sort != null && mounted) {
       setState(() => _sort = sort);
     }
   }
 
   bool _matchesSearch(PveGuest guest) {
-    final String query = _searchController.text.trim().toLowerCase();
+    final query = _searchController.text.trim().toLowerCase();
     if (query.isEmpty) {
       return true;
     }
@@ -484,9 +472,7 @@ class _DesktopGuestTableRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String status = guest.isTemplate
-        ? 'Template'
-        : _statusLabel(guest.status);
+    final status = guest.isTemplate ? 'Template' : _statusLabel(guest.status);
     return Semantics(
       button: true,
       selected: selected,
@@ -571,7 +557,7 @@ class _GuestCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = guest.isTemplate
+    final statusColor = guest.isTemplate
         ? PveAppleColors.primary(context)
         : guest.isRunning
         ? PveAppleColors.success(context)
@@ -713,10 +699,8 @@ class _GuestInventoryInspectorState extends State<_GuestInventoryInspector> {
 
   @override
   Widget build(BuildContext context) {
-    final PveGuest guest = widget.guest;
-    final String status = guest.isTemplate
-        ? 'Template'
-        : _statusLabel(guest.status);
+    final guest = widget.guest;
+    final status = guest.isTemplate ? 'Template' : _statusLabel(guest.status);
     return CupertinoContextMenu(
       actions: <Widget>[
         CupertinoContextMenuAction(
@@ -852,7 +836,7 @@ class _GuestListItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = guest.isTemplate
+    final statusColor = guest.isTemplate
         ? PveAppleColors.primary(context)
         : guest.isRunning
         ? PveAppleColors.success(context)
@@ -908,7 +892,7 @@ String _inventoryCountLabel({
   required int visibleCount,
   required int totalCount,
 }) {
-  final String noun = totalCount == 1 ? 'guest' : 'guests';
+  final noun = totalCount == 1 ? 'guest' : 'guests';
   if (visibleCount == totalCount) {
     return 'Showing all $totalCount $noun';
   }

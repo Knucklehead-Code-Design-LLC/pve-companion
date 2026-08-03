@@ -47,9 +47,9 @@ class TaskQuery {
       period: period ?? this.period,
       sort: sort ?? this.sort,
       query: query ?? this.query,
-      node: this.node,
-      operatorName: this.operatorName,
-      guestVmid: this.guestVmid,
+      node: node,
+      operatorName: operatorName,
+      guestVmid: guestVmid,
     );
   }
 
@@ -87,7 +87,7 @@ class TaskQuery {
     Iterable<ClusterTask> tasks, {
     required DateTime now,
   }) {
-    final List<ClusterTask> matching = tasks
+    final matching = tasks
         .where((ClusterTask task) => matches(task, now: now))
         .toList(growable: false);
     matching.sort(
@@ -111,10 +111,10 @@ class TaskQuery {
   };
 
   bool _matchesPeriod(ClusterTask task, {required DateTime now}) {
-    final Duration? maximumAge = period.maximumAge;
+    final maximumAge = period.maximumAge;
     if (maximumAge == null) return true;
 
-    final DateTime? startedAt = task.startedAt;
+    final startedAt = task.startedAt;
     if (startedAt == null || startedAt.isAfter(now)) return false;
     return now.difference(startedAt) <= maximumAge;
   }
@@ -123,7 +123,7 @@ class TaskQuery {
     if (node != null && task.node != node) return false;
     if (operatorName != null && task.user != operatorName) return false;
 
-    final String normalizedQuery = query.trim().toLowerCase();
+    final normalizedQuery = query.trim().toLowerCase();
     if (normalizedQuery.isEmpty) return true;
     return task.type.toLowerCase().contains(normalizedQuery) ||
         task.node.toLowerCase().contains(normalizedQuery) ||
@@ -159,7 +159,7 @@ int compareTasksForAttention(
   ClusterTask right, {
   required DateTime now,
 }) {
-  final int priorityComparison = taskAttentionPriority(
+  final priorityComparison = taskAttentionPriority(
     left,
     now: now,
   ).compareTo(taskAttentionPriority(right, now: now));

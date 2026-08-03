@@ -10,19 +10,12 @@ import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('discards a stale refresh after a newer refresh starts', () async {
-    final _ControlledClusterRepository repository =
-        _ControlledClusterRepository();
-    final ClusterOverviewController controller = ClusterOverviewController(
-      repository,
-    );
-    final _FakeSession session = _FakeSession();
+    final repository = _ControlledClusterRepository();
+    final controller = ClusterOverviewController(repository);
+    final session = _FakeSession();
 
-    final Future<ClusterOverviewSnapshot?> firstRefresh = controller.refresh(
-      session,
-    );
-    final Future<ClusterOverviewSnapshot?> secondRefresh = controller.refresh(
-      session,
-    );
+    final firstRefresh = controller.refresh(session);
+    final secondRefresh = controller.refresh(session);
     repository.requests[0].complete(_snapshot('old'));
     expect(await firstRefresh, isNull);
     expect(controller.snapshot, isNull);
@@ -41,12 +34,12 @@ void main() {
   test(
     'keeps a bounded local resource history and clears it with the session',
     () async {
-      final ClusterOverviewController controller = ClusterOverviewController(
+      final controller = ClusterOverviewController(
         _SequencedClusterRepository(),
       );
-      final _FakeSession session = _FakeSession();
+      final session = _FakeSession();
 
-      for (int index = 0; index < 25; index += 1) {
+      for (var index = 0; index < 25; index += 1) {
         await controller.refresh(session);
       }
 
@@ -63,7 +56,7 @@ void main() {
   test(
     'does not turn unavailable resource telemetry into zero utilization',
     () {
-      const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+      const snapshot = ClusterOverviewSnapshot(
         version: PveVersion(version: 'test'),
         nodes: <ClusterNode>[ClusterNode(name: 'node-a', status: 'online')],
         guests: <PveGuest>[],
@@ -78,11 +71,10 @@ void main() {
         tasks: <ClusterTask>[],
       );
 
-      final DatacenterResourceSample sample =
-          DatacenterResourceSample.fromSnapshot(
-            snapshot,
-            capturedAt: DateTime.utc(2026, 8, 2),
-          );
+      final sample = DatacenterResourceSample.fromSnapshot(
+        snapshot,
+        capturedAt: DateTime.utc(2026, 8, 2),
+      );
 
       expect(sample.memoryFraction, isNull);
       expect(sample.diskFraction, isNull);
@@ -107,8 +99,7 @@ class _ControlledClusterRepository implements ClusterOverviewRepository {
 
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) {
-    final Completer<ClusterOverviewSnapshot> request =
-        Completer<ClusterOverviewSnapshot>();
+    final request = Completer<ClusterOverviewSnapshot>();
     requests.add(request);
     return request.future;
   }

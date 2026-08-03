@@ -148,13 +148,11 @@ class _ClusterAdministrationContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PveClusterStatus? status = snapshot.clusterStatus;
-    final int onlineNodes = snapshot.overview.nodes
+    final status = snapshot.clusterStatus;
+    final onlineNodes = snapshot.overview.nodes
         .where((ClusterNode node) => node.isOnline)
         .length;
-    final int haIssueCount = snapshot.haResources
-        .where((PveHaResourceStatus resource) => _hasHaIssue(resource))
-        .length;
+    final haIssueCount = snapshot.haResources.where(_hasHaIssue).length;
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
@@ -255,8 +253,8 @@ class _ClusterStatusCard extends StatelessWidget {
         ),
       );
     }
-    final PveClusterStatus reportedStatus = status!;
-    final List<PveClusterMember> members = reportedStatus.members;
+    final reportedStatus = status!;
+    final members = reportedStatus.members;
     return PveInsetGroup(
       padding: EdgeInsets.zero,
       child: Column(
@@ -363,7 +361,7 @@ class _ClusterOptionsCard extends StatelessWidget {
         child: Text('No safe datacenter option values were reported.'),
       );
     }
-    final List<MapEntry<String, String>> entries = options.entries.toList()
+    final entries = options.entries.toList()
       ..sort(
         (MapEntry<String, String> left, MapEntry<String, String> right) =>
             left.key.compareTo(right.key),
@@ -390,7 +388,7 @@ class _ClusterOptionsCard extends StatelessWidget {
 }
 
 bool _hasHaIssue(PveHaResourceStatus resource) {
-  final String state = resource.state.toLowerCase();
+  final state = resource.state.toLowerCase();
   return state.contains('error') ||
       state.contains('fence') ||
       state.contains('stop');
@@ -409,7 +407,7 @@ Color _quorumColor(BuildContext context, bool? quorate) => switch (quorate) {
 };
 
 String _memberSubtitle(PveClusterMember member) {
-  final List<String> fragments = <String>[
+  final fragments = <String>[
     member.type,
     if (member.nodeId != null) 'ID ${member.nodeId}',
     if (member.address != null) member.address!,
@@ -418,7 +416,7 @@ String _memberSubtitle(PveClusterMember member) {
 }
 
 String _haSubtitle(PveHaResourceStatus resource) {
-  final List<String> fragments = <String>[
+  final fragments = <String>[
     if (resource.node != null) resource.node!,
     if (resource.status != null) resource.status!,
   ];

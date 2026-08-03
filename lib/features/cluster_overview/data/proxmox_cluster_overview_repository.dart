@@ -12,14 +12,13 @@ abstract interface class ClusterOverviewRepository {
 class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
-    final List<Object?> responses =
-        await Future.wait<Object?>(<Future<Object?>>[
-          session.getData('version'),
-          session.getData('nodes'),
-          _loadClusterResources(session),
-          session.getData('storage'),
-          session.getData('cluster/tasks'),
-        ]);
+    final responses = await Future.wait<Object?>(<Future<Object?>>[
+      session.getData('version'),
+      session.getData('nodes'),
+      _loadClusterResources(session),
+      session.getData('storage'),
+      session.getData('cluster/tasks'),
+    ]);
 
     return ClusterOverviewSnapshot(
       version: _decodeVersion(responses[0]),
@@ -44,7 +43,7 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   }
 
   PveVersion _decodeVersion(Object? value) {
-    final Map<String, Object?> data = _object(value, 'version');
+    final data = _object(value, 'version');
     return PveVersion(
       version: _requiredString(data, 'version', 'version'),
       release: _optionalString(data, 'release'),
@@ -72,12 +71,12 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   List<PveGuest> _decodeGuests(Object? value) {
     return _objects(value, 'guests')
         .where((Map<String, Object?> resource) {
-          final Object? type = resource['type'];
+          final type = resource['type'];
           return type == 'qemu' || type == 'lxc';
         })
         .map((Map<String, Object?> guest) {
-          final String type = _requiredString(guest, 'type', 'guest');
-          final GuestKind kind = switch (type) {
+          final type = _requiredString(guest, 'type', 'guest');
+          final kind = switch (type) {
             'qemu' => GuestKind.virtualMachine,
             'lxc' => GuestKind.container,
             _ => throw ProxmoxMalformedResponseException(
@@ -107,14 +106,10 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
     Object? configurationValue,
     Object? resourceValue,
   ) {
-    final Map<String, List<ClusterStorageResource>> resourcesByStorage =
-        <String, List<ClusterStorageResource>>{};
-    for (final Map<String, Object?> resource in _objects(
-      resourceValue,
-      'storage resources',
-    )) {
-      final String? storageName = _optionalString(resource, 'storage');
-      final String? nodeName = _optionalString(resource, 'node');
+    final resourcesByStorage = <String, List<ClusterStorageResource>>{};
+    for (final resource in _objects(resourceValue, 'storage resources')) {
+      final storageName = _optionalString(resource, 'storage');
+      final nodeName = _optionalString(resource, 'node');
       if (storageName == null || nodeName == null) {
         continue;
       }
@@ -131,7 +126,7 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
     }
     return _objects(configurationValue, 'storage')
         .map((Map<String, Object?> storage) {
-          final String name = _requiredString(storage, 'storage', 'storage');
+          final name = _requiredString(storage, 'storage', 'storage');
           return ClusterStorage(
             name: name,
             type: _requiredString(storage, 'type', 'storage'),
@@ -189,7 +184,7 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
     String key,
     String resource,
   ) {
-    final String? result = _optionalString(value, key);
+    final result = _optionalString(value, key);
     if (result == null) {
       throw ProxmoxMalformedResponseException(
         'The $resource response did not contain $key.',
@@ -199,12 +194,12 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   }
 
   String? _optionalString(Map<String, Object?> value, String key) {
-    final Object? result = value[key];
+    final result = value[key];
     return result is String && result.isNotEmpty ? result : null;
   }
 
   int _requiredInt(Map<String, Object?> value, String key, String resource) {
-    final int? result = _optionalInt(value, key);
+    final result = _optionalInt(value, key);
     if (result == null) {
       throw ProxmoxMalformedResponseException(
         'The $resource response did not contain a numeric $key.',
@@ -214,12 +209,12 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
   }
 
   int? _optionalInt(Map<String, Object?> value, String key) {
-    final Object? result = value[key];
+    final result = value[key];
     return result is num ? result.toInt() : null;
   }
 
   double? _optionalDouble(Map<String, Object?> value, String key) {
-    final Object? result = value[key];
+    final result = value[key];
     return result is num ? result.toDouble() : null;
   }
 

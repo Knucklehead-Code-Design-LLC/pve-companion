@@ -4,18 +4,16 @@ import 'datacenter_health.dart';
 
 abstract final class DatacenterHealthEvaluator {
   static DatacenterHealth evaluate(ClusterOverviewSnapshot snapshot) {
-    final List<DatacenterNodeHealth> nodes = snapshot.nodes
-        .map(_deriveNodeHealth)
-        .toList(growable: false);
-    final List<DatacenterNodeHealth> orderedNodes =
-        List<DatacenterNodeHealth>.of(nodes)..sort(_compareNodeHealth);
-    final int offlineNodeCount = nodes
+    final nodes = snapshot.nodes.map(_deriveNodeHealth).toList(growable: false);
+    final orderedNodes = List<DatacenterNodeHealth>.of(nodes)
+      ..sort(_compareNodeHealth);
+    final offlineNodeCount = nodes
         .where((DatacenterNodeHealth node) => !node.node.isOnline)
         .length;
-    final DatacenterTaskActivity tasks = _deriveTaskActivity(snapshot.tasks);
-    final DatacenterWorkload workload = _deriveWorkload(snapshot.guests);
-    final DatacenterPressureSummary pressure = _derivePressure(snapshot.nodes);
-    final List<DatacenterHealthIssue> issues = _deriveIssues(
+    final tasks = _deriveTaskActivity(snapshot.tasks);
+    final workload = _deriveWorkload(snapshot.guests);
+    final pressure = _derivePressure(snapshot.nodes);
+    final issues = _deriveIssues(
       nodeCount: snapshot.nodes.length,
       offlineNodeCount: offlineNodeCount,
       failedTaskCount: tasks.failedTaskCount,
@@ -44,11 +42,11 @@ DatacenterNodeHealth _deriveNodeHealth(ClusterNode node) {
 }
 
 DatacenterTaskActivity _deriveTaskActivity(List<ClusterTask> tasks) {
-  int runningTaskCount = 0;
-  int successfulTaskCount = 0;
-  int failedTaskCount = 0;
-  int unknownCompletedTaskCount = 0;
-  for (final ClusterTask task in tasks) {
+  var runningTaskCount = 0;
+  var successfulTaskCount = 0;
+  var failedTaskCount = 0;
+  var unknownCompletedTaskCount = 0;
+  for (final task in tasks) {
     switch (task.state) {
       case ClusterTaskState.running:
         runningTaskCount += 1;
@@ -69,11 +67,11 @@ DatacenterTaskActivity _deriveTaskActivity(List<ClusterTask> tasks) {
 }
 
 DatacenterWorkload _deriveWorkload(List<PveGuest> guests) {
-  int runningVirtualMachines = 0;
-  int totalVirtualMachines = 0;
-  int runningContainers = 0;
-  int totalContainers = 0;
-  for (final PveGuest guest in guests) {
+  var runningVirtualMachines = 0;
+  var totalVirtualMachines = 0;
+  var runningContainers = 0;
+  var totalContainers = 0;
+  for (final guest in guests) {
     switch (guest.kind) {
       case GuestKind.virtualMachine:
         totalVirtualMachines += 1;
@@ -96,34 +94,12 @@ DatacenterWorkload _deriveWorkload(List<PveGuest> guests) {
 }
 
 DatacenterPressureSummary _derivePressure(List<ClusterNode> nodes) {
-  final List<ClusterNode> onlineNodes = nodes
-      .where((ClusterNode node) => node.isOnline)
-      .toList(growable: false);
-  final List<_ReportedNodeCpu> reportedCpu = onlineNodes
-      .map(
-        (ClusterNode node) =>
-            _ReportedNodeCpu(node: node, pressure: _cpuPressureForNode(node)),
-      )
-      .where((_ReportedNodeCpu report) => report.pressure != null)
-      .toList(growable: false);
-  _ReportedNodeCpu? highestCpu;
-  for (final _ReportedNodeCpu report in reportedCpu) {
-    final _ReportedNodeCpu? currentHighest = highestCpu;
-    if (currentHighest == null ||
-        report.pressure!.fraction > currentHighest.pressure!.fraction) {
-      highestCpu = report;
-    }
-  }
+  final onlineNodes = _onlineNodes(nodes);
+  final reportedCpu = _reportedCpuPressure(onlineNodes);
+  final highestCpu = _highestCpuPressure(reportedCpu);
 
   return DatacenterPressureSummary(
-    cpu: highestCpu == null
-        ? null
-        : DatacenterPressureMetric(
-            fraction: highestCpu.pressure!.fraction,
-            reportedNodeCount: reportedCpu.length,
-            aggregation: DatacenterPressureAggregation.peakReportedNode,
-            representativeNodeName: highestCpu.node.name,
-          ),
+    cpu: _peakCpuMetric(highestCpu, reportedCpu.length),
     memory: _aggregateBytePressure(
       onlineNodes,
       (ClusterNode node) => node.memoryBytes,
@@ -137,9 +113,67 @@ DatacenterPressureSummary _derivePressure(List<ClusterNode> nodes) {
   );
 }
 
+List<ClusterNode> _onlineNodes(Iterable<ClusterNode> nodes) {
+  final onlineNodes = <ClusterNode>[];
+  for (final node in nodes) {
+    if (!node.isOnline) {
+      continue;
+    }
+    onlineNodes.add(node);
+  }
+  return onlineNodes;
+}
+
+List<_ReportedCpuPressure> _reportedCpuPressure(Iterable<ClusterNode> nodes) {
+  final reports = <_ReportedCpuPressure>[];
+  for (final node in nodes) {
+    final pressure = _cpuPressureForNode(node);
+    if (pressure == null) {
+      continue;
+    }
+    reports.add(_ReportedCpuPressure(node: node, pressure: pressure));
+  }
+  return reports;
+}
+
+_ReportedCpuPressure? _highestCpuPressure(
+  Iterable<_ReportedCpuPressure> reports,
+) {
+  _ReportedCpuPressure? highest;
+  for (final report in reports) {
+    final currentHighest = highest;
+    if (currentHighest == null) {
+      highest = report;
+      continue;
+    }
+    if (report.pressure.fraction > currentHighest.pressure.fraction) {
+      highest = report;
+    }
+  }
+  return highest;
+}
+
+DatacenterPressureMetric? _peakCpuMetric(
+  _ReportedCpuPressure? highestCpu,
+  int reportedNodeCount,
+) {
+  if (highestCpu == null) {
+    return null;
+  }
+  return DatacenterPressureMetric(
+    fraction: highestCpu.pressure.fraction,
+    reportedNodeCount: reportedNodeCount,
+    aggregation: DatacenterPressureAggregation.peakReportedNode,
+    representativeNodeName: highestCpu.node.name,
+  );
+}
+
 DatacenterPressureMetric? _cpuPressureForNode(ClusterNode node) {
-  final double? cpuFraction = node.cpuFraction;
-  if (cpuFraction == null || cpuFraction < 0) {
+  final cpuFraction = node.cpuFraction;
+  if (cpuFraction == null) {
+    return null;
+  }
+  if (cpuFraction < 0) {
     return null;
   }
   return DatacenterPressureMetric(
@@ -154,10 +188,16 @@ DatacenterPressureMetric? _bytePressureForNode(
   int? usedBytes,
   int? capacityBytes,
 ) {
-  if (usedBytes == null ||
-      capacityBytes == null ||
-      usedBytes < 0 ||
-      capacityBytes <= 0) {
+  if (usedBytes == null) {
+    return null;
+  }
+  if (capacityBytes == null) {
+    return null;
+  }
+  if (usedBytes < 0) {
+    return null;
+  }
+  if (capacityBytes <= 0) {
     return null;
   }
   return DatacenterPressureMetric(
@@ -174,11 +214,11 @@ DatacenterPressureMetric? _aggregateBytePressure(
   int? Function(ClusterNode node) usedSelector,
   int? Function(ClusterNode node) capacitySelector,
 ) {
-  int usedBytes = 0;
-  int capacityBytes = 0;
-  int reportedNodeCount = 0;
-  for (final ClusterNode node in nodes) {
-    final DatacenterPressureMetric? pressure = _bytePressureForNode(
+  var usedBytes = 0;
+  var capacityBytes = 0;
+  var reportedNodeCount = 0;
+  for (final node in nodes) {
+    final pressure = _bytePressureForNode(
       usedSelector(node),
       capacitySelector(node),
     );
@@ -207,8 +247,8 @@ List<DatacenterHealthIssue> _deriveIssues({
   required int failedTaskCount,
   required List<DatacenterNodeHealth> nodes,
 }) {
-  final List<DatacenterHealthIssue> criticalIssues = <DatacenterHealthIssue>[];
-  final List<DatacenterHealthIssue> warningIssues = <DatacenterHealthIssue>[];
+  final criticalIssues = <DatacenterHealthIssue>[];
+  final warningIssues = <DatacenterHealthIssue>[];
   if (offlineNodeCount > 0) {
     criticalIssues.add(
       DatacenterHealthIssue(
@@ -221,7 +261,7 @@ List<DatacenterHealthIssue> _deriveIssues({
       ),
     );
   }
-  for (final DatacenterNodeHealth node in nodes) {
+  for (final node in nodes) {
     _addNodePressureIssue(
       criticalIssues,
       node: node,
@@ -248,7 +288,7 @@ List<DatacenterHealthIssue> _deriveIssues({
       ),
     );
   }
-  for (final DatacenterNodeHealth node in nodes) {
+  for (final node in nodes) {
     _addNodePressureIssue(
       warningIssues,
       node: node,
@@ -266,7 +306,7 @@ void _addNodePressureIssue(
   if (!node.node.isOnline) {
     return;
   }
-  final List<String> labels = <String>[
+  final labels = <String>[
     if (node.cpu?.level == level) 'CPU',
     if (node.memory?.level == level) 'memory',
     if (node.rootDisk?.level == level) 'root disk',
@@ -274,7 +314,7 @@ void _addNodePressureIssue(
   if (labels.isEmpty) {
     return;
   }
-  final bool isCritical = level == DatacenterPressureLevel.critical;
+  final isCritical = level == DatacenterPressureLevel.critical;
   issues.add(
     DatacenterHealthIssue(
       severity: isCritical
@@ -313,7 +353,7 @@ DatacenterHealthState _stateForIssues(List<DatacenterHealthIssue> issues) {
 }
 
 int _compareNodeHealth(DatacenterNodeHealth left, DatacenterNodeHealth right) {
-  final int rankComparison = _nodeHealthSortRank(
+  final rankComparison = _nodeHealthSortRank(
     left,
   ).compareTo(_nodeHealthSortRank(right));
   if (rankComparison != 0) {
@@ -337,9 +377,9 @@ String _countMessage(int count, String singular, String plural) {
   return '$count ${count == 1 ? singular : plural}.';
 }
 
-class _ReportedNodeCpu {
-  const _ReportedNodeCpu({required this.node, required this.pressure});
+class _ReportedCpuPressure {
+  const _ReportedCpuPressure({required this.node, required this.pressure});
 
   final ClusterNode node;
-  final DatacenterPressureMetric? pressure;
+  final DatacenterPressureMetric pressure;
 }

@@ -23,20 +23,20 @@ class DatacenterOperationalSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int stoppedGuests =
+    final stoppedGuests =
         health.workload.totalGuests - health.workload.runningGuests;
-    final List<ClusterStorage> storagesWithCapacity = snapshot.storages
+    final storagesWithCapacity = snapshot.storages
         .where(
           (ClusterStorage storage) =>
               storage.usedBytes != null && storage.capacityBytes != null,
         )
         .toList(growable: false);
-    final int reportingStorageCount = storagesWithCapacity.length;
-    final int storageUsedBytes = storagesWithCapacity.fold<int>(
+    final reportingStorageCount = storagesWithCapacity.length;
+    final storageUsedBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
-    final int storageCapacityBytes = storagesWithCapacity.fold<int>(
+    final storageCapacityBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) => total + storage.capacityBytes!,
     );
@@ -180,7 +180,7 @@ class _DashboardPressureMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForPressure(pressure);
+    final tone = dashboardToneForPressure(pressure);
     return PveResourceMeter(
       label: label,
       value: datacenterPressureValueLabel(pressure),
@@ -194,7 +194,7 @@ class _DashboardPressureMeter extends StatelessWidget {
     DatacenterPressureMetric? pressure, {
     required String? representativeNode,
   }) {
-    final String scope = datacenterPressureScopeLabel(pressure);
+    final scope = datacenterPressureScopeLabel(pressure);
     if (representativeNode == null) {
       return scope;
     }

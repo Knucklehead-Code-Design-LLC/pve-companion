@@ -37,9 +37,7 @@ class AppleLocalNotificationRepository implements LocalNotificationRepository {
     if (!_isSupportedPlatform) {
       return LocalNotificationAuthorization.unsupported;
     }
-    final String? value = await _channel.invokeMethod<String>(
-      'loadAuthorization',
-    );
+    final value = await _channel.invokeMethod<String>('loadAuthorization');
     return _authorization(value);
   }
 
@@ -48,9 +46,7 @@ class AppleLocalNotificationRepository implements LocalNotificationRepository {
     if (!_isSupportedPlatform) {
       return LocalNotificationAuthorization.unsupported;
     }
-    final String? value = await _channel.invokeMethod<String>(
-      'requestAuthorization',
-    );
+    final value = await _channel.invokeMethod<String>('requestAuthorization');
     return _authorization(value);
   }
 

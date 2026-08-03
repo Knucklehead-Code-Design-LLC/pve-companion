@@ -4,7 +4,6 @@ import 'package:shared_preferences/shared_preferences.dart';
 import '../core/security/secure_value_store.dart';
 import '../features/cluster_overview/application/cluster_overview_controller.dart';
 import '../features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
-import '../features/cluster_overview/domain/datacenter_health.dart';
 import '../features/cluster_overview/domain/datacenter_health_evaluator.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
 import '../features/connection_profiles/data/connection_credential_store.dart';
@@ -61,9 +60,8 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   static Future<PveCompanionController> create() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
-    final ConnectionProfilesController connectionProfiles =
-        _createConnectionProfiles(preferences);
+    final preferences = await SharedPreferences.getInstance();
+    final connectionProfiles = _createConnectionProfiles(preferences);
     return PveCompanionController(
       connectionProfiles: connectionProfiles,
       clusterOverview: ClusterOverviewController(
@@ -88,7 +86,7 @@ class PveCompanionController extends ChangeNotifier {
   /// reachability pass. It intentionally excludes workspace and system-surface
   /// state because that work has no UI dependency.
   static Future<DatacenterBackgroundMonitor> createBackgroundMonitor() async {
-    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    final preferences = await SharedPreferences.getInstance();
     return DatacenterBackgroundMonitor(
       connectionProfiles: _createConnectionProfiles(preferences),
       notifications: DatacenterNotificationsController(
@@ -158,12 +156,11 @@ class PveCompanionController extends ChangeNotifier {
     required ConnectionCredentials credentials,
     required bool persistCredentials,
   }) async {
-    final ConnectionAttemptResult result = await _connectionProfiles
-        .saveAndConnect(
-          profile: profile,
-          credentials: credentials,
-          persistCredentials: persistCredentials,
-        );
+    final result = await _connectionProfiles.saveAndConnect(
+      profile: profile,
+      credentials: credentials,
+      persistCredentials: persistCredentials,
+    );
     if (result.kind == ConnectionAttemptKind.connected) {
       await _activateConnectedWorkspace();
     }
@@ -172,7 +169,7 @@ class PveCompanionController extends ChangeNotifier {
 
   Future<ConnectionAttemptResult> connectProfile(String profileId) async {
     ConnectionProfile? profile;
-    for (final ConnectionProfile candidate in _connectionProfiles.profiles) {
+    for (final candidate in _connectionProfiles.profiles) {
       if (candidate.id == profileId) {
         profile = candidate;
         break;
@@ -183,8 +180,7 @@ class PveCompanionController extends ChangeNotifier {
         'The selected server no longer exists.',
       );
     }
-    final ConnectionAttemptResult result = await _connectionProfiles
-        .connectProfile(profile);
+    final result = await _connectionProfiles.connectProfile(profile);
     if (result.kind == ConnectionAttemptKind.connected) {
       await _activateConnectedWorkspace();
     }
@@ -192,8 +188,7 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   Future<ConnectionAttemptResult> connectSelectedProfile() async {
-    final ConnectionAttemptResult result = await _connectionProfiles
-        .connectSelectedProfile();
+    final result = await _connectionProfiles.connectSelectedProfile();
     if (result.kind == ConnectionAttemptKind.connected) {
       await _activateConnectedWorkspace();
     }
@@ -202,7 +197,7 @@ class PveCompanionController extends ChangeNotifier {
 
   Future<void> _activateConnectedWorkspace() async {
     await _synchronizeNotifications();
-    final ConnectionProfile? profile = _connectionProfiles.selectedProfile;
+    final profile = _connectionProfiles.selectedProfile;
     if (profile != null) {
       await _notifications.evaluateConnection(
         profile.id,
@@ -225,10 +220,8 @@ class PveCompanionController extends ChangeNotifier {
     if (snapshot == null) {
       return;
     }
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
-      snapshot,
-    );
-    final ConnectionProfile? profile = _connectionProfiles.selectedProfile;
+    final health = DatacenterHealthEvaluator.evaluate(snapshot);
+    final profile = _connectionProfiles.selectedProfile;
     await Future.wait<void>(<Future<void>>[
       _systemSurfaces.publish(
         DatacenterSurfaceSnapshot.fromCluster(
@@ -263,9 +256,9 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   Future<bool> removeProfile(String profileId) async {
-    final bool removesSelectedProfile =
+    final removesSelectedProfile =
         _connectionProfiles.selectedProfile?.id == profileId;
-    final bool removed = await _connectionProfiles.removeProfile(profileId);
+    final removed = await _connectionProfiles.removeProfile(profileId);
     if (removed && _connectionProfiles.activeSession == null) {
       _clusterOverview.clear();
     }
@@ -281,12 +274,12 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   Future<void> _synchronizeNotifications() async {
-    final Future<void>? existing = _notificationSynchronization;
+    final existing = _notificationSynchronization;
     if (existing != null) {
       await existing;
       return;
     }
-    final Future<void> synchronization = _notifications.initialize();
+    final synchronization = _notifications.initialize();
     _notificationSynchronization = synchronization;
     try {
       await synchronization;
@@ -298,10 +291,11 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   Future<void> _synchronizeBackgroundMonitoringEligibility() async {
-    final ConnectionProfile? profile = _connectionProfiles.selectedProfile;
-    final bool eligible =
-        profile != null &&
-        await _connectionProfiles.hasStoredCredentials(profile);
+    final profile = _connectionProfiles.selectedProfile;
+    var eligible = false;
+    if (profile != null) {
+      eligible = await _connectionProfiles.hasStoredCredentials(profile);
+    }
     await _notifications.setBackgroundMonitoringEligible(eligible);
   }
 

@@ -7,8 +7,7 @@ import 'features/notifications/data/datacenter_background_monitor_scheduler.dart
 Future<void> main() async {
   WidgetsFlutterBinding.ensureInitialized();
 
-  final PveCompanionController controller =
-      await PveCompanionController.create();
+  final controller = await PveCompanionController.create();
   AppleDatacenterBackgroundMonitorScheduler.registerMacosRefreshHandler(
     datacenterBackgroundRefresh,
   );
@@ -21,25 +20,36 @@ Future<void> main() async {
 @pragma('vm:entry-point')
 Future<void> datacenterBackgroundRefresh() async {
   WidgetsFlutterBinding.ensureInitialized();
-  final AppleDatacenterBackgroundMonitorScheduler scheduler =
-      AppleDatacenterBackgroundMonitorScheduler();
-  bool completed = false;
+  final scheduler = AppleDatacenterBackgroundMonitorScheduler();
+
+  final completed = await _runDatacenterBackgroundRefresh();
+  await _completeDatacenterBackgroundRefresh(
+    scheduler: scheduler,
+    completed: completed,
+  );
+}
+
+Future<bool> _runDatacenterBackgroundRefresh() async {
   try {
     final monitor = await PveCompanionController.createBackgroundMonitor();
     try {
       await monitor.refresh();
-      completed = true;
+      return true;
     } finally {
       monitor.dispose();
     }
   } catch (_) {
-    // The native task receives a failed completion below and keeps the next
-    // opportunity under iOS's control.
-  } finally {
-    try {
-      await scheduler.complete(success: completed);
-    } catch (_) {
-      // The host owns the expiration handler when the process is terminating.
-    }
+    return false;
+  }
+}
+
+Future<void> _completeDatacenterBackgroundRefresh({
+  required AppleDatacenterBackgroundMonitorScheduler scheduler,
+  required bool completed,
+}) async {
+  try {
+    await scheduler.complete(success: completed);
+  } catch (_) {
+    // The OS can terminate the host before its completion callback is usable.
   }
 }

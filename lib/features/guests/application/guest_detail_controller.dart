@@ -57,16 +57,13 @@ class GuestDetailController extends ChangeNotifier {
       _activeTask?.state == ProxmoxTaskState.running || _operationInFlight;
 
   Future<void> load() async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = GuestDetailLoadState.loading;
     _errorMessage = null;
     _notify();
 
     try {
-      final PveGuestDetails details = await _repository.loadDetails(
-        _session,
-        _guest,
-      );
+      final details = await _repository.loadDetails(_session, _guest);
       if (_isStale(requestEpoch)) {
         return;
       }
@@ -166,7 +163,7 @@ class GuestDetailController extends ChangeNotifier {
     _notify();
 
     try {
-      final ProxmoxTaskReference? task = await submit();
+      final task = await submit();
       if (_isDisposed) {
         return false;
       }
@@ -196,12 +193,12 @@ class GuestDetailController extends ChangeNotifier {
   }
 
   void _trackTask(ProxmoxTaskReference reference) {
-    final int taskEpoch = ++_taskEpoch;
+    final taskEpoch = ++_taskEpoch;
     unawaited(_pollTask(reference, taskEpoch));
   }
 
   Future<void> _pollTask(ProxmoxTaskReference reference, int taskEpoch) async {
-    final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+    final result = await pollProxmoxTask(
       _taskClient,
       _session,
       reference,
@@ -230,7 +227,7 @@ class GuestDetailController extends ChangeNotifier {
   }
 
   Future<void> _notifyParentOfTerminalTask(int taskEpoch) async {
-    final Future<void> Function()? onTaskTerminal = _onTaskTerminal;
+    final onTaskTerminal = _onTaskTerminal;
     if (onTaskTerminal == null) {
       return;
     }

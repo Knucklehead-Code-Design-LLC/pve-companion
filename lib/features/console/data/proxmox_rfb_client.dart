@@ -86,7 +86,7 @@ class ProxmoxRfbClient {
   }
 
   Future<void> _completeHandshake() async {
-    final int serverMinorVersion = await _negotiateProtocolVersion();
+    final serverMinorVersion = await _negotiateProtocolVersion();
     await _negotiateSecurity(serverMinorVersion);
     _send(<int>[1]); // Shared session.
     await _readServerInit();
@@ -101,7 +101,7 @@ class ProxmoxRfbClient {
     if (!isConnected) {
       return;
     }
-    final ByteData data = ByteData(8)
+    final data = ByteData(8)
       ..setUint8(0, 4)
       ..setUint8(1, down ? 1 : 0)
       ..setUint32(4, keySym);
@@ -117,7 +117,7 @@ class ProxmoxRfbClient {
     if (!isConnected || _width == 0 || _height == 0) {
       return;
     }
-    final ByteData data = ByteData(6)
+    final data = ByteData(6)
       ..setUint8(0, 5)
       ..setUint8(1, buttons & 0xff)
       ..setUint16(2, x.clamp(0, _width - 1).toInt())
@@ -129,13 +129,13 @@ class ProxmoxRfbClient {
     if (!isConnected || text.isEmpty) {
       return;
     }
-    final Uint8List textBytes = Uint8List.fromList(utf8.encode(text));
+    final textBytes = Uint8List.fromList(utf8.encode(text));
     if (textBytes.length > _maxClipboardBytes) {
       throw const PveConsoleProtocolException(
         'Clipboard text is too large for the guest console.',
       );
     }
-    final ByteData header = ByteData(8)
+    final header = ByteData(8)
       ..setUint8(0, 6)
       ..setUint32(4, textBytes.length);
     _send(
@@ -164,17 +164,15 @@ class ProxmoxRfbClient {
   }
 
   Future<int> _negotiateProtocolVersion() async {
-    final String version = ascii.decode(await _reader.read(12));
-    final RegExpMatch? match = RegExp(
-      r'^RFB 003\.(\d{3})\n$',
-    ).firstMatch(version);
+    final version = ascii.decode(await _reader.read(12));
+    final match = RegExp(r'^RFB 003\.(\d{3})\n$').firstMatch(version);
     if (match == null) {
       throw const PveConsoleProtocolException(
         'The guest console returned an unsupported RFB version.',
       );
     }
-    final int serverMinorVersion = int.parse(match.group(1)!);
-    final int selectedMinorVersion = _selectProtocolMinorVersion(
+    final serverMinorVersion = int.parse(match.group(1)!);
+    final selectedMinorVersion = _selectProtocolMinorVersion(
       serverMinorVersion,
     );
     if (selectedMinorVersion == 0) {
@@ -205,11 +203,9 @@ class ProxmoxRfbClient {
 
   Future<void> _negotiateSecurity(int protocolMinorVersion) async {
     try {
-      final List<int> securityTypes = await _readSecurityTypes(
-        protocolMinorVersion,
-      );
+      final securityTypes = await _readSecurityTypes(protocolMinorVersion);
 
-      final int selectedSecurityType = _selectSecurityType(securityTypes);
+      final selectedSecurityType = _selectSecurityType(securityTypes);
       if (selectedSecurityType == 0) {
         throw const PveConsoleProtocolException(
           'The guest console requires an unsupported authentication method.',
@@ -220,7 +216,7 @@ class ProxmoxRfbClient {
         _send(<int>[selectedSecurityType]);
       }
       if (selectedSecurityType == _securityVncAuthentication) {
-        final Uint8List challenge = await _reader.read(16);
+        final challenge = await _reader.read(16);
         _send(_transport.respondToVncChallenge(challenge));
       }
 
@@ -228,12 +224,12 @@ class ProxmoxRfbClient {
       if (protocolMinorVersion == 3 && selectedSecurityType == _securityNone) {
         return;
       }
-      final int result = await _reader.readUint32();
+      final result = await _reader.readUint32();
       if (result == 0) {
         return;
       }
       if (protocolMinorVersion >= 8) {
-        final String reason = await _readFailureReason();
+        final reason = await _readFailureReason();
         throw PveConsoleProtocolException(reason);
       }
       throw const PveConsoleProtocolException(
@@ -246,19 +242,19 @@ class ProxmoxRfbClient {
 
   Future<List<int>> _readSecurityTypes(int protocolMinorVersion) async {
     if (protocolMinorVersion == 3) {
-      final int securityType = await _reader.readUint32();
+      final securityType = await _reader.readUint32();
       if (securityType != 0) {
         return <int>[securityType];
       }
-      final String reason = await _readFailureReason();
+      final reason = await _readFailureReason();
       throw PveConsoleProtocolException(reason);
     }
 
-    final int count = await _reader.readUint8();
+    final count = await _reader.readUint8();
     if (count != 0) {
       return (await _reader.read(count)).toList(growable: false);
     }
-    final String reason = await _readFailureReason();
+    final reason = await _readFailureReason();
     throw PveConsoleProtocolException(reason);
   }
 
@@ -276,7 +272,7 @@ class ProxmoxRfbClient {
     _width = await _reader.readUint16();
     _height = await _reader.readUint16();
     await _reader.read(16); // The server format is replaced immediately.
-    final int nameLength = await _reader.readUint32();
+    final nameLength = await _reader.readUint32();
     if (nameLength > 4096) {
       throw const PveConsoleProtocolException(
         'The guest console sent an invalid server name.',
@@ -287,7 +283,7 @@ class ProxmoxRfbClient {
   }
 
   void _sendSetPixelFormat() {
-    final ByteData data = ByteData(20)
+    final data = ByteData(20)
       ..setUint8(0, 0)
       // 32-bit little-endian true-color pixels with 8-bit RGB channels.
       ..setUint8(4, 32)
@@ -304,7 +300,7 @@ class ProxmoxRfbClient {
   }
 
   void _sendSetEncodings() {
-    final ByteData data = ByteData(12)
+    final data = ByteData(12)
       ..setUint8(0, 2)
       ..setUint16(2, 2)
       ..setInt32(4, _rawEncoding)
@@ -316,7 +312,7 @@ class ProxmoxRfbClient {
     if (_width == 0 || _height == 0) {
       return;
     }
-    final ByteData data = ByteData(10)
+    final data = ByteData(10)
       ..setUint8(0, 3)
       ..setUint8(1, incremental ? 1 : 0)
       ..setUint16(6, _width)
@@ -327,17 +323,18 @@ class ProxmoxRfbClient {
   Future<void> _readServerMessages() async {
     try {
       while (!_closed) {
-        final int messageType = await _reader.readUint8();
+        final messageType = await _reader.readUint8();
         switch (messageType) {
           case 0:
             await _reader.readUint8(); // Padding.
-            final int rectangleCount = await _reader.readUint16();
-            bool changed = false;
-            for (int index = 0; index < rectangleCount; index += 1) {
-              changed = await _readFramebufferRectangle() || changed;
+            final rectangleCount = await _reader.readUint16();
+            var changed = false;
+            for (var index = 0; index < rectangleCount; index += 1) {
+              final rectangleChanged = await _readFramebufferRectangle();
+              changed = rectangleChanged || changed;
             }
             if (changed && !_closed) {
-              final Uint8List framebuffer = _framebuffer!;
+              final framebuffer = _framebuffer!;
               _framebuffers.add(
                 PveConsoleFramebuffer(
                   width: _width,
@@ -352,7 +349,7 @@ class ProxmoxRfbClient {
           case 1:
             await _reader.readUint8(); // Padding.
             await _reader.readUint16(); // First color.
-            final int colorCount = await _reader.readUint16();
+            final colorCount = await _reader.readUint16();
             await _reader.skip(colorCount * 6);
             break;
           case 2:
@@ -360,7 +357,7 @@ class ProxmoxRfbClient {
             break;
           case 3:
             await _reader.skip(3);
-            final int length = await _reader.readUint32();
+            final length = await _reader.readUint32();
             if (length > _maxClipboardBytes) {
               throw const PveConsoleProtocolException(
                 'The guest console sent an oversized clipboard update.',
@@ -386,11 +383,11 @@ class ProxmoxRfbClient {
   }
 
   Future<bool> _readFramebufferRectangle() async {
-    final int x = await _reader.readUint16();
-    final int y = await _reader.readUint16();
-    final int width = await _reader.readUint16();
-    final int height = await _reader.readUint16();
-    final int encoding = await _reader.readInt32();
+    final x = await _reader.readUint16();
+    final y = await _reader.readUint16();
+    final width = await _reader.readUint16();
+    final height = await _reader.readUint16();
+    final encoding = await _reader.readInt32();
 
     if (encoding == _desktopSizeEncoding) {
       _allocateFramebuffer(width, height);
@@ -407,13 +404,13 @@ class ProxmoxRfbClient {
       );
     }
 
-    final int pixelCount = width * height;
-    final Uint8List source = await _reader.read(pixelCount * 4);
-    final Uint8List target = _framebuffer!;
-    int sourceOffset = 0;
-    for (int row = 0; row < height; row += 1) {
-      int targetOffset = ((y + row) * _width + x) * 4;
-      for (int column = 0; column < width; column += 1) {
+    final pixelCount = width * height;
+    final source = await _reader.read(pixelCount * 4);
+    final target = _framebuffer!;
+    var sourceOffset = 0;
+    for (var row = 0; row < height; row += 1) {
+      var targetOffset = ((y + row) * _width + x) * 4;
+      for (var column = 0; column < width; column += 1) {
         target[targetOffset] = source[sourceOffset + 2];
         target[targetOffset + 1] = source[sourceOffset + 1];
         target[targetOffset + 2] = source[sourceOffset];
@@ -439,11 +436,11 @@ class ProxmoxRfbClient {
   }
 
   Future<String> _readFailureReason() async {
-    final int length = await _reader.readUint32();
+    final length = await _reader.readUint32();
     if (length > 4096) {
       return 'The guest console rejected its authentication ticket.';
     }
-    final String message = utf8
+    final message = utf8
         .decode(await _reader.read(length), allowMalformed: true)
         .trim();
     return message.isEmpty
@@ -474,17 +471,17 @@ class _RfbByteReader {
   Future<int> readUint8() async => (await read(1)).first;
 
   Future<int> readUint16() async {
-    final Uint8List bytes = await read(2);
+    final bytes = await read(2);
     return (bytes[0] << 8) | bytes[1];
   }
 
   Future<int> readUint32() async {
-    final Uint8List bytes = await read(4);
+    final bytes = await read(4);
     return (bytes[0] << 24) | (bytes[1] << 16) | (bytes[2] << 8) | bytes[3];
   }
 
   Future<int> readInt32() async {
-    final int value = await readUint32();
+    final value = await readUint32();
     return value >= 0x80000000 ? value - 0x100000000 : value;
   }
 
@@ -495,15 +492,15 @@ class _RfbByteReader {
       );
     }
     while (_pending.length - _pendingOffset < length) {
-      final bool hasNextChunk = await _iterator.moveNext();
+      final hasNextChunk = await _iterator.moveNext();
       if (!hasNextChunk) {
         throw const PveConsoleProtocolException(
           'The guest console disconnected.',
         );
       }
-      final Uint8List incoming = _iterator.current;
-      final int pendingLength = _pending.length - _pendingOffset;
-      final Uint8List joined = Uint8List(pendingLength + incoming.length);
+      final incoming = _iterator.current;
+      final pendingLength = _pending.length - _pendingOffset;
+      final joined = Uint8List(pendingLength + incoming.length);
       if (pendingLength > 0) {
         joined.setRange(0, pendingLength, _pending, _pendingOffset);
       }
@@ -511,7 +508,7 @@ class _RfbByteReader {
       _pending = joined;
       _pendingOffset = 0;
     }
-    final Uint8List result = Uint8List.fromList(
+    final result = Uint8List.fromList(
       _pending.sublist(_pendingOffset, _pendingOffset + length),
     );
     _pendingOffset += length;
@@ -528,9 +525,9 @@ class _RfbByteReader {
         'The guest console requested an invalid message length.',
       );
     }
-    int remaining = length;
+    var remaining = length;
     while (remaining > 0) {
-      final int chunkLength = remaining > 64 * 1024 ? 64 * 1024 : remaining;
+      final chunkLength = remaining > 64 * 1024 ? 64 * 1024 : remaining;
       await read(chunkLength);
       remaining -= chunkLength;
     }

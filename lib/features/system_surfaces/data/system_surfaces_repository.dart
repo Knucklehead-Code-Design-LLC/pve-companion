@@ -54,8 +54,9 @@ class AppleSystemSurfacesRepository implements SystemSurfacesRepository {
     if (!_isSupportedPlatform) {
       return const SystemSurfaceCapabilities.unsupported();
     }
-    final Map<Object?, Object?>? result = await _channel
-        .invokeMapMethod<Object?, Object?>('loadCapabilities');
+    final result = await _channel.invokeMapMethod<Object?, Object?>(
+      'loadCapabilities',
+    );
     if (result == null) {
       return const SystemSurfaceCapabilities.unsupported();
     }
@@ -93,13 +94,13 @@ class AppleSystemSurfacesRepository implements SystemSurfacesRepository {
     if (!_isSupportedPlatform) {
       return false;
     }
-    final Map<String, Object> arguments = snapshot.toPlatformMap()
+    final arguments = snapshot.toPlatformMap()
       ..['durationSeconds'] = duration.inSeconds;
-    return await _channel.invokeMethod<bool>(
-          'startDatacenterWatch',
-          arguments,
-        ) ??
-        false;
+    final started = await _channel.invokeMethod<bool>(
+      'startDatacenterWatch',
+      arguments,
+    );
+    return started ?? false;
   }
 
   @override

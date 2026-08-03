@@ -11,20 +11,20 @@ void main() {
   test(
     'closes a transport that arrives after the console is disconnected',
     () async {
-      final DeferredConsoleRepository repository = DeferredConsoleRepository();
-      final GuestConsoleController controller = GuestConsoleController(
+      final repository = DeferredConsoleRepository();
+      final controller = GuestConsoleController(
         repository: repository,
         session: FakeProxmoxSession(),
         guest: _guest,
       );
       addTearDown(controller.dispose);
 
-      final Future<void> connection = controller.connect();
+      final connection = controller.connect();
       await Future<void>.delayed(Duration.zero);
       expect(controller.state, GuestConsoleConnectionState.connecting);
 
       await controller.disconnect();
-      final MemoryConsoleTransport transport = MemoryConsoleTransport();
+      final transport = MemoryConsoleTransport();
       repository.request.complete(transport);
       await connection;
 
@@ -34,7 +34,7 @@ void main() {
   );
 
   test('shows a safe server error when the console cannot be opened', () async {
-    final GuestConsoleController controller = GuestConsoleController(
+    final controller = GuestConsoleController(
       repository: _FailingConsoleRepository(),
       session: FakeProxmoxSession(),
       guest: _guest,

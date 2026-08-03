@@ -118,7 +118,7 @@ commitments.
 ```sh
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
-flutter analyze
+flutter analyze --fatal-infos
 flutter test
 xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
   -configuration Debug -destination 'platform=iOS Simulator,name=iPhone 17 Pro' test

@@ -11,9 +11,8 @@ void main() {
   test(
     'prevents duplicate guest power requests while an action is in flight',
     () async {
-      final _ControlledGuestRepository repository =
-          _ControlledGuestRepository();
-      final GuestDetailController controller = GuestDetailController(
+      final repository = _ControlledGuestRepository();
+      final controller = GuestDetailController(
         repository: repository,
         session: _FakeSession(),
         guest: const PveGuest(
@@ -24,10 +23,8 @@ void main() {
         ),
       );
 
-      final Future<bool> firstAction = controller.runPowerAction(
-        GuestPowerAction.shutdown,
-      );
-      final bool secondAction = await controller.runPowerAction(
+      final firstAction = controller.runPowerAction(GuestPowerAction.shutdown);
+      final secondAction = await controller.runPowerAction(
         GuestPowerAction.shutdown,
       );
 
@@ -43,12 +40,10 @@ void main() {
   test(
     'refreshes guest details and the parent after a successful task',
     () async {
-      final List<String> refreshEvents = <String>[];
-      final _TerminalGuestRepository repository = _TerminalGuestRepository(
-        refreshEvents,
-      );
-      final Completer<void> parentRefreshed = Completer<void>();
-      final GuestDetailController controller = GuestDetailController(
+      final refreshEvents = <String>[];
+      final repository = _TerminalGuestRepository(refreshEvents);
+      final parentRefreshed = Completer<void>();
+      final controller = GuestDetailController(
         repository: repository,
         session: const _TerminalTaskSession(exitStatus: 'OK'),
         guest: _guest,

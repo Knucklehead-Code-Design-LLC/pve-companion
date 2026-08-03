@@ -5,11 +5,9 @@ import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 
 void main() {
   test('Cupertino typography preserves complete native text defaults', () {
-    for (final Brightness brightness in Brightness.values) {
-      final CupertinoTextThemeData textTheme = PveCompanionTheme.cupertino(
-        brightness,
-      ).textTheme;
-      final Color expectedPrimary = brightness == Brightness.dark
+    for (final brightness in Brightness.values) {
+      final textTheme = PveCompanionTheme.cupertino(brightness).textTheme;
+      final expectedPrimary = brightness == Brightness.dark
           ? PveAppleColors.accentDark
           : PveAppleColors.accent;
 

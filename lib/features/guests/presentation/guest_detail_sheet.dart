@@ -151,7 +151,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
   }
 
   Future<void> _confirmAndRunPowerAction(GuestPowerAction action) async {
-    final bool approved = await confirmGuestPowerAction(
+    final approved = await confirmGuestPowerAction(
       context,
       guest: widget.guest,
       action: action,
@@ -163,10 +163,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
   }
 
   Future<void> _createSnapshot() async {
-    final PveGuestSnapshotRequest? request = await showGuestSnapshotForm(
-      context,
-      guest: widget.guest,
-    );
+    final request = await showGuestSnapshotForm(context, guest: widget.guest);
     if (request == null || !mounted) {
       return;
     }
@@ -177,23 +174,23 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     PveGuestSnapshot snapshot,
     GuestSnapshotAction action,
   ) async {
-    final bool approved = await _confirmSnapshotAction(snapshot, action);
+    final approved = await _confirmSnapshotAction(snapshot, action);
     if (!approved || !mounted) {
       return;
     }
-    await switch (action) {
-      GuestSnapshotAction.rollback => await _controller.rollbackSnapshot(
-        snapshot,
-      ),
-      GuestSnapshotAction.delete => await _controller.deleteSnapshot(snapshot),
-    };
+    switch (action) {
+      case GuestSnapshotAction.rollback:
+        await _controller.rollbackSnapshot(snapshot);
+      case GuestSnapshotAction.delete:
+        await _controller.deleteSnapshot(snapshot);
+    }
   }
 
   Future<void> _runBackup() async {
     if (widget.backupStorageNames.isEmpty) {
       return;
     }
-    final PveGuestBackupRequest? request = await showGuestBackupForm(
+    final request = await showGuestBackupForm(
       context,
       storageNames: widget.backupStorageNames,
     );
@@ -201,7 +198,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       return;
     }
     if (request.mode == PveGuestBackupMode.stop) {
-      final bool approved = await _confirmBackupStopMode();
+      final approved = await _confirmBackupStopMode();
       if (!approved || !mounted) {
         return;
       }
@@ -210,19 +207,18 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
   }
 
   Future<void> _editConfiguration() async {
-    final PveGuestDetails? details = _controller.details;
+    final details = _controller.details;
     if (details == null) {
       return;
     }
-    final PveGuestConfigurationChange? change =
-        await showGuestConfigurationForm(
-          context,
-          configuration: details.configuration,
-        );
+    final change = await showGuestConfigurationForm(
+      context,
+      configuration: details.configuration,
+    );
     if (change == null || !mounted) {
       return;
     }
-    final bool saved = await _controller.updateConfiguration(change);
+    final saved = await _controller.updateConfiguration(change);
     if (saved && mounted) {
       await widget.onGuestPowerAction();
     }
@@ -232,8 +228,8 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     PveGuestSnapshot snapshot,
     GuestSnapshotAction action,
   ) async {
-    final bool rollback = action == GuestSnapshotAction.rollback;
-    final bool? approved = await showCupertinoDialog<bool>(
+    final rollback = action == GuestSnapshotAction.rollback;
+    final approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => CupertinoAlertDialog(
         title: Text(
@@ -263,7 +259,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
   }
 
   Future<bool> _confirmBackupStopMode() async {
-    final bool? approved = await showCupertinoDialog<bool>(
+    final approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => CupertinoAlertDialog(
         title: const Text('Stop guest for backup?'),

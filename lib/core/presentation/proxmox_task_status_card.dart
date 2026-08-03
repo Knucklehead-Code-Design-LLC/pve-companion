@@ -12,13 +12,13 @@ class ProxmoxTaskStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = switch (task.state) {
+    final accent = switch (task.state) {
       ProxmoxTaskState.running => PveAppleColors.primary(context),
       ProxmoxTaskState.successful => PveAppleColors.success(context),
       ProxmoxTaskState.failed => PveAppleColors.destructive(context),
       ProxmoxTaskState.unknown => PveAppleColors.warning(context),
     };
-    final IconData icon = switch (task.state) {
+    final icon = switch (task.state) {
       ProxmoxTaskState.running => CupertinoIcons.arrow_2_circlepath,
       ProxmoxTaskState.successful => CupertinoIcons.check_mark_circled_solid,
       ProxmoxTaskState.failed => CupertinoIcons.xmark_circle_fill,

@@ -162,17 +162,16 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
       _submitError = null;
     });
 
-    final ConnectionProfile profile = trustedProfile ?? _buildProfile();
-    final ConnectionCredentials credentials =
+    final profile = trustedProfile ?? _buildProfile();
+    final credentials =
         _authenticationKind == ConnectionAuthenticationKind.password
         ? ConnectionCredentials.password(_secretController.text)
         : ConnectionCredentials.apiToken(_secretController.text);
-    final ConnectionAttemptResult result = await widget.controller
-        .saveAndConnect(
-          profile: profile,
-          credentials: credentials,
-          persistCredentials: _persistCredentials,
-        );
+    final result = await widget.controller.saveAndConnect(
+      profile: profile,
+      credentials: credentials,
+      persistCredentials: _persistCredentials,
+    );
     if (!mounted) {
       return;
     }
@@ -215,7 +214,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
   }
 
   ConnectionProfile _buildProfile() {
-    final Uri endpoint = parseSecureEndpoint(_endpointController.text);
+    final endpoint = parseSecureEndpoint(_endpointController.text);
     return _authenticationKind == ConnectionAuthenticationKind.password
         ? ConnectionProfile.password(
             displayName: _nameController.text,
@@ -234,7 +233,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
     ConnectionProfile profile,
     String fingerprint,
   ) async {
-    final bool? trustsCertificate = await showCupertinoDialog<bool>(
+    final trustsCertificate = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
         return CertificateTrustDialog(
@@ -255,7 +254,7 @@ class _SecureConnectionIntro extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = PveAppleColors.primary(context);
+    final accent = PveAppleColors.primary(context);
     return Row(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[

@@ -9,8 +9,8 @@ import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('opens the matching VM console resource', () async {
-    final _ConsoleSession session = _ConsoleSession();
-    const PveGuest guest = PveGuest(
+    final session = _ConsoleSession();
+    const guest = PveGuest(
       vmid: 101,
       node: 'compute-a',
       kind: GuestKind.virtualMachine,
@@ -25,8 +25,8 @@ void main() {
   });
 
   test('opens the matching LXC console resource', () async {
-    final _ConsoleSession session = _ConsoleSession();
-    const PveGuest guest = PveGuest(
+    final session = _ConsoleSession();
+    const guest = PveGuest(
       vmid: 202,
       node: 'edge-a',
       kind: GuestKind.container,
@@ -39,8 +39,8 @@ void main() {
   });
 
   test('does not request a console for a template', () async {
-    final _ConsoleSession session = _ConsoleSession();
-    const PveGuest template = PveGuest(
+    final session = _ConsoleSession();
+    const template = PveGuest(
       vmid: 9000,
       node: 'compute-a',
       kind: GuestKind.virtualMachine,

@@ -5,7 +5,6 @@ import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
 import '../application/datacenter_notifications_controller.dart';
 import '../data/local_notification_repository.dart';
-import '../domain/datacenter_notification_preferences.dart';
 
 Future<void> showDatacenterNotificationsSheet(
   BuildContext context, {
@@ -79,16 +78,15 @@ class _NotificationContent extends StatelessWidget {
     if (controller.isLoading) {
       return const PveLoadingState(label: 'Loading notification settings');
     }
-    final LocalNotificationAuthorization authorization =
-        controller.authorization;
-    final bool supported =
+    final authorization = controller.authorization;
+    final supported =
         authorization != LocalNotificationAuthorization.unsupported;
-    final bool authorized =
+    final authorized =
         authorization == LocalNotificationAuthorization.authorized;
-    final bool backgroundMonitoringAvailable =
+    final backgroundMonitoringAvailable =
         controller.backgroundMonitoringAvailable;
-    final bool runsOnMacOS = defaultTargetPlatform == TargetPlatform.macOS;
-    final DatacenterNotificationSettings settings = controller.settings;
+    final runsOnMacOS = defaultTargetPlatform == TargetPlatform.macOS;
+    final settings = controller.settings;
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
@@ -220,7 +218,7 @@ class _NotificationPermissionCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = switch (authorization) {
+    final color = switch (authorization) {
       LocalNotificationAuthorization.authorized => PveAppleColors.success(
         context,
       ),

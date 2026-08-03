@@ -32,12 +32,12 @@ Future<void> main() async {
 }
 
 Future<Widget> createStoreScreenshotPreview(String sceneName) async {
-  final ClusterOverviewController controller = ClusterOverviewController(
+  final controller = ClusterOverviewController(
     _PreviewClusterOverviewRepository(
       datacenterDashboardHealthyPreviewSnapshot(),
     ),
   );
-  final _PreviewProxmoxSession session = _PreviewProxmoxSession();
+  final session = _PreviewProxmoxSession();
   await controller.refresh(session);
   return StoreScreenshotApp(
     controller: controller,
@@ -55,6 +55,7 @@ WorkspaceSection _sectionFromName(String name) {
 
 class StoreScreenshotApp extends StatefulWidget {
   const StoreScreenshotApp({
+    super.key,
     required this.controller,
     required this.session,
     required this.initialSection,
@@ -85,7 +86,7 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
 
   @override
   Widget build(BuildContext context) {
-    final bool compact = MediaQuery.sizeOf(context).width < 760;
+    final compact = MediaQuery.sizeOf(context).width < 760;
     return RepaintBoundary(
       key: ValueKey<String>(
         'store-screenshot-capture-${widget.initialSection.name}',

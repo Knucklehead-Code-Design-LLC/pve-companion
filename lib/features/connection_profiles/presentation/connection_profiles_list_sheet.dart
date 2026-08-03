@@ -51,12 +51,9 @@ class ConnectionProfilesListSheet extends StatelessWidget {
         child: AnimatedBuilder(
           animation: controller,
           builder: (BuildContext context, Widget? child) {
-            final List<ConnectionProfile> profiles =
-                controller.connectionProfiles.profiles;
-            final ConnectionProfile? selected =
-                controller.connectionProfiles.selectedProfile;
-            final ConnectionProfilesController profilesController =
-                controller.connectionProfiles;
+            final profiles = controller.connectionProfiles.profiles;
+            final selected = controller.connectionProfiles.selectedProfile;
+            final profilesController = controller.connectionProfiles;
             if (profiles.isEmpty) {
               return PveEmptyState(
                 icon: CupertinoIcons.rectangle_stack_badge_plus,
@@ -92,23 +89,19 @@ class ConnectionProfilesListSheet extends StatelessWidget {
                     'Tap a server to connect. Credentials are stored in Apple '
                     'Keychain only when you choose to remember them.',
                   ),
-                  children: profiles
-                      .map(
-                        (ConnectionProfile profile) =>
-                            _ConnectionProfileListItem(
-                              profile: profile,
-                              selected: selected?.id == profile.id,
-                              status: profilesController.statusForProfile(
-                                profile,
-                              ),
-                              failureMessage: profilesController
-                                  .failureMessageForProfile(profile),
-                              disabled: profilesController.isBusy,
-                              onConnect: () => _connect(context, profile),
-                              onRemove: () => _remove(context, profile),
-                            ),
-                      )
-                      .toList(growable: false),
+                  children: <Widget>[
+                    for (final profile in profiles)
+                      _ConnectionProfileListItem(
+                        profile: profile,
+                        selected: selected?.id == profile.id,
+                        status: profilesController.statusForProfile(profile),
+                        failureMessage: profilesController
+                            .failureMessageForProfile(profile),
+                        disabled: profilesController.isBusy,
+                        onConnect: () => _connect(context, profile),
+                        onRemove: () => _remove(context, profile),
+                      ),
+                  ],
                 ),
               ],
             );
@@ -119,7 +112,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
   }
 
   Future<void> _openAddServer(BuildContext context) async {
-    final NavigatorState navigator = Navigator.of(context);
+    final navigator = Navigator.of(context);
     navigator.pop();
     await showAddConnectionProfileSheet(
       navigator.context,
@@ -128,9 +121,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
   }
 
   Future<void> _connect(BuildContext context, ConnectionProfile profile) async {
-    final ConnectionAttemptResult result = await controller.connectProfile(
-      profile.id,
-    );
+    final result = await controller.connectProfile(profile.id);
     if (!context.mounted) {
       return;
     }
@@ -138,7 +129,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
       Navigator.of(context).pop();
       return;
     }
-    final String message =
+    final message =
         result.kind == ConnectionAttemptKind.certificateTrustRequired
         ? 'The server certificate changed. Remove and add this server again '
               'after verifying its new fingerprint.'
@@ -160,7 +151,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
   }
 
   Future<void> _remove(BuildContext context, ConnectionProfile profile) async {
-    final bool? approved = await showCupertinoDialog<bool>(
+    final approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) {
         return CupertinoAlertDialog(
@@ -266,10 +257,10 @@ class _ConnectionProfileSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String? lastConnectedLabel = profile.lastConnectedAt == null
+    final lastConnectedLabel = profile.lastConnectedAt == null
         ? null
         : 'Last connected ${formatPveDateTime(profile.lastConnectedAt)}';
-    final String statusDetail = switch (status) {
+    final statusDetail = switch (status) {
       ConnectionStatus.connected => 'Connected now',
       ConnectionStatus.connecting => 'Connecting…',
       ConnectionStatus.failed => failureMessage ?? 'Last connection failed',

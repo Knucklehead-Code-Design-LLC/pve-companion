@@ -3,7 +3,7 @@ import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_
 
 void main() {
   test('does not infer storage availability when status is missing', () {
-    const ClusterStorage storage = ClusterStorage(
+    const storage = ClusterStorage(
       name: 'local',
       type: 'dir',
       content: 'images',
@@ -26,7 +26,7 @@ void main() {
   });
 
   test('aggregates reported local capacity and availability by node', () {
-    const ClusterStorage storage = ClusterStorage(
+    const storage = ClusterStorage(
       name: 'local-zfs',
       type: 'zfspool',
       content: 'images',

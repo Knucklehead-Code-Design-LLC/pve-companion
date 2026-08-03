@@ -102,7 +102,7 @@ class _GuestSnapshotFormState extends State<_GuestSnapshotForm> {
 
   @override
   Widget build(BuildContext context) {
-    final PveGuestSnapshotRequest request = PveGuestSnapshotRequest(
+    final request = PveGuestSnapshotRequest(
       name: _nameController.text,
       description: _descriptionController.text,
       includeMemoryState: _includeMemoryState,
@@ -296,19 +296,18 @@ class _GuestBackupFormState extends State<_GuestBackupForm> {
   }
 
   Future<void> _selectStorage() async {
-    final String? selected = await showCupertinoModalPopup<String>(
+    final selected = await showCupertinoModalPopup<String>(
       context: context,
       builder: (BuildContext context) => CupertinoActionSheet(
         title: const Text('Backup storage'),
-        actions: widget.storageNames
-            .map(
-              (String storage) => CupertinoActionSheetAction(
-                isDefaultAction: storage == _storage,
-                onPressed: () => Navigator.of(context).pop(storage),
-                child: Text(storage),
-              ),
-            )
-            .toList(growable: false),
+        actions: <Widget>[
+          for (final storage in widget.storageNames)
+            CupertinoActionSheetAction(
+              isDefaultAction: storage == _storage,
+              onPressed: () => Navigator.of(context).pop(storage),
+              child: Text(storage),
+            ),
+        ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.of(context).pop(),
           child: const Text('Cancel'),
@@ -367,18 +366,18 @@ class _GuestConfigurationFormState extends State<_GuestConfigurationForm> {
 
   @override
   Widget build(BuildContext context) {
-    final int? cores = _positiveInteger(_coresController.text);
-    final int? memory = _positiveInteger(_memoryController.text);
+    final cores = _positiveInteger(_coresController.text);
+    final memory = _positiveInteger(_memoryController.text);
     // Proxmox treats an omitted field as unchanged. A blank value must not
     // look like a successful attempt to remove an existing CPU or memory
     // setting, because that is neither an intentional reset nor a supported
     // safe edit in this companion.
-    final bool validCores = _hasValidResourceValue(
+    final validCores = _hasValidResourceValue(
       text: _coresController.text,
       parsedValue: cores,
       initialValue: _initialCores,
     );
-    final bool validMemory = _hasValidResourceValue(
+    final validMemory = _hasValidResourceValue(
       text: _memoryController.text,
       parsedValue: memory,
       initialValue: _initialMemory,
@@ -481,7 +480,7 @@ class _GuestConfigurationFormState extends State<_GuestConfigurationForm> {
   }
 
   int? _positiveInteger(String value) {
-    final int? parsed = int.tryParse(value.trim());
+    final parsed = int.tryParse(value.trim());
     return parsed != null && parsed > 0 ? parsed : null;
   }
 

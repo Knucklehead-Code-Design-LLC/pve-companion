@@ -72,15 +72,15 @@ class DatacenterSurfaceSnapshot {
       'runningTaskCount': runningTaskCount,
       'failedTaskCount': failedTaskCount,
       'updatedAt': updatedAt.millisecondsSinceEpoch / 1000,
-      if (cpuFraction != null) 'cpuFraction': cpuFraction!,
-      if (memoryFraction != null) 'memoryFraction': memoryFraction!,
-      if (rootDiskFraction != null) 'rootDiskFraction': rootDiskFraction!,
+      'cpuFraction': ?cpuFraction,
+      'memoryFraction': ?memoryFraction,
+      'rootDiskFraction': ?rootDiskFraction,
     };
   }
 }
 
 double? _surfaceFraction(DatacenterPressureMetric? pressure) {
-  final double? fraction = pressure?.fraction;
+  final fraction = pressure?.fraction;
   if (fraction == null || !fraction.isFinite || fraction < 0) {
     return null;
   }

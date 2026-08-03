@@ -47,11 +47,11 @@ class DatacenterDashboard extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool wideLayout = PveAppleLayout.usesExpandedWidth(
+        final wideLayout = PveAppleLayout.usesExpandedWidth(
           constraints.maxWidth,
         );
         final incidents = DatacenterIncidentEvaluator.evaluate(snapshot);
-        final EdgeInsets padding = EdgeInsets.symmetric(
+        final padding = EdgeInsets.symmetric(
           horizontal: wideLayout ? 28 : 16,
           vertical: wideLayout ? 24 : 16,
         );
@@ -155,7 +155,7 @@ class DatacenterDashboard extends StatelessWidget {
 }
 
 String _versionContext(PveVersion version) {
-  final String release = version.release?.trim() ?? '';
-  final String releaseSuffix = release.isEmpty ? '' : ' · $release';
+  final release = version.release?.trim() ?? '';
+  final releaseSuffix = release.isEmpty ? '' : ' · $release';
   return 'Proxmox VE ${version.version}$releaseSuffix';
 }

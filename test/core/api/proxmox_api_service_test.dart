@@ -11,7 +11,7 @@ import 'package:pve_companion/core/api/proxmox_authentication.dart';
 void main() {
   test('uses certificate pinning instead of platform root trust', () {
     bool? useTrustedRoots;
-    final ProxmoxApiService service = ProxmoxApiService(
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'https', host: 'pve.example'),
       authentication: const ProxmoxApiTokenAuthentication(
         tokenId: 'root@pam!mobile',
@@ -30,8 +30,8 @@ void main() {
   });
 
   test('uses platform root trust when no certificate fingerprint is saved', () {
-    bool createdSecurityContext = false;
-    final ProxmoxApiService service = ProxmoxApiService(
+    var createdSecurityContext = false;
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'https', host: 'pve.example'),
       authentication: const ProxmoxApiTokenAuthentication(
         tokenId: 'root@pam!mobile',
@@ -48,16 +48,13 @@ void main() {
   });
 
   test('uses a Content-Length form body for password authentication', () async {
-    final HttpServer server = await HttpServer.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-    );
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(server.close);
 
-    final Completer<_ReceivedRequest> received = Completer<_ReceivedRequest>();
+    final received = Completer<_ReceivedRequest>();
     unawaited(
       server.forEach((HttpRequest request) async {
-        final String body = await utf8.decoder.bind(request).join();
+        final body = await utf8.decoder.bind(request).join();
         received.complete(
           _ReceivedRequest(
             method: request.method,
@@ -82,7 +79,7 @@ void main() {
       }),
     );
 
-    final ProxmoxApiService service = ProxmoxApiService(
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'http', host: '127.0.0.1', port: server.port),
       authentication: const ProxmoxPasswordAuthentication(
         principal: 'root@pam',
@@ -93,8 +90,8 @@ void main() {
 
     await service.authenticate();
 
-    final _ReceivedRequest request = await received.future;
-    const String expectedBody = 'username=root%40pam&password=p%40ss%26word';
+    final request = await received.future;
+    const expectedBody = 'username=root%40pam&password=p%40ss%26word';
     expect(request.method, 'POST');
     expect(request.path, '/api2/json/access/ticket');
     expect(request.body, expectedBody);
@@ -103,22 +100,15 @@ void main() {
   });
 
   test('opens a ticket-authenticated guest-console WebSocket', () async {
-    final HttpServer server = await HttpServer.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-    );
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
 
-    final Completer<_ConsoleRequest> vncProxyRequest =
-        Completer<_ConsoleRequest>();
-    final Completer<_ConsoleRequest> webSocketRequest =
-        Completer<_ConsoleRequest>();
-    final Completer<Uint8List> consoleMessage = Completer<Uint8List>();
+    final vncProxyRequest = Completer<_ConsoleRequest>();
+    final webSocketRequest = Completer<_ConsoleRequest>();
+    final consoleMessage = Completer<Uint8List>();
     WebSocket? serverSocket;
-    final StreamSubscription<HttpRequest> serverSubscription = server.listen((
-      HttpRequest request,
-    ) async {
-      final String body = await utf8.decoder.bind(request).join();
+    final serverSubscription = server.listen((HttpRequest request) async {
+      final body = await utf8.decoder.bind(request).join();
       switch (request.uri.path) {
         case '/api2/json/access/ticket':
           await _respondJson(request, <String, Object?>{
@@ -152,7 +142,7 @@ void main() {
             ),
           );
           // ignore: close_sinks
-          final WebSocket socket = await WebSocketTransformer.upgrade(request);
+          final socket = await WebSocketTransformer.upgrade(request);
           serverSocket = socket;
           socket.add(<int>[1, 2, 3]);
           socket.listen((Object? message) {
@@ -168,7 +158,7 @@ void main() {
     addTearDown(serverSubscription.cancel);
     addTearDown(() => serverSocket?.close());
 
-    final ProxmoxApiService service = ProxmoxApiService(
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'http', host: '127.0.0.1', port: server.port),
       authentication: const ProxmoxPasswordAuthentication(
         principal: 'root@pam',
@@ -193,7 +183,7 @@ void main() {
         csrf: 'csrf-token',
       ),
     );
-    final _ConsoleRequest socketRequest = await webSocketRequest.future;
+    final socketRequest = await webSocketRequest.future;
     expect(socketRequest.cookie, 'PVEAuthCookie=PVE:password-session');
     expect(socketRequest.authorization, isNull);
     expect(socketRequest.query, <String, String>{
@@ -207,20 +197,13 @@ void main() {
   });
 
   test('uses API-token authentication for a guest-console WebSocket', () async {
-    final HttpServer server = await HttpServer.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-    );
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
 
-    final Completer<_ConsoleRequest> proxyRequest =
-        Completer<_ConsoleRequest>();
-    final Completer<_ConsoleRequest> socketRequest =
-        Completer<_ConsoleRequest>();
+    final proxyRequest = Completer<_ConsoleRequest>();
+    final socketRequest = Completer<_ConsoleRequest>();
     WebSocket? serverSocket;
-    final StreamSubscription<HttpRequest> serverSubscription = server.listen((
-      HttpRequest request,
-    ) async {
+    final serverSubscription = server.listen((HttpRequest request) async {
       await utf8.decoder.bind(request).drain<void>();
       switch (request.uri.path) {
         case '/api2/json/version':
@@ -253,7 +236,7 @@ void main() {
             ),
           );
           // ignore: close_sinks
-          final WebSocket socket = await WebSocketTransformer.upgrade(request);
+          final socket = await WebSocketTransformer.upgrade(request);
           serverSocket = socket;
         default:
           request.response.statusCode = HttpStatus.notFound;
@@ -263,7 +246,7 @@ void main() {
     addTearDown(serverSubscription.cancel);
     addTearDown(() => serverSocket?.close());
 
-    final ProxmoxApiService service = ProxmoxApiService(
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'http', host: '127.0.0.1', port: server.port),
       authentication: const ProxmoxApiTokenAuthentication(
         tokenId: 'root@pam!mobile',
@@ -280,7 +263,7 @@ void main() {
     );
     addTearDown(transport.close);
 
-    const String authorization = 'PVEAPIToken=root@pam!mobile=token-secret';
+    const authorization = 'PVEAPIToken=root@pam!mobile=token-secret';
     expect(
       await proxyRequest.future,
       const _ConsoleRequest(
@@ -289,20 +272,52 @@ void main() {
         csrf: null,
       ),
     );
-    final _ConsoleRequest request = await socketRequest.future;
+    final request = await socketRequest.future;
     expect(request.authorization, authorization);
     expect(request.cookie, isNull);
   });
 
+  test(
+    'rejects invalid guest-console requests before opening a connection',
+    () async {
+      final service = ProxmoxApiService(
+        endpoint: Uri(scheme: 'https', host: 'pve.example'),
+        authentication: const ProxmoxApiTokenAuthentication(
+          tokenId: 'root@pam!mobile',
+          secret: 'token-secret',
+        ),
+      );
+      addTearDown(service.close);
+
+      const invalidRequests = <({String node, String resource, int vmid})>[
+        (node: 'node/a', resource: 'qemu', vmid: 101),
+        (node: 'node-a', resource: 'invalid', vmid: 101),
+        (node: 'node-a', resource: 'qemu', vmid: 0),
+      ];
+
+      for (final request in invalidRequests) {
+        await expectLater(
+          service.openConsole(
+            node: request.node,
+            resource: request.resource,
+            vmid: request.vmid,
+          ),
+          throwsA(
+            isA<ProxmoxResponseException>().having(
+              (ProxmoxResponseException error) => error.statusCode,
+              'status code',
+              400,
+            ),
+          ),
+        );
+      }
+    },
+  );
+
   test('rejects a fractional guest-console port', () async {
-    final HttpServer server = await HttpServer.bind(
-      InternetAddress.loopbackIPv4,
-      0,
-    );
+    final server = await HttpServer.bind(InternetAddress.loopbackIPv4, 0);
     addTearDown(() => server.close(force: true));
-    final StreamSubscription<HttpRequest> serverSubscription = server.listen((
-      HttpRequest request,
-    ) async {
+    final serverSubscription = server.listen((HttpRequest request) async {
       await utf8.decoder.bind(request).drain<void>();
       if (request.uri.path == '/api2/json/nodes/node-a/qemu/101/vncproxy') {
         await _respondJson(request, <String, Object?>{
@@ -318,7 +333,7 @@ void main() {
     });
     addTearDown(serverSubscription.cancel);
 
-    final ProxmoxApiService service = ProxmoxApiService(
+    final service = ProxmoxApiService(
       endpoint: Uri(scheme: 'http', host: '127.0.0.1', port: server.port),
       authentication: const ProxmoxApiTokenAuthentication(
         tokenId: 'root@pam!mobile',
@@ -400,7 +415,7 @@ bool _mapsEqual(Map<String, String>? left, Map<String, String>? right) {
   if (left.length != right.length) {
     return false;
   }
-  for (final MapEntry<String, String> entry in left.entries) {
+  for (final entry in left.entries) {
     if (right[entry.key] != entry.value) {
       return false;
     }

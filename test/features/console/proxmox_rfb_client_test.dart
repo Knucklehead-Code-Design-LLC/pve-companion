@@ -7,11 +7,11 @@ import 'console_test_fixtures.dart';
 
 void main() {
   test('authenticates and renders a raw RFB framebuffer update', () async {
-    final MemoryConsoleTransport transport = MemoryConsoleTransport();
-    final ProxmoxRfbClient client = ProxmoxRfbClient(transport: transport);
+    final transport = MemoryConsoleTransport();
+    final client = ProxmoxRfbClient(transport: transport);
     addTearDown(client.close);
 
-    final Future<void> connection = client.connect();
+    final connection = client.connect();
     transport.addBytes(rfbServerHandshake(width: 2, height: 1));
     await connection;
 
@@ -26,7 +26,7 @@ void main() {
     expect(transport.sent[6][0], 3);
     expect(transport.sent[6][1], 0);
 
-    final Future<PveConsoleFramebuffer> frame = client.framebuffers.first;
+    final frame = client.framebuffers.first;
     transport.addBytes(<int>[
       0,
       0,
@@ -55,7 +55,7 @@ void main() {
       0,
     ]);
 
-    final PveConsoleFramebuffer framebuffer = await frame;
+    final framebuffer = await frame;
     expect(framebuffer.width, 2);
     expect(framebuffer.height, 1);
     expect(
@@ -67,11 +67,11 @@ void main() {
   });
 
   test('forwards keyboard, pointer, and clipboard input over RFB', () async {
-    final MemoryConsoleTransport transport = MemoryConsoleTransport();
-    final ProxmoxRfbClient client = ProxmoxRfbClient(transport: transport);
+    final transport = MemoryConsoleTransport();
+    final client = ProxmoxRfbClient(transport: transport);
     addTearDown(client.close);
 
-    final Future<void> connection = client.connect();
+    final connection = client.connect();
     transport.addBytes(rfbServerHandshake(width: 80, height: 24));
     await connection;
 

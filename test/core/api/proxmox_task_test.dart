@@ -29,7 +29,7 @@ void main() {
   });
 
   group('ProxmoxTaskClient', () {
-    final ProxmoxTaskReference reference = ProxmoxTaskReference(
+    final reference = ProxmoxTaskReference(
       upid: 'UPID:pve-01:001',
       node: 'pve-01',
       operationLabel: 'Create snapshot',
@@ -39,7 +39,7 @@ void main() {
     test(
       'maps an OK terminal task and uses the task status endpoint',
       () async {
-        final _RecordingTaskSession session = _RecordingTaskSession(
+        final session = _RecordingTaskSession(
           response: <String, Object?>{
             'status': 'stopped',
             'exitstatus': 'OK',
@@ -47,8 +47,10 @@ void main() {
           },
         );
 
-        final ProxmoxTaskStatus status = await const ProxmoxTaskClient()
-            .loadStatus(session, reference);
+        final status = await const ProxmoxTaskClient().loadStatus(
+          session,
+          reference,
+        );
 
         expect(status.state, ProxmoxTaskState.successful);
         expect(status.isComplete, isTrue);
@@ -60,15 +62,17 @@ void main() {
     );
 
     test('exposes a failed Proxmox exit status', () async {
-      final _RecordingTaskSession session = _RecordingTaskSession(
+      final session = _RecordingTaskSession(
         response: <String, Object?>{
           'status': 'stopped',
           'exitstatus': 'TASK ERROR: backup failed',
         },
       );
 
-      final ProxmoxTaskStatus status = await const ProxmoxTaskClient()
-          .loadStatus(session, reference);
+      final status = await const ProxmoxTaskClient().loadStatus(
+        session,
+        reference,
+      );
 
       expect(status.state, ProxmoxTaskState.failed);
       expect(status.displayStatus, 'TASK ERROR: backup failed');
@@ -77,12 +81,12 @@ void main() {
     test(
       'returns a completed poll result without delaying a terminal task',
       () async {
-        final _RecordingTaskSession session = _RecordingTaskSession(
+        final session = _RecordingTaskSession(
           response: <String, Object?>{'status': 'stopped', 'exitstatus': 'OK'},
         );
 
-        final List<ProxmoxTaskState> observedStates = <ProxmoxTaskState>[];
-        final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+        final observedStates = <ProxmoxTaskState>[];
+        final result = await pollProxmoxTask(
           const ProxmoxTaskClient(),
           session,
           reference,
@@ -103,11 +107,11 @@ void main() {
     test(
       'does not request task status when polling is already cancelled',
       () async {
-        final _RecordingTaskSession session = _RecordingTaskSession(
+        final session = _RecordingTaskSession(
           response: <String, Object?>{'status': 'running'},
         );
 
-        final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+        final result = await pollProxmoxTask(
           const ProxmoxTaskClient(),
           session,
           reference,
@@ -121,12 +125,10 @@ void main() {
     );
 
     test('returns an unknown status when a status request fails', () async {
-      const ProxmoxNetworkException error = ProxmoxNetworkException(
-        'The server cannot be reached.',
-      );
-      final _ThrowingTaskSession session = _ThrowingTaskSession(error);
+      const error = ProxmoxNetworkException('The server cannot be reached.');
+      final session = _ThrowingTaskSession(error);
 
-      final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+      final result = await pollProxmoxTask(
         const ProxmoxTaskClient(),
         session,
         reference,
@@ -144,10 +146,9 @@ void main() {
     test(
       'returns safe guidance when a status request fails unexpectedly',
       () async {
-        final _UnexpectedFailureTaskSession session =
-            _UnexpectedFailureTaskSession();
+        final session = _UnexpectedFailureTaskSession();
 
-        final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+        final result = await pollProxmoxTask(
           const ProxmoxTaskClient(),
           session,
           reference,
@@ -169,12 +170,12 @@ void main() {
     test(
       'bounds running task polling by the requested attempt count',
       () async {
-        final _RecordingTaskSession session = _RecordingTaskSession(
+        final session = _RecordingTaskSession(
           response: <String, Object?>{'status': 'running'},
         );
-        final List<ProxmoxTaskState> observedStates = <ProxmoxTaskState>[];
+        final observedStates = <ProxmoxTaskState>[];
 
-        final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+        final result = await pollProxmoxTask(
           const ProxmoxTaskClient(),
           session,
           reference,

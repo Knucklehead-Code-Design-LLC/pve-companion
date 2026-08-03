@@ -8,11 +8,9 @@ import '../core/presentation/pve_apple_ui.dart';
 import '../core/presentation/pve_haptics.dart';
 import '../features/cluster_administration/presentation/cluster_administration_sheet.dart';
 import '../features/cluster_overview/application/cluster_overview_controller.dart';
-import '../features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../features/cluster_overview/presentation/cluster_nodes_page.dart';
 import '../features/cluster_overview/presentation/cluster_overview_page.dart';
 import '../features/connection_profiles/application/connection_profiles_controller.dart';
-import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/connection_profiles/presentation/connection_profiles_screen.dart';
 import '../features/fleet/presentation/fleet_workspace_sheet.dart';
 import '../features/guests/presentation/guest_list_page.dart';
@@ -75,76 +73,77 @@ class _PveWorkspaceState extends State<PveWorkspace> {
 
   @override
   Widget build(BuildContext context) {
-    final ConnectionProfilesController profiles =
-        widget.controller.connectionProfiles;
-    final ConnectionProfile? selectedProfile = profiles.selectedProfile;
-    final ProxmoxSession? session = profiles.activeSession;
-    final bool compact = MediaQuery.sizeOf(context).width < 760;
-
-    final WorkspaceToolbar disconnectedToolbar = _buildToolbar(
-      context,
-      title: 'PVE Companion',
-      connected: false,
-    );
+    final session = widget.controller.connectionProfiles.activeSession;
+    final isCompact = !PveAppleLayout.usesExpandedPresentation(context);
     return WorkspaceKeyboardShortcuts(
       enabled: session != null && defaultTargetPlatform == TargetPlatform.macOS,
       onRefresh: widget.controller.refreshCluster,
       onSectionSelected: _selectSection,
       onOpenCommandPalette: _showCommandPalette,
-      child: CupertinoPageScaffold(
+      child: _buildWorkspaceContent(context, session, isCompact),
+    );
+  }
+
+  Widget _buildWorkspaceContent(
+    BuildContext context,
+    ProxmoxSession? session,
+    bool isCompact,
+  ) {
+    final profiles = widget.controller.connectionProfiles;
+    final selectedProfile = profiles.selectedProfile;
+    if (session == null) {
+      return CupertinoPageScaffold(
         backgroundColor: PveAppleColors.page(context),
-        navigationBar: session == null ? disconnectedToolbar : null,
-        child: session == null
-            ? DisconnectedWorkspace(
-                profile: selectedProfile,
-                status: profiles.connectionStatus,
-                errorMessage: profiles.errorMessage,
-                onConnect: _connectSelectedProfile,
-                onAddServer: () => showAddConnectionProfileSheet(
-                  context,
-                  controller: widget.controller,
-                ),
-              )
-            : AdaptiveWorkspaceContent(
-                section: _section,
-                onSectionChanged: _selectSection,
-                sidebarHeader: ServerMenu(
-                  profiles: profiles.profiles,
-                  selectedProfile: selectedProfile,
-                  onSelected: _connectToProfile,
-                ),
-                wideNavigationBar: _buildToolbar(
-                  context,
-                  title: _section.navigationTitle,
-                  connected: true,
-                  showServerMenu: false,
-                  includeRefreshMenuAction: false,
-                ),
-                onRefresh: widget.controller.refreshCluster,
-                refreshing:
-                    widget.controller.clusterOverview.state ==
-                    ClusterOverviewLoadState.loading,
-                lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
-                refreshErrorMessage:
-                    widget.controller.clusterOverview.errorMessage,
-                sidebarActions: _sidebarActions(),
-                footerActions: _footerActions(),
-                desktopInspector: _desktopInspector(),
-                pages: _buildPages(session, compact: compact),
-              ),
+        navigationBar: _buildToolbar(
+          context,
+          title: 'PVE Companion',
+          connected: false,
+        ),
+        child: DisconnectedWorkspace(
+          profile: selectedProfile,
+          status: profiles.connectionStatus,
+          errorMessage: profiles.errorMessage,
+          onConnect: _connectSelectedProfile,
+          onAddServer: _showAddConnectionProfile,
+        ),
+      );
+    }
+    return CupertinoPageScaffold(
+      backgroundColor: PveAppleColors.page(context),
+      child: AdaptiveWorkspaceContent(
+        section: _section,
+        onSectionChanged: _selectSection,
+        sidebarHeader: ServerMenu(
+          profiles: profiles.profiles,
+          selectedProfile: selectedProfile,
+          onSelected: _connectToProfile,
+        ),
+        wideNavigationBar: _buildToolbar(
+          context,
+          title: _section.navigationTitle,
+          connected: true,
+          showServerMenu: false,
+          includeRefreshMenuAction: false,
+        ),
+        onRefresh: widget.controller.refreshCluster,
+        refreshing:
+            widget.controller.clusterOverview.state ==
+            ClusterOverviewLoadState.loading,
+        lastUpdatedAt: widget.controller.clusterOverview.lastUpdatedAt,
+        refreshErrorMessage: widget.controller.clusterOverview.errorMessage,
+        sidebarActions: _sidebarActions(),
+        footerActions: _footerActions(),
+        desktopInspector: _desktopInspector(),
+        pages: _buildPages(session, isCompact: isCompact),
       ),
     );
   }
 
   List<WorkspaceSidebarAction> _sidebarActions() {
-    final ClusterOverviewSnapshot? snapshot =
-        widget.controller.clusterOverview.snapshot;
-    final int attentionCount = snapshot == null
-        ? 0
-        : DatacenterIncidentEvaluator.evaluate(snapshot).incidents.length;
+    final attentionCount = _attentionCount;
     return <WorkspaceSidebarAction>[
       WorkspaceSidebarAction(
-        label: attentionCount == 0 ? 'Notifications' : 'Needs attention',
+        label: _notificationSidebarLabel(attentionCount),
         icon: CupertinoIcons.bell,
         badgeCount: attentionCount,
         onPressed: _showNotifications,
@@ -152,8 +151,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       WorkspaceSidebarAction(
         label: 'Manage servers',
         icon: CupertinoIcons.rectangle_stack_badge_plus,
-        onPressed: () =>
-            showConnectionProfilesSheet(context, controller: widget.controller),
+        onPressed: _showConnectionProfiles,
       ),
       WorkspaceSidebarAction(
         label: 'Datacenter portfolio',
@@ -177,39 +175,52 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   ];
 
   Widget? _desktopInspector() {
-    if (defaultTargetPlatform != TargetPlatform.macOS) {
+    if (!_canShowDesktopInspector) {
       return null;
     }
-    if (switch (_section) {
-      WorkspaceSection.guests ||
-      WorkspaceSection.nodes ||
-      WorkspaceSection.tasks => true,
-      WorkspaceSection.overview || WorkspaceSection.storage => false,
-    }) {
-      return null;
-    }
-    final ClusterOverviewSnapshot? snapshot =
-        widget.controller.clusterOverview.snapshot;
-    final int attentionCount = snapshot == null
-        ? 0
-        : DatacenterIncidentEvaluator.evaluate(snapshot).incidents.length;
     return _WorkspaceContextInspector(
       section: _section,
       refreshedAt: widget.controller.clusterOverview.lastUpdatedAt,
-      attentionCount: attentionCount,
+      attentionCount: _attentionCount,
       onShowNotifications: _showNotifications,
-      onManageServers: () =>
-          showConnectionProfilesSheet(context, controller: widget.controller),
+      onManageServers: _showConnectionProfiles,
     );
   }
 
-  List<Widget> _buildPages(ProxmoxSession session, {required bool compact}) {
+  bool get _canShowDesktopInspector {
+    if (defaultTargetPlatform != TargetPlatform.macOS) {
+      return false;
+    }
+    return switch (_section) {
+      WorkspaceSection.overview || WorkspaceSection.storage => true,
+      WorkspaceSection.guests ||
+      WorkspaceSection.nodes ||
+      WorkspaceSection.tasks => false,
+    };
+  }
+
+  int get _attentionCount {
+    final snapshot = widget.controller.clusterOverview.snapshot;
+    if (snapshot == null) {
+      return 0;
+    }
+    return DatacenterIncidentEvaluator.evaluate(snapshot).incidents.length;
+  }
+
+  String _notificationSidebarLabel(int attentionCount) {
+    if (attentionCount == 0) {
+      return 'Notifications';
+    }
+    return 'Needs attention';
+  }
+
+  List<Widget> _buildPages(ProxmoxSession session, {required bool isCompact}) {
     return <Widget>[
       ClusterOverviewPage(
         controller: widget.controller.clusterOverview,
-        showsSliverNavigationBar: compact,
-        navigationLeading: compact ? _buildCompactLeading() : null,
-        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        showsSliverNavigationBar: isCompact,
+        navigationLeading: _compactNavigationLeading(isCompact),
+        navigationTrailing: _compactNavigationTrailing(isCompact),
         onRefresh: widget.controller.refreshCluster,
         onViewGuests: () => _selectSection(WorkspaceSection.guests),
         onViewNodes: () => _selectSection(WorkspaceSection.nodes),
@@ -219,18 +230,18 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       GuestListPage(
         overviewController: widget.controller.clusterOverview,
         session: session,
-        showsSliverNavigationBar: compact,
-        navigationLeading: compact ? _buildCompactLeading() : null,
-        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        showsSliverNavigationBar: isCompact,
+        navigationLeading: _compactNavigationLeading(isCompact),
+        navigationTrailing: _compactNavigationTrailing(isCompact),
         onRefresh: widget.controller.refreshCluster,
         onGuestPowerAction: widget.controller.refreshCluster,
       ),
       ClusterNodesPage(
         controller: widget.controller.clusterOverview,
         session: session,
-        showsSliverNavigationBar: compact,
-        navigationLeading: compact ? _buildCompactLeading() : null,
-        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        showsSliverNavigationBar: isCompact,
+        navigationLeading: _compactNavigationLeading(isCompact),
+        navigationTrailing: _compactNavigationTrailing(isCompact),
         onRefresh: widget.controller.refreshCluster,
         onNodeOperation: widget.controller.refreshCluster,
         onViewGuests: () => _selectSection(WorkspaceSection.guests),
@@ -239,25 +250,38 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       StoragePage(
         controller: widget.controller.clusterOverview,
         session: session,
-        showsSliverNavigationBar: compact,
-        navigationLeading: compact ? _buildCompactLeading() : null,
-        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        showsSliverNavigationBar: isCompact,
+        navigationLeading: _compactNavigationLeading(isCompact),
+        navigationTrailing: _compactNavigationTrailing(isCompact),
         onRefresh: widget.controller.refreshCluster,
       ),
       TasksPage(
         controller: widget.controller.clusterOverview,
         session: session,
-        showsSliverNavigationBar: compact,
-        navigationLeading: compact ? _buildCompactLeading() : null,
-        navigationTrailing: compact ? _buildCompactTrailing() : null,
+        showsSliverNavigationBar: isCompact,
+        navigationLeading: _compactNavigationLeading(isCompact),
+        navigationTrailing: _compactNavigationTrailing(isCompact),
         onRefresh: widget.controller.refreshCluster,
       ),
     ];
   }
 
+  Widget? _compactNavigationLeading(bool isCompact) {
+    if (!isCompact) {
+      return null;
+    }
+    return _buildCompactLeading();
+  }
+
+  Widget? _compactNavigationTrailing(bool isCompact) {
+    if (!isCompact) {
+      return null;
+    }
+    return _buildCompactTrailing();
+  }
+
   Widget _buildCompactLeading() {
-    final ConnectionProfilesController profiles =
-        widget.controller.connectionProfiles;
+    final profiles = widget.controller.connectionProfiles;
     return ServerMenu(
       profiles: profiles.profiles,
       selectedProfile: profiles.selectedProfile,
@@ -271,9 +295,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       connected: true,
       onRefresh: widget.controller.refreshCluster,
       onDisconnect: widget.controller.disconnect,
-      onManageServers: () =>
-          showConnectionProfilesSheet(context, controller: widget.controller),
-      onAbout: () => showPveCompanionAboutDialog(context),
+      onManageServers: _showConnectionProfiles,
+      onAbout: _showAbout,
       onViewFleet: _showFleetWorkspace,
       onManageNotifications: _showNotifications,
       onClusterAdministration: _showClusterAdministration,
@@ -296,8 +319,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     bool showServerMenu = true,
     bool includeRefreshMenuAction = true,
   }) {
-    final ConnectionProfilesController profiles =
-        widget.controller.connectionProfiles;
+    final profiles = widget.controller.connectionProfiles;
     return WorkspaceToolbar(
       profiles: profiles.profiles,
       selectedProfile: profiles.selectedProfile,
@@ -306,9 +328,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       onConnectToProfile: _connectToProfile,
       onRefresh: widget.controller.refreshCluster,
       onDisconnect: widget.controller.disconnect,
-      onManageServers: () =>
-          showConnectionProfilesSheet(context, controller: widget.controller),
-      onAbout: () => showPveCompanionAboutDialog(context),
+      onManageServers: _showConnectionProfiles,
+      onAbout: _showAbout,
       onViewFleet: _showFleetWorkspace,
       onManageNotifications: _showNotifications,
       onClusterAdministration: _showClusterAdministration,
@@ -337,13 +358,12 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   }
 
   void _handleWorkspaceNavigationRequest() {
-    final int requestId = widget.controller.workspaceNavigationRequestId;
+    final requestId = widget.controller.workspaceNavigationRequestId;
     if (requestId == _handledNavigationRequestId) {
       return;
     }
     _handledNavigationRequestId = requestId;
-    final WorkspaceSection requestedSection =
-        widget.controller.requestedWorkspaceSection;
+    final requestedSection = widget.controller.requestedWorkspaceSection;
     if (requestedSection != _section && mounted) {
       setState(() => _section = requestedSection);
     }
@@ -358,7 +378,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   Future<void> _runConnectionAttempt(
     Future<ConnectionAttemptResult> Function() attempt,
   ) async {
-    final ConnectionAttemptResult result = await attempt();
+    final result = await attempt();
     if (!mounted) {
       return;
     }
@@ -375,10 +395,11 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   }
 
   String _connectionErrorMessage(ConnectionAttemptResult result) {
-    return result.kind == ConnectionAttemptKind.certificateTrustRequired
-        ? 'The server certificate changed. Remove and add this server again '
-              'after verifying its new fingerprint.'
-        : result.message ?? 'Connection was not completed.';
+    if (result.kind == ConnectionAttemptKind.certificateTrustRequired) {
+      return 'The server certificate changed. Remove and add this server again '
+          'after verifying its new fingerprint.';
+    }
+    return result.message ?? 'Connection was not completed.';
   }
 
   Future<void> _showConnectionError(String message) {
@@ -412,8 +433,7 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       context,
       onRefresh: widget.controller.refreshCluster,
       onSectionSelected: _selectSection,
-      onManageServers: () =>
-          showConnectionProfilesSheet(context, controller: widget.controller),
+      onManageServers: _showConnectionProfiles,
       onManageNotifications: _showNotifications,
       onViewPortfolio: _showFleetWorkspace,
     );
@@ -425,6 +445,19 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       controller: widget.controller.notifications,
     );
   }
+
+  Future<void> _showAddConnectionProfile() {
+    return showAddConnectionProfileSheet(
+      context,
+      controller: widget.controller,
+    );
+  }
+
+  Future<void> _showConnectionProfiles() {
+    return showConnectionProfilesSheet(context, controller: widget.controller);
+  }
+
+  Future<void> _showAbout() => showPveCompanionAboutDialog(context);
 
   Future<void> _showWorkspaceSettings() {
     return showCupertinoModalPopup<void>(
@@ -438,24 +471,21 @@ class _PveWorkspaceState extends State<PveWorkspace> {
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.of(settingsContext).pop();
-              showConnectionProfilesSheet(
-                context,
-                controller: widget.controller,
-              );
+              unawaited(_showConnectionProfiles());
             },
             child: const Text('Manage servers'),
           ),
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.of(settingsContext).pop();
-              _showNotifications();
+              unawaited(_showNotifications());
             },
             child: const Text('Notification settings'),
           ),
           CupertinoActionSheetAction(
             onPressed: () {
               Navigator.of(settingsContext).pop();
-              showPveCompanionAboutDialog(context);
+              unawaited(_showAbout());
             },
             child: const Text('About PVE Companion'),
           ),
@@ -469,10 +499,8 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   }
 
   Future<void> _showClusterAdministration() async {
-    final ProxmoxSession? session =
-        widget.controller.connectionProfiles.activeSession;
-    final ClusterOverviewSnapshot? overview =
-        widget.controller.clusterOverview.snapshot;
+    final session = widget.controller.connectionProfiles.activeSession;
+    final overview = widget.controller.clusterOverview.snapshot;
     if (session == null || overview == null) {
       return;
     }
@@ -500,11 +528,18 @@ class _WorkspaceContextInspector extends StatelessWidget {
   final VoidCallback onShowNotifications;
   final VoidCallback onManageServers;
 
+  String get _attentionLabel {
+    if (attentionCount == 0) {
+      return 'No active incidents are derived from the latest refresh.';
+    }
+    if (attentionCount == 1) {
+      return '1 incident needs attention.';
+    }
+    return '$attentionCount incidents need attention.';
+  }
+
   @override
   Widget build(BuildContext context) {
-    final String attentionLabel = attentionCount == 0
-        ? 'No active incidents are derived from the latest refresh.'
-        : '$attentionCount ${attentionCount == 1 ? 'incident needs' : 'incidents need'} attention.';
     return Padding(
       padding: const EdgeInsets.all(16),
       child: Column(
@@ -532,7 +567,7 @@ class _WorkspaceContextInspector extends StatelessWidget {
                     style: PveAppleText.secondary(context),
                   ),
                 const SizedBox(height: 8),
-                Text(attentionLabel, style: PveAppleText.secondary(context)),
+                Text(_attentionLabel, style: PveAppleText.secondary(context)),
               ],
             ),
           ),

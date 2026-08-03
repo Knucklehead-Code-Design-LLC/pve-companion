@@ -14,21 +14,18 @@ void main() {
   test(
     'persists only profile metadata and opts credentials into secure storage',
     () async {
-      final _MemoryProfileRepository profileRepository =
-          _MemoryProfileRepository();
-      final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
-      final _FakeConnectionRepository connectionRepository =
-          _FakeConnectionRepository();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: profileRepository,
-            credentialStore: credentialStore,
-            connectionRepository: connectionRepository,
-          );
+      final profileRepository = _MemoryProfileRepository();
+      final credentialStore = _MemoryCredentialStore();
+      final connectionRepository = _FakeConnectionRepository();
+      final controller = ConnectionProfilesController(
+        profileRepository: profileRepository,
+        credentialStore: credentialStore,
+        connectionRepository: connectionRepository,
+      );
       await controller.initialize();
 
-      final ConnectionProfile profile = _passwordProfile();
-      final ConnectionAttemptResult result = await controller.saveAndConnect(
+      final profile = _passwordProfile();
+      final result = await controller.saveAndConnect(
         profile: profile,
         credentials: const ConnectionCredentials.password(
           'do-not-persist-in-json',
@@ -47,8 +44,7 @@ void main() {
         isNot(contains('do-not-persist-in-json')),
       );
       expect(credentialStore.readSecret(profile.id), 'do-not-persist-in-json');
-      final ConnectionProfile savedProfile =
-          profileRepository.saved.profiles.single;
+      final savedProfile = profileRepository.saved.profiles.single;
       expect(savedProfile.lastConnectedAt, isNotNull);
       expect(
         controller.statusForProfile(savedProfile),
@@ -61,17 +57,16 @@ void main() {
   test(
     'allows a session-only connection without writing a credential',
     () async {
-      final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: _MemoryProfileRepository(),
-            credentialStore: credentialStore,
-            connectionRepository: _FakeConnectionRepository(),
-          );
+      final credentialStore = _MemoryCredentialStore();
+      final controller = ConnectionProfilesController(
+        profileRepository: _MemoryProfileRepository(),
+        credentialStore: credentialStore,
+        connectionRepository: _FakeConnectionRepository(),
+      );
       await controller.initialize();
 
-      final ConnectionProfile profile = _passwordProfile();
-      final ConnectionAttemptResult result = await controller.saveAndConnect(
+      final profile = _passwordProfile();
+      final result = await controller.saveAndConnect(
         profile: profile,
         credentials: const ConnectionCredentials.password('session-only'),
         persistCredentials: false,
@@ -86,23 +81,21 @@ void main() {
   test(
     'does not save a profile when certificate verification requires consent',
     () async {
-      final _MemoryProfileRepository profileRepository =
-          _MemoryProfileRepository();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: profileRepository,
-            credentialStore: _MemoryCredentialStore(),
-            connectionRepository: _FakeConnectionRepository(
-              failure: const ProxmoxTlsTrustRequiredException(
-                fingerprint: 'AABB',
-                host: 'pve.example.test',
-                port: 8006,
-              ),
-            ),
-          );
+      final profileRepository = _MemoryProfileRepository();
+      final controller = ConnectionProfilesController(
+        profileRepository: profileRepository,
+        credentialStore: _MemoryCredentialStore(),
+        connectionRepository: _FakeConnectionRepository(
+          failure: const ProxmoxTlsTrustRequiredException(
+            fingerprint: 'AABB',
+            host: 'pve.example.test',
+            port: 8006,
+          ),
+        ),
+      );
       await controller.initialize();
 
-      final ConnectionAttemptResult result = await controller.saveAndConnect(
+      final result = await controller.saveAndConnect(
         profile: _passwordProfile(),
         credentials: const ConnectionCredentials.password('session-only'),
         persistCredentials: false,
@@ -118,18 +111,17 @@ void main() {
   test(
     'closes a newly authenticated session when profile persistence fails',
     () async {
-      final _FakeSession session = _FakeSession();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: _MemoryProfileRepository(
-              saveError: StateError('Preferences are unavailable.'),
-            ),
-            credentialStore: _MemoryCredentialStore(),
-            connectionRepository: _FakeConnectionRepository(session: session),
-          );
+      final session = _FakeSession();
+      final controller = ConnectionProfilesController(
+        profileRepository: _MemoryProfileRepository(
+          saveError: StateError('Preferences are unavailable.'),
+        ),
+        credentialStore: _MemoryCredentialStore(),
+        connectionRepository: _FakeConnectionRepository(session: session),
+      );
       await controller.initialize();
 
-      final ConnectionAttemptResult result = await controller.saveAndConnect(
+      final result = await controller.saveAndConnect(
         profile: _passwordProfile(),
         credentials: const ConnectionCredentials.password('session-only'),
         persistCredentials: false,
@@ -145,18 +137,16 @@ void main() {
   test(
     'disconnect cancels an in-flight connection without staying busy',
     () async {
-      final _ControlledConnectionRepository connectionRepository =
-          _ControlledConnectionRepository();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: _MemoryProfileRepository(),
-            credentialStore: _MemoryCredentialStore(),
-            connectionRepository: connectionRepository,
-          );
+      final connectionRepository = _ControlledConnectionRepository();
+      final controller = ConnectionProfilesController(
+        profileRepository: _MemoryProfileRepository(),
+        credentialStore: _MemoryCredentialStore(),
+        connectionRepository: connectionRepository,
+      );
       addTearDown(controller.dispose);
       await controller.initialize();
 
-      final Future<ConnectionAttemptResult> attempt = controller.saveAndConnect(
+      final attempt = controller.saveAndConnect(
         profile: _passwordProfile(),
         credentials: const ConnectionCredentials.password('session-only'),
         persistCredentials: false,
@@ -167,7 +157,7 @@ void main() {
       controller.disconnect();
       expect(controller.isBusy, isFalse);
 
-      final _FakeSession staleSession = _FakeSession();
+      final staleSession = _FakeSession();
       connectionRepository.request.complete(staleSession);
       expect((await attempt).kind, ConnectionAttemptKind.busy);
       expect(staleSession.closeCount, 1);
@@ -176,26 +166,23 @@ void main() {
   );
 
   test('turns a Keychain read failure into a safe connection result', () async {
-    final ConnectionProfile profile = _passwordProfile();
-    final _MemoryProfileRepository profileRepository =
-        _MemoryProfileRepository()
-          ..saved = SavedConnectionProfiles(
-            profiles: <ConnectionProfile>[profile],
-            selectedProfileId: profile.id,
-          );
-    final ConnectionProfilesController controller =
-        ConnectionProfilesController(
-          profileRepository: profileRepository,
-          credentialStore: _MemoryCredentialStore(
-            readError: StateError('sensitive Keychain implementation detail'),
-          ),
-          connectionRepository: _FakeConnectionRepository(),
-        );
+    final profile = _passwordProfile();
+    final profileRepository = _MemoryProfileRepository()
+      ..saved = SavedConnectionProfiles(
+        profiles: <ConnectionProfile>[profile],
+        selectedProfileId: profile.id,
+      );
+    final controller = ConnectionProfilesController(
+      profileRepository: profileRepository,
+      credentialStore: _MemoryCredentialStore(
+        readError: StateError('sensitive Keychain implementation detail'),
+      ),
+      connectionRepository: _FakeConnectionRepository(),
+    );
     addTearDown(controller.dispose);
     await controller.initialize();
 
-    final ConnectionAttemptResult result = await controller
-        .connectSelectedProfile();
+    final result = await controller.connectSelectedProfile();
 
     expect(result.kind, ConnectionAttemptKind.failed);
     expect(
@@ -206,30 +193,27 @@ void main() {
   });
 
   test('retains profile-specific failure state for a saved server', () async {
-    final ConnectionProfile profile = _passwordProfile();
-    final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
+    final profile = _passwordProfile();
+    final credentialStore = _MemoryCredentialStore();
     await credentialStore.save(
       profile.id,
       const ConnectionCredentials.password('saved-only-in-keychain'),
     );
-    final ConnectionProfilesController controller =
-        ConnectionProfilesController(
-          profileRepository: _MemoryProfileRepository()
-            ..saved = SavedConnectionProfiles(
-              profiles: <ConnectionProfile>[profile],
-              selectedProfileId: profile.id,
-            ),
-          credentialStore: credentialStore,
-          connectionRepository: _FakeConnectionRepository(
-            failure: const ProxmoxUnauthorizedException('Access denied.'),
-          ),
-        );
+    final controller = ConnectionProfilesController(
+      profileRepository: _MemoryProfileRepository()
+        ..saved = SavedConnectionProfiles(
+          profiles: <ConnectionProfile>[profile],
+          selectedProfileId: profile.id,
+        ),
+      credentialStore: credentialStore,
+      connectionRepository: _FakeConnectionRepository(
+        failure: const ProxmoxUnauthorizedException('Access denied.'),
+      ),
+    );
     addTearDown(controller.dispose);
     await controller.initialize();
 
-    final ConnectionAttemptResult result = await controller.connectProfile(
-      profile,
-    );
+    final result = await controller.connectProfile(profile);
 
     expect(result.kind, ConnectionAttemptKind.failed);
     expect(controller.statusForProfile(profile), ConnectionStatus.failed);
@@ -239,29 +223,27 @@ void main() {
   test(
     'does not classify an authentication failure as a reachability loss',
     () async {
-      final ConnectionProfile profile = _passwordProfile();
-      final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
+      final profile = _passwordProfile();
+      final credentialStore = _MemoryCredentialStore();
       await credentialStore.save(
         profile.id,
         const ConnectionCredentials.password('saved-only-in-keychain'),
       );
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: _MemoryProfileRepository()
-              ..saved = SavedConnectionProfiles(
-                profiles: <ConnectionProfile>[profile],
-                selectedProfileId: profile.id,
-              ),
-            credentialStore: credentialStore,
-            connectionRepository: _FakeConnectionRepository(
-              failure: const ProxmoxUnauthorizedException('Access denied.'),
-            ),
-          );
+      final controller = ConnectionProfilesController(
+        profileRepository: _MemoryProfileRepository()
+          ..saved = SavedConnectionProfiles(
+            profiles: <ConnectionProfile>[profile],
+            selectedProfileId: profile.id,
+          ),
+        credentialStore: credentialStore,
+        connectionRepository: _FakeConnectionRepository(
+          failure: const ProxmoxUnauthorizedException('Access denied.'),
+        ),
+      );
       addTearDown(controller.dispose);
       await controller.initialize();
 
-      final BackgroundSessionAttempt attempt = await controller
-          .openBackgroundSession(profile);
+      final attempt = await controller.openBackgroundSession(profile);
 
       expect(attempt.kind, BackgroundSessionAttemptKind.indeterminate);
       expect(attempt.canMonitorReachability, isFalse);
@@ -271,18 +253,16 @@ void main() {
   test(
     'does not classify a disposed controller as a reachability loss',
     () async {
-      final ConnectionProfile profile = _passwordProfile();
-      final ConnectionProfilesController controller =
-          ConnectionProfilesController(
-            profileRepository: _MemoryProfileRepository(),
-            credentialStore: _MemoryCredentialStore(),
-            connectionRepository: _FakeConnectionRepository(),
-          );
+      final profile = _passwordProfile();
+      final controller = ConnectionProfilesController(
+        profileRepository: _MemoryProfileRepository(),
+        credentialStore: _MemoryCredentialStore(),
+        connectionRepository: _FakeConnectionRepository(),
+      );
       await controller.initialize();
       controller.dispose();
 
-      final BackgroundSessionAttempt attempt = await controller
-          .openBackgroundSession(profile);
+      final attempt = await controller.openBackgroundSession(profile);
 
       expect(attempt.kind, BackgroundSessionAttemptKind.indeterminate);
       expect(attempt.canMonitorReachability, isFalse);
@@ -318,7 +298,7 @@ class _MemoryProfileRepository implements ConnectionProfileRepository {
   @override
   Future<void> save(SavedConnectionProfiles savedProfiles) async {
     saveCount += 1;
-    final Object? configuredError = saveError;
+    final configuredError = saveError;
     if (configuredError != null) {
       throw configuredError;
     }
@@ -342,7 +322,7 @@ class _MemoryCredentialStore implements ConnectionCredentialStore {
 
   @override
   Future<ConnectionCredentials?> read(ConnectionProfile profile) async {
-    final Object? configuredError = readError;
+    final configuredError = readError;
     if (configuredError != null) {
       throw configuredError;
     }
@@ -378,7 +358,7 @@ class _FakeConnectionRepository implements ProxmoxConnectionRepository {
     ConnectionProfile profile,
     ConnectionCredentials credentials,
   ) async {
-    final ProxmoxApiException? configuredFailure = failure;
+    final configuredFailure = failure;
     if (configuredFailure != null) {
       throw configuredFailure;
     }

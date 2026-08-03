@@ -5,7 +5,6 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/core/api/proxmox_api_exception.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
-import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/tasks/presentation/task_inspector.dart';
 import 'package:pve_companion/features/tasks/presentation/tasks_page.dart';
@@ -76,7 +75,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1200));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -94,15 +93,14 @@ void main() {
       'missing',
     );
     await tester.pump();
-    final Finder clearFilters = find.text('Clear filters');
+    final clearFilters = find.text('Clear filters');
     await tester.ensureVisible(clearFilters);
     await tester.tap(clearFilters);
     await tester.pump();
 
-    final CupertinoSearchTextField searchField = tester
-        .widget<CupertinoSearchTextField>(
-          find.byKey(const ValueKey<String>('task-search')),
-        );
+    final searchField = tester.widget<CupertinoSearchTextField>(
+      find.byKey(const ValueKey<String>('task-search')),
+    );
     expect(searchField.controller!.text, isEmpty);
     expect(find.text('backup on pve-01'), findsOneWidget);
     expect(find.text('Showing 5 of 5 recent tasks'), findsOneWidget);
@@ -158,8 +156,9 @@ void main() {
       addTearDown(() => debugDefaultTargetPlatformOverride = null);
       await tester.binding.setSurfaceSize(const Size(1440, 900));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      final ClusterOverviewController controller =
-          await readyDashboardController(healthyDatacenterSnapshot());
+      final controller = await readyDashboardController(
+        healthyDatacenterSnapshot(),
+      );
       addTearDown(controller.dispose);
 
       await tester.pumpWidget(
@@ -213,8 +212,8 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 1000));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewSnapshot base = healthyDatacenterSnapshot();
-    final ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    final base = healthyDatacenterSnapshot();
+    final snapshot = ClusterOverviewSnapshot(
       version: base.version,
       nodes: base.nodes,
       guests: base.guests,
@@ -239,9 +238,7 @@ void main() {
         ),
       ],
     );
-    final ClusterOverviewController controller = await readyDashboardController(
-      snapshot,
-    );
+    final controller = await readyDashboardController(snapshot);
     addTearDown(controller.dispose);
     await tester.pumpWidget(
       MaterialApp(
@@ -268,11 +265,11 @@ void main() {
     addTearDown(() => debugDefaultTargetPlatformOverride = null);
     await tester.binding.setSurfaceSize(const Size(1366, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
-    final _TaskLogSession session = _TaskLogSession();
+    final session = _TaskLogSession();
 
     await tester.pumpWidget(
       MaterialApp(
@@ -289,7 +286,7 @@ void main() {
     await tester.tap(find.text('backup on pve-01').first);
     await tester.pumpAndSettle();
     expect(session.requests, isEmpty);
-    final Finder loadLog = find.byKey(const ValueKey<String>('load-task-log'));
+    final loadLog = find.byKey(const ValueKey<String>('load-task-log'));
     await tester.ensureVisible(loadLog);
     await tester.tap(loadLog);
     await tester.pumpAndSettle();
@@ -302,8 +299,8 @@ void main() {
   testWidgets('separates active interactive sessions and shows their age', (
     WidgetTester tester,
   ) async {
-    final ClusterOverviewSnapshot base = healthyDatacenterSnapshot();
-    final ClusterOverviewController controller = await readyDashboardController(
+    final base = healthyDatacenterSnapshot();
+    final controller = await readyDashboardController(
       ClusterOverviewSnapshot(
         version: base.version,
         nodes: base.nodes,
@@ -352,7 +349,7 @@ void main() {
   testWidgets('explains when a task log needs an active server session', (
     WidgetTester tester,
   ) async {
-    final ClusterTask task = healthyDatacenterSnapshot().tasks.first;
+    final task = healthyDatacenterSnapshot().tasks.first;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -373,7 +370,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterTask task = healthyDatacenterSnapshot().tasks.first;
+    final task = healthyDatacenterSnapshot().tasks.first;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -381,7 +378,7 @@ void main() {
         home: TaskInspector(task: task, session: _FailingTaskLogSession()),
       ),
     );
-    final Finder loadLog = find.byKey(const ValueKey<String>('load-task-log'));
+    final loadLog = find.byKey(const ValueKey<String>('load-task-log'));
     await tester.ensureVisible(loadLog);
     await tester.tap(loadLog);
     await tester.pumpAndSettle();
@@ -395,7 +392,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterTask task = healthyDatacenterSnapshot().tasks.first;
+    final task = healthyDatacenterSnapshot().tasks.first;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -409,7 +406,7 @@ void main() {
         ),
       ),
     );
-    final Finder loadLog = find.byKey(const ValueKey<String>('load-task-log'));
+    final loadLog = find.byKey(const ValueKey<String>('load-task-log'));
     await tester.ensureVisible(loadLog);
     await tester.tap(loadLog);
     await tester.pumpAndSettle();
@@ -426,7 +423,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterTask task = healthyDatacenterSnapshot().tasks.first;
+    final task = healthyDatacenterSnapshot().tasks.first;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -440,7 +437,7 @@ void main() {
         ),
       ),
     );
-    final Finder loadLog = find.byKey(const ValueKey<String>('load-task-log'));
+    final loadLog = find.byKey(const ValueKey<String>('load-task-log'));
     await tester.ensureVisible(loadLog);
     await tester.tap(loadLog);
     await tester.pumpAndSettle();

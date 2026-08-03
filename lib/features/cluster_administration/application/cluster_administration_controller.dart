@@ -33,15 +33,12 @@ class ClusterAdministrationController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> load() async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = ClusterAdministrationLoadState.loading;
     _errorMessage = null;
     _notify();
     try {
-      final PveClusterAdministrationSnapshot snapshot = await _repository.load(
-        _session,
-        _overview,
-      );
+      final snapshot = await _repository.load(_session, _overview);
       if (_isStale(requestEpoch)) {
         return;
       }

@@ -17,8 +17,8 @@ class DatacenterHealthBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForHealth(health.state);
-    final Color accent = dashboardToneColor(context, tone);
+    final tone = dashboardToneForHealth(health.state);
+    final accent = dashboardToneColor(context, tone);
     return PveInsetGroup(
       onTap: onViewNodes,
       semanticLabel:
@@ -76,14 +76,11 @@ class DatacenterHealthBanner extends StatelessWidget {
           ),
           if (health.issues.isNotEmpty) ...<Widget>[
             const SizedBox(height: 14),
-            ...health.issues
-                .take(2)
-                .map(
-                  (DatacenterHealthIssue issue) => Padding(
-                    padding: const EdgeInsets.only(left: 50, bottom: 7),
-                    child: _HealthIssueLine(issue: issue),
-                  ),
-                ),
+            for (final issue in health.issues.take(2))
+              Padding(
+                padding: const EdgeInsets.only(left: 50, bottom: 7),
+                child: _HealthIssueLine(issue: issue),
+              ),
             if (health.issues.length > 2)
               Padding(
                 padding: const EdgeInsets.only(left: 50),
@@ -107,8 +104,7 @@ class _HealthIssueLine extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone =
-        issue.severity == DatacenterHealthIssueSeverity.critical
+    final tone = issue.severity == DatacenterHealthIssueSeverity.critical
         ? DatacenterDashboardTone.critical
         : DatacenterDashboardTone.warning;
     return Row(
@@ -134,9 +130,9 @@ class _HealthIssueLine extends StatelessWidget {
 }
 
 String _healthSummary(DatacenterHealth health) {
-  final int runningTaskCount = health.tasks.runningTaskCount;
-  final int onlineNodes = health.nodes.length - health.offlineNodeCount;
-  final String taskSummary = runningTaskCount == 0
+  final runningTaskCount = health.tasks.runningTaskCount;
+  final onlineNodes = health.nodes.length - health.offlineNodeCount;
+  final taskSummary = runningTaskCount == 0
       ? 'no active tasks'
       : '$runningTaskCount active ${runningTaskCount == 1 ? 'task' : 'tasks'}';
   return '$onlineNodes/${health.nodes.length} nodes online · '

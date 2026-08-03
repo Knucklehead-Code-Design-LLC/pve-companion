@@ -144,7 +144,7 @@ class DatacenterWatchSheet extends StatelessWidget {
   }
 
   Future<void> _start(BuildContext context) async {
-    final bool started = await controller.startDatacenterWatch();
+    final started = await controller.startDatacenterWatch();
     if (started && context.mounted) {
       Navigator.of(context).pop();
     }

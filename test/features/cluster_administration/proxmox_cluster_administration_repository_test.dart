@@ -8,7 +8,7 @@ void main() {
   test(
     'loads cluster posture while exposing only intentionally safe options',
     () async {
-      final _ClusterSession session = _ClusterSession(<String, Object?>{
+      final session = _ClusterSession(<String, Object?>{
         'cluster/status': <Object?>[
           <String, Object?>{
             'type': 'cluster',

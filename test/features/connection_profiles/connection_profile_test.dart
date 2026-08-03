@@ -3,15 +3,15 @@ import 'package:pve_companion/features/connection_profiles/domain/connection_pro
 
 void main() {
   test('round-trips a password profile without any credential secret', () {
-    final ConnectionProfile profile = ConnectionProfile.password(
+    final profile = ConnectionProfile.password(
       displayName: 'Lab',
       endpoint: Uri.parse('https://pve.example.test:8006'),
       username: 'admin',
       realm: 'pam',
     );
 
-    final Map<String, Object?> encoded = profile.toJson();
-    final ConnectionProfile decoded = ConnectionProfile.fromJson(encoded);
+    final encoded = profile.toJson();
+    final decoded = ConnectionProfile.fromJson(encoded);
 
     expect(decoded.displayName, 'Lab');
     expect(decoded.endpoint.toString(), 'https://pve.example.test:8006');
@@ -23,17 +23,15 @@ void main() {
   test(
     'persists the last successful local connection separately from edits',
     () {
-      final DateTime connectedAt = DateTime.utc(2026, 8, 2, 14, 30);
-      final ConnectionProfile profile = ConnectionProfile.password(
+      final connectedAt = DateTime.utc(2026, 8, 2, 14, 30);
+      final profile = ConnectionProfile.password(
         displayName: 'Lab',
         endpoint: Uri.parse('https://pve.example.test:8006'),
         username: 'admin',
         realm: 'pam',
       ).withLastConnectedAt(connectedAt);
 
-      final ConnectionProfile decoded = ConnectionProfile.fromJson(
-        profile.toJson(),
-      );
+      final decoded = ConnectionProfile.fromJson(profile.toJson());
 
       expect(decoded.lastConnectedAt, connectedAt);
       expect(decoded.savedAt, profile.savedAt);
@@ -41,16 +39,15 @@ void main() {
   );
 
   test('ignores an invalid optional last-connection timestamp', () {
-    final ConnectionProfile profile = ConnectionProfile.password(
+    final profile = ConnectionProfile.password(
       displayName: 'Lab',
       endpoint: Uri.parse('https://pve.example.test:8006'),
       username: 'admin',
       realm: 'pam',
     );
-    final Map<String, Object?> encoded = profile.toJson()
-      ..['lastConnectedAt'] = 'not-a-date';
+    final encoded = profile.toJson()..['lastConnectedAt'] = 'not-a-date';
 
-    final ConnectionProfile decoded = ConnectionProfile.fromJson(encoded);
+    final decoded = ConnectionProfile.fromJson(encoded);
 
     expect(decoded.lastConnectedAt, isNull);
   });
@@ -63,7 +60,7 @@ void main() {
   });
 
   test('accepts a principal that already includes its realm', () {
-    final ConnectionProfile profile = ConnectionProfile.password(
+    final profile = ConnectionProfile.password(
       displayName: 'Lab',
       endpoint: Uri.parse('https://pve.example.test'),
       username: 'admin@pve',

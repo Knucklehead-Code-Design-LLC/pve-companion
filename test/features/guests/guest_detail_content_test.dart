@@ -14,7 +14,7 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    const PveGuest template = PveGuest(
+    const template = PveGuest(
       vmid: 900,
       node: 'pve-01',
       kind: GuestKind.virtualMachine,
@@ -22,14 +22,14 @@ void main() {
       name: 'ubuntu-template',
       isTemplate: true,
     );
-    final GuestDetailController controller = GuestDetailController(
+    final controller = GuestDetailController(
       repository: _TemplateGuestRepository(),
       session: const _GuestSession(),
       guest: template,
     );
     addTearDown(controller.dispose);
     await controller.load();
-    final ScrollController scrollController = ScrollController();
+    final scrollController = ScrollController();
     addTearDown(scrollController.dispose);
 
     await tester.pumpWidget(
@@ -62,21 +62,21 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    const PveGuest guest = PveGuest(
+    const guest = PveGuest(
       vmid: 101,
       node: 'pve-01',
       kind: GuestKind.virtualMachine,
       status: 'running',
       name: 'app-01',
     );
-    final GuestDetailController controller = GuestDetailController(
+    final controller = GuestDetailController(
       repository: _TemplateGuestRepository(),
       session: const _GuestSession(),
       guest: guest,
     );
     addTearDown(controller.dispose);
     await controller.load();
-    final ScrollController scrollController = ScrollController();
+    final scrollController = ScrollController();
     addTearDown(scrollController.dispose);
     GuestPowerAction? selectedAction;
 
@@ -101,9 +101,7 @@ void main() {
     );
 
     expect(find.text('Open Guest Console'), findsOneWidget);
-    final Finder powerMenu = find.byKey(
-      const ValueKey<String>('guest-power-menu'),
-    );
+    final powerMenu = find.byKey(const ValueKey<String>('guest-power-menu'));
     await tester.ensureVisible(powerMenu);
     await tester.tap(powerMenu);
     await tester.pumpAndSettle();

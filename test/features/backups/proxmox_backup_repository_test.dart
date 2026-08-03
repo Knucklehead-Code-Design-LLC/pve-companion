@@ -8,7 +8,7 @@ import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('uses an available reporting node for shared backup content', () async {
-    final _BackupSession session = _BackupSession(<String, Object?>{
+    final session = _BackupSession(<String, Object?>{
       'cluster/backup': <Object?>[
         <String, Object?>{
           'id': 'weekly',
@@ -88,7 +88,7 @@ void main() {
   test(
     'identifies permission-limited backup inventory separately from no data',
     () async {
-      const ClusterOverviewSnapshot overview = ClusterOverviewSnapshot(
+      const overview = ClusterOverviewSnapshot(
         version: PveVersion(version: '9.0'),
         nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
         guests: <PveGuest>[],
@@ -106,8 +106,10 @@ void main() {
         tasks: <ClusterTask>[],
       );
 
-      final PveBackupCenterSnapshot snapshot = await ProxmoxBackupRepository()
-          .load(const _PermissionBackupSession(), overview);
+      final snapshot = await ProxmoxBackupRepository().load(
+        const _PermissionBackupSession(),
+        overview,
+      );
 
       expect(snapshot.destinations, hasLength(1));
       expect(snapshot.schedules, isEmpty);
@@ -120,19 +122,18 @@ void main() {
   test(
     'reports backup copies as not configured when no destination exists',
     () async {
-      const ClusterOverviewSnapshot overview = ClusterOverviewSnapshot(
+      const overview = ClusterOverviewSnapshot(
         version: PveVersion(version: '9.0'),
         nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
         guests: <PveGuest>[],
         storages: <ClusterStorage>[],
         tasks: <ClusterTask>[],
       );
-      final _BackupSession session = _BackupSession(<String, Object?>{
+      final session = _BackupSession(<String, Object?>{
         'cluster/backup': <Object?>[],
       });
 
-      final PveBackupCenterSnapshot snapshot = await ProxmoxBackupRepository()
-          .load(session, overview);
+      final snapshot = await ProxmoxBackupRepository().load(session, overview);
 
       expect(snapshot.destinations, isEmpty);
       expect(snapshot.records, isEmpty);
@@ -144,7 +145,7 @@ void main() {
   test(
     'reports partially available copies when another destination is denied',
     () async {
-      const ClusterOverviewSnapshot overview = ClusterOverviewSnapshot(
+      const overview = ClusterOverviewSnapshot(
         version: PveVersion(version: '9.0'),
         nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
         guests: <PveGuest>[],
@@ -170,7 +171,7 @@ void main() {
         ],
         tasks: <ClusterTask>[],
       );
-      final _BackupSession session = _BackupSession(
+      final session = _BackupSession(
         <String, Object?>{
           'cluster/backup': <Object?>[],
           'nodes/pve-01/storage/backup-a/content': <Object?>[
@@ -186,8 +187,7 @@ void main() {
         },
       );
 
-      final PveBackupCenterSnapshot snapshot = await ProxmoxBackupRepository()
-          .load(session, overview);
+      final snapshot = await ProxmoxBackupRepository().load(session, overview);
 
       expect(snapshot.records, hasLength(1));
       expect(snapshot.recordDataState, PveBackupDataState.partiallyAvailable);
@@ -210,14 +210,14 @@ class _BackupSession implements ProxmoxSession {
     String resource, {
     Map<String, String> query = const <String, String>{},
   }) async {
-    final String querySuffix = query.entries
+    final querySuffix = query.entries
         .map((MapEntry<String, String> entry) => '${entry.key}=${entry.value}')
         .join('&');
-    final String requestKey = querySuffix.isEmpty
+    final requestKey = querySuffix.isEmpty
         ? resource
         : '$resource?$querySuffix';
     requestedResources.add(requestKey);
-    final Object? error = errors[requestKey];
+    final error = errors[requestKey];
     if (error != null) {
       return Future<Object?>.error(error);
     }

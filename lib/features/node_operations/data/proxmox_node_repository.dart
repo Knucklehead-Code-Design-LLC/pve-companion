@@ -33,13 +33,13 @@ class ProxmoxNodeRepository implements PveNodeRepository {
     ProxmoxSession session,
     PveNodeDetailsSeed seed,
   ) async {
-    final String node = seed.node.name;
-    final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[
+    final node = seed.node.name;
+    final results = await Future.wait<Object?>(<Future<Object?>>[
       _loadOptional(session, 'nodes/$node/status'),
       _loadOptional(session, 'nodes/$node/services'),
       _loadOptional(session, 'nodes/$node/apt/update'),
     ]);
-    final Map<Object?, Object?>? status = _map(results[0]);
+    final status = _map(results[0]);
     return PveNodeDetails(
       node: seed.node,
       pveVersion: _string(status?['pveversion']),
@@ -57,7 +57,7 @@ class ProxmoxNodeRepository implements PveNodeRepository {
     PveNodeDetailsSeed seed,
     PveNodePowerAction action,
   ) async {
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${seed.node.name}/status',
       fields: <String, String>{'command': action.apiCommand},
     );
@@ -76,7 +76,7 @@ class ProxmoxNodeRepository implements PveNodeRepository {
         message: 'The reported service name is not safe to restart.',
       );
     }
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${seed.node.name}/services/${service.name}/restart',
       fields: const <String, String>{},
     );
@@ -88,7 +88,7 @@ class ProxmoxNodeRepository implements PveNodeRepository {
     ProxmoxSession session,
     PveNodeDetailsSeed seed,
   ) async {
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${seed.node.name}/apt/update',
       fields: const <String, String>{},
     );
@@ -150,9 +150,8 @@ class ProxmoxNodeRepository implements PveNodeRepository {
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> item) {
-          final String? name =
-              _string(item['service']) ?? _string(item['name']);
-          final String? state = _string(item['state']);
+          final name = _string(item['service']) ?? _string(item['name']);
+          final state = _string(item['state']);
           if (name == null || state == null) {
             return null;
           }
@@ -173,7 +172,7 @@ class ProxmoxNodeRepository implements PveNodeRepository {
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> item) {
-          final String? packageName =
+          final packageName =
               _string(item['Package']) ?? _string(item['package']);
           if (packageName == null) {
             return null;

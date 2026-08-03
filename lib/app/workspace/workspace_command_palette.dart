@@ -1,3 +1,5 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/services.dart';
 
@@ -38,19 +40,18 @@ Future<void> showWorkspaceCommandPalette(
               CupertinoActionSheetAction(
                 onPressed: () {
                   Navigator.of(paletteContext).pop();
-                  onRefresh();
+                  unawaited(onRefresh());
                 },
                 child: const Text('Refresh datacenter'),
               ),
-              ...WorkspaceSection.values.map(
-                (WorkspaceSection section) => CupertinoActionSheetAction(
+              for (final section in WorkspaceSection.values)
+                CupertinoActionSheetAction(
                   onPressed: () {
                     Navigator.of(paletteContext).pop();
                     onSectionSelected(section);
                   },
                   child: Text('Go to ${section.label}'),
                 ),
-              ),
               CupertinoActionSheetAction(
                 onPressed: () {
                   Navigator.of(paletteContext).pop();

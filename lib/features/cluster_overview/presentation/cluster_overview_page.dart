@@ -33,7 +33,7 @@ class ClusterOverviewPage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final ClusterOverviewSnapshot? snapshot = controller.snapshot;
+    final snapshot = controller.snapshot;
     return snapshot == null ? _buildStatePage() : _buildDashboard(snapshot);
   }
 

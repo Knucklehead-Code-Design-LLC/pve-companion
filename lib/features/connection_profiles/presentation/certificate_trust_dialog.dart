@@ -15,7 +15,7 @@ class CertificateTrustDialog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int port = profile.endpoint.hasPort ? profile.endpoint.port : 443;
+    final port = profile.endpoint.hasPort ? profile.endpoint.port : 443;
     return CupertinoAlertDialog(
       title: const Text('Verify this server certificate'),
       content: Column(

@@ -49,14 +49,15 @@ class _TasksPageState extends State<TasksPage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesExpandedPresentation =
-        PveAppleLayout.usesExpandedPresentation(context);
-    final bool usesDesktopTaskTable =
+    final usesExpandedPresentation = PveAppleLayout.usesExpandedPresentation(
+      context,
+    );
+    final usesDesktopTaskTable =
         usesExpandedPresentation &&
         defaultTargetPlatform == TargetPlatform.macOS;
-    final bool usesDesktopInspector =
+    final usesDesktopInspector =
         usesDesktopTaskTable && PveAppleLayout.usesWidePresentation(context);
-    final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
+    final snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Tasks',
       showsSliverNavigationBar: widget.showsSliverNavigationBar,
@@ -96,47 +97,44 @@ class _TasksPageState extends State<TasksPage> {
     required bool usesDesktopTaskTable,
     required bool usesDesktopInspector,
   }) {
-    final List<ClusterTask> tasks = snapshot.tasks;
-    final DateTime filterNow = DateTime.now();
-    final List<ClusterTask> orderedTasks = TaskQuery(
+    final tasks = snapshot.tasks;
+    final filterNow = DateTime.now();
+    final orderedTasks = TaskQuery(
       sort: _taskQuery.sort,
     ).apply(tasks, now: filterNow);
-    final List<ClusterTask> visibleTasks = _taskQuery.apply(
-      tasks,
-      now: filterNow,
-    );
-    final List<ClusterTask> visibleSessions = visibleTasks
+    final visibleTasks = _taskQuery.apply(tasks, now: filterNow);
+    final visibleSessions = visibleTasks
         .where(
           (ClusterTask task) =>
               task.state == ClusterTaskState.running &&
               task.isInteractiveSession,
         )
         .toList(growable: false);
-    final List<ClusterTask> visibleOperations = visibleTasks
+    final visibleOperations = visibleTasks
         .where(
           (ClusterTask task) =>
               task.state != ClusterTaskState.running ||
               !task.isInteractiveSession,
         )
         .toList(growable: false);
-    final int runningCount = tasks
+    final runningCount = tasks
         .where(
           (ClusterTask task) =>
               task.state == ClusterTaskState.running &&
               !task.isInteractiveSession,
         )
         .length;
-    final int interactiveSessionCount = tasks
+    final interactiveSessionCount = tasks
         .where(
           (ClusterTask task) =>
               task.state == ClusterTaskState.running &&
               task.isInteractiveSession,
         )
         .length;
-    final int failedCount = tasks
+    final failedCount = tasks
         .where((ClusterTask task) => task.state == ClusterTaskState.failed)
         .length;
-    final int successfulCount = tasks
+    final successfulCount = tasks
         .where((ClusterTask task) => task.state == ClusterTaskState.successful)
         .length;
     final Widget filter = PveSlidingSegmentedControl<TaskStateFilter>(
@@ -333,7 +331,7 @@ class _TasksPageState extends State<TasksPage> {
     required bool usesDesktopInspector,
     required ValueChanged<ClusterTask> onInspect,
   }) {
-    final ClusterTask? selectedTask = _selectedVisibleTask(visibleTasks);
+    final selectedTask = _selectedVisibleTask(visibleTasks);
     final Widget activity = Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -366,39 +364,36 @@ class _TasksPageState extends State<TasksPage> {
         else if (usesExpandedPresentation)
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns =
+              final twoColumns =
                   constraints.maxWidth >=
                   PveAppleLayout.controlBarStackBreakpoint;
-              final double cardWidth = twoColumns
+              final cardWidth = twoColumns
                   ? (constraints.maxWidth - 12) / 2
                   : constraints.maxWidth;
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: visibleOperations
-                    .map(
-                      (ClusterTask task) => SizedBox(
-                        width: cardWidth,
-                        child: _TaskCard(
-                          task: task,
-                          selected: selectedTask?.upid == task.upid,
-                          onTap: () => onInspect(task),
-                        ),
+                children: <Widget>[
+                  for (final task in visibleOperations)
+                    SizedBox(
+                      width: cardWidth,
+                      child: _TaskCard(
+                        task: task,
+                        selected: selectedTask?.upid == task.upid,
+                        onTap: () => onInspect(task),
                       ),
-                    )
-                    .toList(growable: false),
+                    ),
+                ],
               );
             },
           )
         else
           CupertinoListSection.insetGrouped(
             margin: EdgeInsets.zero,
-            children: visibleOperations
-                .map(
-                  (ClusterTask task) =>
-                      _TaskRow(task: task, onTap: () => onInspect(task)),
-                )
-                .toList(growable: false),
+            children: <Widget>[
+              for (final task in visibleOperations)
+                _TaskRow(task: task, onTap: () => onInspect(task)),
+            ],
           ),
       ],
     );
@@ -419,9 +414,9 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   ClusterTask? _selectedVisibleTask(List<ClusterTask> visibleTasks) {
-    final String? selectedUpid = _selectedTaskUpid;
+    final selectedUpid = _selectedTaskUpid;
     if (selectedUpid == null) return null;
-    for (final ClusterTask task in visibleTasks) {
+    for (final task in visibleTasks) {
       if (task.upid == selectedUpid) return task;
     }
     return null;
@@ -433,7 +428,7 @@ class _TasksPageState extends State<TasksPage> {
   }
 
   List<PveGuest> _knownTaskGuests(ClusterOverviewSnapshot snapshot) {
-    final Set<int> taskGuestIds = snapshot.tasks
+    final taskGuestIds = snapshot.tasks
         .map((ClusterTask task) => task.guestVmid)
         .whereType<int>()
         .toSet();
@@ -464,8 +459,8 @@ class _TaskRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForTask(task);
-    final Color accent = dashboardToneColor(context, tone);
+    final tone = dashboardToneForTask(task);
+    final accent = dashboardToneColor(context, tone);
     return CupertinoListTile(
       leading: DecoratedBox(
         decoration: BoxDecoration(
@@ -573,8 +568,8 @@ class _TaskCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForTask(task);
-    final Color accent = dashboardToneColor(context, tone);
+    final tone = dashboardToneForTask(task);
+    final accent = dashboardToneColor(context, tone);
     return Semantics(
       button: true,
       selected: selected,
@@ -661,8 +656,8 @@ class _TaskFilterControls extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<String> orderedNodes = nodes.toList()..sort();
-    final List<String> orderedOperators = operators.toList()..sort();
+    final orderedNodes = nodes.toList()..sort();
+    final orderedOperators = operators.toList()..sort();
     return Wrap(
       spacing: 8,
       runSpacing: 8,
@@ -729,10 +724,7 @@ class _TaskGuestChoiceMenu extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PveGuest? selected = guests.cast<PveGuest?>().firstWhere(
-      (PveGuest? guest) => guest?.vmid == selectedVmid,
-      orElse: () => null,
-    );
+    final selected = _guestWithVmid(guests, selectedVmid);
     return CupertinoButton(
       key: const ValueKey<String>('task-guest-filter'),
       padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
@@ -749,15 +741,14 @@ class _TaskGuestChoiceMenu extends StatelessWidget {
               },
               child: const Text('All guests'),
             ),
-            ...guests.map(
-              (PveGuest guest) => CupertinoActionSheetAction(
+            for (final guest in guests)
+              CupertinoActionSheetAction(
                 onPressed: () {
                   Navigator.of(popupContext).pop();
                   onSelected(guest.vmid);
                 },
                 child: Text('${guest.title} (${guest.vmid})'),
               ),
-            ),
           ],
           cancelButton: CupertinoActionSheetAction(
             onPressed: () => Navigator.of(popupContext).pop(),
@@ -775,6 +766,15 @@ class _TaskGuestChoiceMenu extends StatelessWidget {
       ),
     );
   }
+}
+
+PveGuest? _guestWithVmid(List<PveGuest> guests, int? vmid) {
+  for (final guest in guests) {
+    if (guest.vmid == vmid) {
+      return guest;
+    }
+  }
+  return null;
 }
 
 class _TaskChoiceMenu extends StatelessWidget {
@@ -805,15 +805,14 @@ class _TaskChoiceMenu extends StatelessWidget {
               },
               child: const Text('All'),
             ),
-            ...choices.map(
-              (String choice) => CupertinoActionSheetAction(
+            for (final choice in choices)
+              CupertinoActionSheetAction(
                 onPressed: () {
                   Navigator.of(popupContext).pop();
                   onSelected(choice);
                 },
                 child: Text(choice),
               ),
-            ),
           ],
           cancelButton: CupertinoActionSheetAction(
             isDefaultAction: true,
@@ -967,8 +966,8 @@ class _DesktopTaskRow extends StatelessWidget {
   final VoidCallback onTap;
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForTask(task);
-    final Color accent = dashboardToneColor(context, tone);
+    final tone = dashboardToneForTask(task);
+    final accent = dashboardToneColor(context, tone);
     return Semantics(
       button: true,
       selected: selected,
@@ -1038,12 +1037,13 @@ class _DesktopTaskRow extends StatelessWidget {
 }
 
 String _taskAgeLabel(ClusterTask task) {
-  final DateTime? startedAt = task.startedAt;
+  final startedAt = task.startedAt;
   if (startedAt == null) return 'Start time unavailable';
-  final Duration age = DateTime.now().difference(startedAt);
+  final age = DateTime.now().difference(startedAt);
   if (age.isNegative) return 'Start time unavailable';
-  if (age.inHours > 0)
+  if (age.inHours > 0) {
     return 'Active ${age.inHours}h ${age.inMinutes.remainder(60)}m';
+  }
   if (age.inMinutes > 0) return 'Active ${age.inMinutes}m';
   return 'Active just now';
 }

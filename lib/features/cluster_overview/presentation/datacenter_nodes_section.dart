@@ -32,13 +32,11 @@ class DatacenterNodesSection extends StatelessWidget {
         else
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool useTwoColumns = constraints.maxWidth >= 840;
-              final double cardWidth = useTwoColumns
+              final useTwoColumns = constraints.maxWidth >= 840;
+              final cardWidth = useTwoColumns
                   ? (constraints.maxWidth - 12) / 2
                   : constraints.maxWidth;
-              final List<DatacenterNodeHealth> visibleNodes = health.nodes
-                  .take(4)
-                  .toList(growable: false);
+              final visibleNodes = health.nodes.take(4).toList(growable: false);
               return KeyedSubtree(
                 key: ValueKey<String>(
                   useTwoColumns
@@ -48,17 +46,16 @@ class DatacenterNodesSection extends StatelessWidget {
                 child: Wrap(
                   spacing: 12,
                   runSpacing: 12,
-                  children: visibleNodes
-                      .map(
-                        (DatacenterNodeHealth node) => SizedBox(
-                          width: cardWidth,
-                          child: _DatacenterNodeCard(
-                            node: node,
-                            onTap: onViewNodes,
-                          ),
+                  children: <Widget>[
+                    for (final node in visibleNodes)
+                      SizedBox(
+                        width: cardWidth,
+                        child: _DatacenterNodeCard(
+                          node: node,
+                          onTap: onViewNodes,
                         ),
-                      )
-                      .toList(growable: false),
+                      ),
+                  ],
                 ),
               );
             },
@@ -88,10 +85,10 @@ class _DatacenterNodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = node.node.isOnline
+    final tone = node.node.isOnline
         ? dashboardToneForHealth(node.state)
         : DatacenterDashboardTone.critical;
-    final String statusLabel = _nodeStatusLabel(node);
+    final statusLabel = _nodeStatusLabel(node);
     return Semantics(
       button: true,
       label: 'View node ${node.node.name}. $statusLabel.',
@@ -104,14 +101,13 @@ class _DatacenterNodeCard extends StatelessWidget {
           children: <Widget>[
             LayoutBuilder(
               builder: (BuildContext context, BoxConstraints constraints) {
-                final bool stacksStatus =
+                final stacksStatus =
                     constraints.maxWidth < 390 ||
                     MediaQuery.textScalerOf(context).scale(12) >= 20;
-                final TextStyle statusStyle = PveAppleText.caption(context)
-                    .copyWith(
-                      color: dashboardToneColor(context, tone),
-                      fontWeight: FontWeight.w700,
-                    );
+                final statusStyle = PveAppleText.caption(context).copyWith(
+                  color: dashboardToneColor(context, tone),
+                  fontWeight: FontWeight.w700,
+                );
                 final Widget identity = Row(
                   children: <Widget>[
                     Icon(
@@ -176,15 +172,13 @@ class _NodePressureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterPressureMetric? reportedPressure = pressure;
-    final DatacenterDashboardTone tone = dashboardToneForPressure(
-      reportedPressure,
-    );
-    final String value = datacenterPressureValueLabel(
+    final reportedPressure = pressure;
+    final tone = dashboardToneForPressure(reportedPressure);
+    final value = datacenterPressureValueLabel(
       reportedPressure,
       includeByteTotals: useBytes,
     );
-    final bool usesLargeText = MediaQuery.textScalerOf(context).scale(12) >= 20;
+    final usesLargeText = MediaQuery.textScalerOf(context).scale(12) >= 20;
     return Semantics(
       label: '$label: $value, ${dashboardPressureLabel(reportedPressure)}',
       child: Column(

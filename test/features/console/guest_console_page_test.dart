@@ -11,7 +11,7 @@ void main() {
   testWidgets('closes the in-app console when the app backgrounds', (
     WidgetTester tester,
   ) async {
-    final DeferredConsoleRepository repository = DeferredConsoleRepository();
+    final repository = DeferredConsoleRepository();
     await tester.pumpWidget(
       CupertinoApp(
         home: GuestConsolePage(
@@ -31,7 +31,7 @@ void main() {
     await tester.pump();
 
     expect(find.text('Console closed for privacy'), findsOneWidget);
-    final MemoryConsoleTransport transport = MemoryConsoleTransport();
+    final transport = MemoryConsoleTransport();
     repository.request.complete(transport);
     await tester.pump();
     await tester.pump();
@@ -41,8 +41,8 @@ void main() {
   testWidgets('sends complete Unicode code points when replacing typed text', (
     WidgetTester tester,
   ) async {
-    final DeferredConsoleRepository repository = DeferredConsoleRepository();
-    final MemoryConsoleTransport transport = MemoryConsoleTransport();
+    final repository = DeferredConsoleRepository();
+    final transport = MemoryConsoleTransport();
     repository.request.complete(transport);
 
     await tester.pumpWidget(
@@ -62,13 +62,13 @@ void main() {
 
     await tester.tap(find.text('Keyboard'));
     await tester.pump();
-    final Finder textInput = find.byType(CupertinoTextField);
+    final textInput = find.byType(CupertinoTextField);
     expect(textInput, findsOneWidget);
 
     await tester.enterText(textInput, '😀');
     await tester.enterText(textInput, '😃');
 
-    final List<Uint8List> keyMessages = transport.sent
+    final keyMessages = transport.sent
         .where((Uint8List message) => message.first == 4)
         .toList(growable: false);
     expect(

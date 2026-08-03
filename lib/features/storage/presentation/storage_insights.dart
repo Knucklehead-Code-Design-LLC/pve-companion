@@ -12,7 +12,7 @@ class StorageInsights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final _StorageSummary summary = _StorageSummary.from(storages);
+    final summary = _StorageSummary.from(storages);
     return PveAdaptiveCardGrid(
       children: <Widget>[
         KeyedSubtree(
@@ -161,41 +161,38 @@ class StorageNodeCoverage extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Map<String, List<_NodeStorageResource>> resourcesByNode =
-        <String, List<_NodeStorageResource>>{};
-    for (final ClusterStorage storage in storages) {
-      for (final ClusterStorageResource resource in storage.resources) {
+    final resourcesByNode = <String, List<_NodeStorageResource>>{};
+    for (final storage in storages) {
+      for (final resource in storage.resources) {
         resourcesByNode
             .putIfAbsent(resource.node, () => <_NodeStorageResource>[])
             .add(_NodeStorageResource(storage: storage, resource: resource));
       }
     }
-    final List<String> nodes = resourcesByNode.keys.toList(growable: false)
-      ..sort();
+    final nodes = resourcesByNode.keys.toList(growable: false)..sort();
     if (nodes.isEmpty) {
       return const SizedBox.shrink();
     }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool twoColumns =
+        final twoColumns =
             constraints.maxWidth >= PveAppleLayout.controlBarStackBreakpoint;
-        final double cardWidth = twoColumns
+        final cardWidth = twoColumns
             ? (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: nodes
-              .map(
-                (String node) => SizedBox(
-                  width: cardWidth,
-                  child: _StorageNodeCard(
-                    node: node,
-                    resources: resourcesByNode[node]!,
-                  ),
+          children: <Widget>[
+            for (final node in nodes)
+              SizedBox(
+                width: cardWidth,
+                child: _StorageNodeCard(
+                  node: node,
+                  resources: resourcesByNode[node]!,
                 ),
-              )
-              .toList(growable: false),
+              ),
+          ],
         );
       },
     );
@@ -210,21 +207,21 @@ class _StorageNodeCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    int usedBytes = 0;
-    int capacityBytes = 0;
-    int capacityCount = 0;
-    final int availabilityReportedCount = resources
+    var usedBytes = 0;
+    var capacityBytes = 0;
+    var capacityCount = 0;
+    final availabilityReportedCount = resources
         .where(
           (_NodeStorageResource item) => item.resource.hasAvailabilityStatus,
         )
         .length;
-    final int availableCount = resources
+    final availableCount = resources
         .where(
           (_NodeStorageResource item) =>
               item.resource.hasAvailabilityStatus && item.resource.isAvailable,
         )
         .length;
-    for (final _NodeStorageResource item in resources) {
+    for (final item in resources) {
       if (!item.resource.hasCapacity) {
         continue;
       }
@@ -232,10 +229,10 @@ class _StorageNodeCard extends StatelessWidget {
       capacityBytes += item.resource.capacityBytes!;
       capacityCount += 1;
     }
-    final double? usageFraction = capacityCount == 0 || capacityBytes <= 0
+    final usageFraction = capacityCount == 0 || capacityBytes <= 0
         ? null
         : usedBytes / capacityBytes;
-    final Color accent = _capacityColor(context, usageFraction);
+    final accent = _capacityColor(context, usageFraction);
     return PveInsetGroup(
       key: ValueKey<String>('storage-node-$node'),
       padding: const EdgeInsets.all(16),
@@ -328,12 +325,12 @@ class _StorageSummary {
   });
 
   factory _StorageSummary.from(List<ClusterStorage> storages) {
-    int usedBytes = 0;
-    int capacityBytes = 0;
-    int reportingPoolCount = 0;
-    for (final ClusterStorage storage in storages) {
-      final int? used = storage.usedBytes;
-      final int? capacity = storage.capacityBytes;
+    var usedBytes = 0;
+    var capacityBytes = 0;
+    var reportingPoolCount = 0;
+    for (final storage in storages) {
+      final used = storage.usedBytes;
+      final capacity = storage.capacityBytes;
       if (used == null || capacity == null) {
         continue;
       }
@@ -341,7 +338,7 @@ class _StorageSummary {
       capacityBytes += capacity;
       reportingPoolCount += 1;
     }
-    final int sharedCount = storages
+    final sharedCount = storages
         .where((ClusterStorage storage) => storage.shared)
         .length;
     return _StorageSummary(

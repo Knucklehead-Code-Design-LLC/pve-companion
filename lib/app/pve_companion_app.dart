@@ -53,12 +53,11 @@ class _PveCompanionAppState extends State<PveCompanionApp>
   }
 
   void _handleInitialDeepLink() {
-    final String route =
-        WidgetsBinding.instance.platformDispatcher.defaultRouteName;
+    final route = WidgetsBinding.instance.platformDispatcher.defaultRouteName;
     if (route == Navigator.defaultRouteName) {
       return;
     }
-    final Uri? uri = Uri.tryParse(route);
+    final uri = Uri.tryParse(route);
     if (uri != null) {
       _handleDeepLink(uri);
     }
@@ -93,8 +92,7 @@ class _PveCompanionAppState extends State<PveCompanionApp>
       home: AnimatedBuilder(
         animation: widget.controller,
         builder: (BuildContext context, Widget? child) {
-          final ConnectionProfilesController profiles =
-              widget.controller.connectionProfiles;
+          final profiles = widget.controller.connectionProfiles;
           switch (profiles.loadState) {
             case ConnectionProfilesLoadState.loading:
               return CupertinoPageScaffold(
@@ -141,7 +139,7 @@ class _ConnectionProfileLoadFailure extends StatelessWidget {
         title: 'Saved servers are unavailable',
         message: message,
         actionLabel: 'Try Again',
-        onAction: () => onRetry(),
+        onAction: onRetry,
         destructive: true,
       ),
     );

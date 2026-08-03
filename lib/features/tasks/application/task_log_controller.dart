@@ -26,7 +26,7 @@ class TaskLogController extends ChangeNotifier {
   bool get canLoad => _session != null;
 
   Future<void> load() async {
-    final ProxmoxSession? session = _session;
+    final session = _session;
     if (session == null || _loading) return;
     _loading = true;
     notifyListeners();

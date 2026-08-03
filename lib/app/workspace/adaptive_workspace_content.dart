@@ -15,6 +15,16 @@ import 'workspace_section.dart';
 /// workspaces.
 enum WorkspaceLayoutSize { compact, regular, wide }
 
+final _compactNavigationItems =
+    List<BottomNavigationBarItem>.unmodifiable(<BottomNavigationBarItem>[
+      for (final section in WorkspaceSection.values)
+        BottomNavigationBarItem(
+          icon: Icon(section.icon),
+          activeIcon: Icon(section.selectedIcon),
+          label: section.label,
+        ),
+    ]);
+
 abstract final class WorkspaceLayout {
   static const double compactBreakpoint = PveAppleLayout.compactBreakpoint;
   static const double wideBreakpoint = PveAppleLayout.wideBreakpoint;
@@ -27,6 +37,22 @@ abstract final class WorkspaceLayout {
       return WorkspaceLayoutSize.regular;
     }
     return WorkspaceLayoutSize.wide;
+  }
+
+  static double _sidebarWidth({
+    required WorkspaceLayoutSize layout,
+    required bool usesIpadSidebar,
+  }) {
+    if (usesIpadSidebar) {
+      return 288;
+    }
+    return switch (layout) {
+      WorkspaceLayoutSize.regular => 304,
+      WorkspaceLayoutSize.wide => 320,
+      WorkspaceLayoutSize.compact => throw StateError(
+        'Compact workspaces do not show a sidebar.',
+      ),
+    };
   }
 }
 
@@ -73,77 +99,86 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final int selectedIndex = section.index;
-        final WorkspaceLayoutSize layout = WorkspaceLayout.forWidth(
-          constraints.maxWidth,
-        );
-        if (layout != WorkspaceLayoutSize.compact) {
-          final bool usesIpadSidebar =
-              defaultTargetPlatform == TargetPlatform.iOS;
-          return Row(
-            children: <Widget>[
-              _WorkspaceSidebar(
-                section: section,
-                onSectionChanged: onSectionChanged,
-                header: sidebarHeader,
-                width: _sidebarWidth(
-                  layout: layout,
-                  usesIpadSidebar: usesIpadSidebar,
-                ),
-                onRefresh: onRefresh,
-                refreshing: refreshing,
-                lastUpdatedAt: lastUpdatedAt,
-                refreshErrorMessage: refreshErrorMessage,
-                actions: sidebarActions,
-                footerActions: footerActions,
-              ),
-              Container(
-                width: 0.5,
-                color: PveAppleColors.separator(
-                  context,
-                ).withValues(alpha: 0.55),
-              ),
-              Expanded(
-                child: CupertinoPageScaffold(
-                  backgroundColor: PveAppleColors.page(context),
-                  navigationBar: wideNavigationBar,
-                  child: IndexedStack(index: selectedIndex, children: pages),
-                ),
-              ),
-              if (layout == WorkspaceLayoutSize.wide &&
-                  desktopInspector != null)
-                _DesktopInspector(child: desktopInspector!),
-            ],
-          );
+        final selectedIndex = section.index;
+        final layout = WorkspaceLayout.forWidth(constraints.maxWidth);
+        if (layout == WorkspaceLayoutSize.compact) {
+          return _buildCompactWorkspace(context, selectedIndex);
         }
-        return Column(
-          children: <Widget>[
-            Expanded(
-              child: IndexedStack(index: selectedIndex, children: pages),
-            ),
-            MediaQuery.withClampedTextScaling(
-              maxScaleFactor: 1.25,
-              child: CupertinoTabBar(
-                currentIndex: selectedIndex,
-                onTap: _selectIndex,
-                iconSize: 23,
-                activeColor: PveAppleColors.primary(context),
-                inactiveColor: PveAppleColors.secondaryLabel(context),
-                items: WorkspaceSection.values
-                    .map(
-                      (WorkspaceSection item) => BottomNavigationBarItem(
-                        icon: Icon(item.icon),
-                        activeIcon: Icon(item.selectedIcon),
-                        label: item.label,
-                      ),
-                    )
-                    .toList(growable: false),
-              ),
-            ),
-          ],
-        );
+        return _buildSidebarWorkspace(context, layout, selectedIndex);
       },
     );
+  }
+
+  Widget _buildCompactWorkspace(BuildContext context, int selectedIndex) {
+    return Column(
+      children: <Widget>[
+        Expanded(
+          child: IndexedStack(index: selectedIndex, children: pages),
+        ),
+        MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.25,
+          child: CupertinoTabBar(
+            currentIndex: selectedIndex,
+            onTap: _selectIndex,
+            iconSize: 23,
+            activeColor: PveAppleColors.primary(context),
+            inactiveColor: PveAppleColors.secondaryLabel(context),
+            items: _compactNavigationItems,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildSidebarWorkspace(
+    BuildContext context,
+    WorkspaceLayoutSize layout,
+    int selectedIndex,
+  ) {
+    final usesIpadSidebar = defaultTargetPlatform == TargetPlatform.iOS;
+    final inspector = _desktopInspectorFor(layout);
+    return Row(
+      children: <Widget>[
+        _WorkspaceSidebar(
+          section: section,
+          onSectionChanged: onSectionChanged,
+          header: sidebarHeader,
+          width: WorkspaceLayout._sidebarWidth(
+            layout: layout,
+            usesIpadSidebar: usesIpadSidebar,
+          ),
+          onRefresh: onRefresh,
+          refreshing: refreshing,
+          lastUpdatedAt: lastUpdatedAt,
+          refreshErrorMessage: refreshErrorMessage,
+          actions: sidebarActions,
+          footerActions: footerActions,
+        ),
+        Container(
+          width: 0.5,
+          color: PveAppleColors.separator(context).withValues(alpha: 0.55),
+        ),
+        Expanded(
+          child: CupertinoPageScaffold(
+            backgroundColor: PveAppleColors.page(context),
+            navigationBar: wideNavigationBar,
+            child: IndexedStack(index: selectedIndex, children: pages),
+          ),
+        ),
+        ?inspector,
+      ],
+    );
+  }
+
+  Widget? _desktopInspectorFor(WorkspaceLayoutSize layout) {
+    if (layout != WorkspaceLayoutSize.wide) {
+      return null;
+    }
+    final inspector = desktopInspector;
+    if (inspector == null) {
+      return null;
+    }
+    return _DesktopInspector(child: inspector);
   }
 
   void _selectIndex(int index) {
@@ -152,22 +187,6 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     }
     unawaited(PveHaptics.selection());
     onSectionChanged(WorkspaceSection.values[index]);
-  }
-
-  double _sidebarWidth({
-    required WorkspaceLayoutSize layout,
-    required bool usesIpadSidebar,
-  }) {
-    if (usesIpadSidebar) {
-      return 288;
-    }
-    return switch (layout) {
-      WorkspaceLayoutSize.regular => 304,
-      WorkspaceLayoutSize.wide => 320,
-      WorkspaceLayoutSize.compact => throw StateError(
-        'Compact workspaces do not show a sidebar.',
-      ),
-    };
   }
 }
 
@@ -307,7 +326,7 @@ class _SidebarDestinations extends StatelessWidget {
         actions: <Type, Action<Intent>>{
           _SidebarMoveIntent: CallbackAction<_SidebarMoveIntent>(
             onInvoke: (_SidebarMoveIntent intent) {
-              final int nextIndex = (section.index + intent.delta)
+              final nextIndex = (section.index + intent.delta)
                   .clamp(0, WorkspaceSection.values.length - 1)
                   .toInt();
               onSectionChanged(WorkspaceSection.values[nextIndex]);
@@ -319,15 +338,14 @@ class _SidebarDestinations extends StatelessWidget {
           autofocus: true,
           child: ListView(
             padding: EdgeInsets.zero,
-            children: WorkspaceSection.values
-                .map(
-                  (WorkspaceSection item) => _SidebarDestination(
-                    item: item,
-                    selected: item == section,
-                    onTap: () => onSectionChanged(item),
-                  ),
-                )
-                .toList(growable: false),
+            children: <Widget>[
+              for (final item in WorkspaceSection.values)
+                _SidebarDestination(
+                  item: item,
+                  selected: item == section,
+                  onTap: () => onSectionChanged(item),
+                ),
+            ],
           ),
         ),
       ),
@@ -350,35 +368,46 @@ class _SidebarWorkspaceActions extends StatelessWidget {
   Widget build(BuildContext context) {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
-      children: actions
-          .map(
-            (WorkspaceSidebarAction action) => Semantics(
-              button: true,
-              label: action.badgeCount == 0
-                  ? action.label
-                  : '${action.label}, ${action.badgeCount} datacenter incidents need attention',
-              child: CupertinoButton(
-                padding: const EdgeInsets.symmetric(
-                  horizontal: 10,
-                  vertical: 8,
-                ),
-                alignment: Alignment.centerLeft,
-                onPressed: action.onPressed,
-                child: Row(
-                  children: <Widget>[
-                    Icon(action.icon, size: 17),
-                    const SizedBox(width: 9),
-                    Expanded(child: Text(action.label)),
-                    if (action.badgeCount > 0)
-                      _AttentionBadge(count: action.badgeCount),
-                  ],
-                ),
-              ),
-            ),
-          )
-          .toList(growable: false),
+      children: <Widget>[
+        for (final action in actions) _SidebarWorkspaceAction(action: action),
+      ],
     );
   }
+}
+
+class _SidebarWorkspaceAction extends StatelessWidget {
+  const _SidebarWorkspaceAction({required this.action});
+
+  final WorkspaceSidebarAction action;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: _sidebarActionSemanticLabel(action),
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
+        alignment: Alignment.centerLeft,
+        onPressed: action.onPressed,
+        child: Row(
+          children: <Widget>[
+            Icon(action.icon, size: 17),
+            const SizedBox(width: 9),
+            Expanded(child: Text(action.label)),
+            if (action.badgeCount > 0)
+              _AttentionBadge(count: action.badgeCount),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
+String _sidebarActionSemanticLabel(WorkspaceSidebarAction action) {
+  if (action.badgeCount == 0) {
+    return action.label;
+  }
+  return '${action.label}, ${action.badgeCount} datacenter incidents need attention';
 }
 
 class _AttentionBadge extends StatelessWidget {
@@ -498,7 +527,7 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
                 key: const ValueKey<String>('workspace-footer-refresh'),
                 padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 7),
                 minimumSize: const Size(44, 40),
-                onPressed: refreshing ? null : () => onRefresh(),
+                onPressed: refreshing ? null : onRefresh,
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: <Widget>[
@@ -519,7 +548,7 @@ class _WorkspaceConnectionFooter extends StatelessWidget {
                       ? CupertinoIcons.refresh_thick
                       : CupertinoIcons.refresh,
                   label: refreshing ? 'Refreshing datacenter' : 'Refresh data',
-                  onPressed: refreshing ? null : () => onRefresh(),
+                  onPressed: refreshing ? null : onRefresh,
                 ),
               ),
           ],
@@ -542,7 +571,7 @@ class _SidebarDestination extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = PveAppleColors.primary(context);
+    final accent = PveAppleColors.primary(context);
     return Padding(
       padding: const EdgeInsets.only(bottom: 3),
       child: ClipRRect(

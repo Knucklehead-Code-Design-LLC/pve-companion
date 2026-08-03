@@ -7,9 +7,8 @@ void main() {
   test(
     'rejects a malformed node response instead of inventing cluster state',
     () async {
-      final ProxmoxClusterOverviewRepository repository =
-          ProxmoxClusterOverviewRepository();
-      final _FixtureSession session = _FixtureSession(<String, Object?>{
+      final repository = ProxmoxClusterOverviewRepository();
+      final session = _FixtureSession(<String, Object?>{
         'version': <String, Object?>{'version': '8.4'},
         'nodes': <String, Object?>{'not': 'a list'},
         'cluster/resources': const <Object?>[],
@@ -25,9 +24,8 @@ void main() {
   );
 
   test('merges storage configuration with resource telemetry', () async {
-    final ProxmoxClusterOverviewRepository repository =
-        ProxmoxClusterOverviewRepository();
-    final _FixtureSession session = _FixtureSession(<String, Object?>{
+    final repository = ProxmoxClusterOverviewRepository();
+    final session = _FixtureSession(<String, Object?>{
       'version': <String, Object?>{'version': '9.2'},
       'nodes': const <Object?>[],
       'cluster/resources': <Object?>[
@@ -96,9 +94,8 @@ void main() {
   });
 
   test('keeps configured storage when telemetry is not authorized', () async {
-    final ProxmoxClusterOverviewRepository repository =
-        ProxmoxClusterOverviewRepository();
-    final _FixtureSession session = _FixtureSession(<String, Object?>{
+    final repository = ProxmoxClusterOverviewRepository();
+    final session = _FixtureSession(<String, Object?>{
       'version': <String, Object?>{'version': '9.2'},
       'nodes': const <Object?>[],
       'cluster/resources': const ProxmoxUnauthorizedException(
@@ -137,7 +134,7 @@ class _FixtureSession implements ProxmoxSession {
     Map<String, String> query = const <String, String>{},
   }) async {
     requests.add(_SessionRequest(resource, query));
-    final Object? response = responses[resource];
+    final response = responses[resource];
     if (response is Exception) {
       throw response;
     }
@@ -180,6 +177,6 @@ bool _sameMap(Map<String, String> left, Map<String, String> right) {
 }
 
 String _canonicalQuery(Map<String, String> query) {
-  final List<String> keys = query.keys.toList()..sort();
+  final keys = query.keys.toList()..sort();
   return keys.map((String key) => '$key=${query[key]}').join('&');
 }

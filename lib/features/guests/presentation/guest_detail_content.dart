@@ -39,9 +39,9 @@ class GuestDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PveGuest guest = controller.guest;
-    final PveGuestDetails details = controller.details!;
-    final bool controlsDisabled = controller.hasRunningTask || guest.isTemplate;
+    final guest = controller.guest;
+    final details = controller.details!;
+    final controlsDisabled = controller.hasRunningTask || guest.isTemplate;
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
@@ -102,7 +102,7 @@ class _GuestDetailColumns extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> primarySections = <Widget>[
+    final primarySections = <Widget>[
       _GuestStatusCard(runtime: details.runtime, guest: guest),
       if (!guest.isTemplate && onOpenConsole != null)
         _GuestConsoleCard(onOpenConsole: onOpenConsole!),
@@ -126,7 +126,7 @@ class _GuestDetailColumns extends StatelessWidget {
         onSnapshotAction: onSnapshotAction,
       ),
     ];
-    final List<Widget> secondarySections = <Widget>[
+    final secondarySections = <Widget>[
       _GuestBackupSection(
         destinationCount: backupStorageNames.length,
         enabled: !controlsDisabled,
@@ -268,7 +268,7 @@ class _GuestSnapshotsSection extends StatelessWidget {
           title: 'Snapshots',
           actionLabel: 'New',
           actionSemanticsLabel: 'Create a new snapshot',
-          onAction: enabled ? () => onCreateSnapshot() : null,
+          onAction: enabled ? onCreateSnapshot : null,
         ),
         _GuestSnapshotsCard(
           snapshots: snapshots,
@@ -293,7 +293,7 @@ class _GuestBackupSection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasDestination = destinationCount > 0;
+    final hasDestination = destinationCount > 0;
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -301,7 +301,7 @@ class _GuestBackupSection extends StatelessWidget {
           title: 'Backup',
           actionLabel: 'Back Up Now',
           actionSemanticsLabel: 'Run a guest backup',
-          onAction: enabled && hasDestination ? () => onRunBackup() : null,
+          onAction: enabled && hasDestination ? onRunBackup : null,
         ),
         _GuestBackupCard(
           destinationCount: destinationCount,
@@ -333,7 +333,7 @@ class _GuestConfigurationSection extends StatelessWidget {
           title: 'Configuration',
           actionLabel: 'Edit',
           actionSemanticsLabel: 'Edit safe guest configuration',
-          onAction: enabled ? () => onEditConfiguration() : null,
+          onAction: enabled ? onEditConfiguration : null,
         ),
         _GuestConfigurationCard(configuration: configuration),
       ],
@@ -476,7 +476,7 @@ class _GuestPowerControls extends StatelessWidget {
   }
 
   Future<void> _showPowerActions(BuildContext context) async {
-    final List<GuestPowerAction> actions = guest.isRunning
+    final actions = guest.isRunning
         ? <GuestPowerAction>[
             GuestPowerAction.shutdown,
             GuestPowerAction.reboot,
@@ -484,23 +484,21 @@ class _GuestPowerControls extends StatelessWidget {
             if (GuestPowerAction.reset.supports(guest)) GuestPowerAction.reset,
           ]
         : <GuestPowerAction>[GuestPowerAction.start];
-    final GuestPowerAction?
-    selection = await showCupertinoModalPopup<GuestPowerAction>(
+    final selection = await showCupertinoModalPopup<GuestPowerAction>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
         title: const Text('Power actions'),
         message: const Text(
           'Normal actions are confirmed before they run. Force actions can interrupt writes and active users.',
         ),
-        actions: actions
-            .map(
-              (GuestPowerAction action) => CupertinoActionSheetAction(
-                isDestructiveAction: action.isPotentiallyDisruptive,
-                onPressed: () => Navigator.of(popupContext).pop(action),
-                child: Text(action.label),
-              ),
-            )
-            .toList(growable: false),
+        actions: <Widget>[
+          for (final action in actions)
+            CupertinoActionSheetAction(
+              isDestructiveAction: action.isPotentiallyDisruptive,
+              onPressed: () => Navigator.of(popupContext).pop(action),
+              child: Text(action.label),
+            ),
+        ],
         cancelButton: CupertinoActionSheetAction(
           onPressed: () => Navigator.of(popupContext).pop(),
           child: const Text('Cancel'),
@@ -576,8 +574,7 @@ class _SnapshotRow extends StatelessWidget {
   }
 
   Future<void> _showActions(BuildContext context) async {
-    final GuestSnapshotAction?
-    action = await showCupertinoModalPopup<GuestSnapshotAction>(
+    final action = await showCupertinoModalPopup<GuestSnapshotAction>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
         title: Text(snapshot.name),
@@ -623,7 +620,7 @@ class _GuestBackupCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasDestination = destinationCount > 0;
+    final hasDestination = destinationCount > 0;
     return PveInsetGroup(
       padding: const EdgeInsets.all(16),
       child: Row(
@@ -690,18 +687,17 @@ class _GuestConfigurationCard extends StatelessWidget {
     }
     return CupertinoFormSection.insetGrouped(
       margin: EdgeInsets.zero,
-      children: configuration.entries
-          .map(
-            (MapEntry<String, String> entry) => CupertinoFormRow(
-              prefix: Text(_configurationLabel(entry.key)),
-              child: SelectableText(
-                _configurationValue(entry.key, entry.value),
-                textAlign: TextAlign.end,
-                style: PveAppleText.secondary(context),
-              ),
+      children: <Widget>[
+        for (final entry in configuration.entries)
+          CupertinoFormRow(
+            prefix: Text(_configurationLabel(entry.key)),
+            child: SelectableText(
+              _configurationValue(entry.key, entry.value),
+              textAlign: TextAlign.end,
+              style: PveAppleText.secondary(context),
             ),
-          )
-          .toList(growable: false),
+          ),
+      ],
     );
   }
 }
@@ -751,7 +747,7 @@ class _GuestStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = runtime.isRunning
+    final statusColor = runtime.isRunning
         ? PveAppleColors.success(context)
         : PveAppleColors.secondaryLabel(context);
     return PveInsetGroup(
@@ -902,7 +898,7 @@ class _PowerActionLabel extends StatelessWidget {
 }
 
 String _snapshotSubtitle(PveGuestSnapshot snapshot) {
-  final List<String> fragments = <String>[
+  final fragments = <String>[
     formatPveDateTime(snapshot.createdAt),
     if (snapshot.includesMemoryState) 'Memory state',
     if (snapshot.description?.trim().isNotEmpty == true) snapshot.description!,
@@ -923,7 +919,7 @@ String _configurationLabel(String key) => switch (key) {
 
 String _configurationValue(String key, String value) {
   if (key == 'memory') {
-    final int? memory = int.tryParse(value);
+    final memory = int.tryParse(value);
     return memory == null ? value : '$memory MiB';
   }
   if (key == 'onboot') {
@@ -967,7 +963,7 @@ String _guestTaskDuration(PveGuestTask task) {
   if (task.startedAt == null || task.endedAt!.isBefore(task.startedAt!)) {
     return 'Duration unavailable';
   }
-  final Duration duration = task.endedAt!.difference(task.startedAt!);
+  final duration = task.endedAt!.difference(task.startedAt!);
   if (duration.inHours > 0) {
     return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
   }
@@ -978,7 +974,7 @@ String _guestTaskDuration(PveGuestTask task) {
 }
 
 String _titleCase(String value) {
-  final String trimmed = value.trim();
+  final trimmed = value.trim();
   if (trimmed.isEmpty) {
     return 'Unknown';
   }

@@ -7,7 +7,7 @@ WorkspaceSection? workspaceSectionFromDeepLink(Uri uri) {
     return null;
   }
 
-  final List<String> destinations = <String>[
+  final destinations = <String>[
     if (uri.host.isNotEmpty) uri.host,
     ...uri.pathSegments,
   ];

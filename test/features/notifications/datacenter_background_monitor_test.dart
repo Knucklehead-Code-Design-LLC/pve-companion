@@ -17,12 +17,12 @@ void main() {
   test(
     'records background reachability transitions for the selected profile',
     () async {
-      final ConnectionProfile monitoredProfile = _profile('monitored');
-      final ConnectionProfile otherProfile = _profile('other');
-      final _ConnectionRepository connections = _ConnectionRepository();
-      final _PreferencesRepository preferences = _PreferencesRepository();
-      final _LocalNotifications notifications = _LocalNotifications();
-      final DatacenterBackgroundMonitor monitor = DatacenterBackgroundMonitor(
+      final monitoredProfile = _profile('monitored');
+      final otherProfile = _profile('other');
+      final connections = _ConnectionRepository();
+      final preferences = _PreferencesRepository();
+      final notifications = _LocalNotifications();
+      final monitor = DatacenterBackgroundMonitor(
         connectionProfiles: ConnectionProfilesController(
           profileRepository: _ProfileRepository(<ConnectionProfile>[
             monitoredProfile,
@@ -57,11 +57,11 @@ void main() {
   test(
     'does not treat unavailable Keychain credentials as a disconnect',
     () async {
-      final ConnectionProfile profile = _profile('monitored');
-      final _ConnectionRepository connections = _ConnectionRepository();
-      final _PreferencesRepository preferences = _PreferencesRepository();
-      final _LocalNotifications notifications = _LocalNotifications();
-      final DatacenterBackgroundMonitor monitor = DatacenterBackgroundMonitor(
+      final profile = _profile('monitored');
+      final connections = _ConnectionRepository();
+      final preferences = _PreferencesRepository();
+      final notifications = _LocalNotifications();
+      final monitor = DatacenterBackgroundMonitor(
         connectionProfiles: ConnectionProfilesController(
           profileRepository: _ProfileRepository(<ConnectionProfile>[profile]),
           credentialStore: const _UnavailableCredentialStore(),
@@ -83,13 +83,13 @@ void main() {
   );
 
   test('does not treat an authentication failure as a disconnect', () async {
-    final ConnectionProfile profile = _profile('monitored');
-    final _ConnectionRepository connections = _ConnectionRepository(
+    final profile = _profile('monitored');
+    final connections = _ConnectionRepository(
       failure: const ProxmoxUnauthorizedException('Credential revoked.'),
     );
-    final _PreferencesRepository preferences = _PreferencesRepository();
-    final _LocalNotifications notifications = _LocalNotifications();
-    final DatacenterBackgroundMonitor monitor = DatacenterBackgroundMonitor(
+    final preferences = _PreferencesRepository();
+    final notifications = _LocalNotifications();
+    final monitor = DatacenterBackgroundMonitor(
       connectionProfiles: ConnectionProfilesController(
         profileRepository: _ProfileRepository(<ConnectionProfile>[profile]),
         credentialStore: const _CredentialStore(),
@@ -181,7 +181,7 @@ class _ConnectionRepository implements ProxmoxConnectionRepository {
     ConnectionCredentials credentials,
   ) async {
     authenticatedProfileIds.add(profile.id);
-    final Object? configuredFailure = failure;
+    final configuredFailure = failure;
     if (configuredFailure != null) {
       throw configuredFailure;
     }

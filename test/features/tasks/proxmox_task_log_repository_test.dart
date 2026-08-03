@@ -6,7 +6,7 @@ import 'package:pve_companion/features/tasks/data/proxmox_task_log_repository.da
 import 'package:pve_companion/features/tasks/domain/pve_task_log.dart';
 
 void main() {
-  const ClusterTask task = ClusterTask(
+  const task = ClusterTask(
     upid: 'UPID:pve-01:00000001:00000001:00000001:vzdump:101:root@pam:',
     node: 'pve-01',
     type: 'vzdump',
@@ -14,17 +14,14 @@ void main() {
   );
 
   test('decodes real task log lines without inventing text', () async {
-    final _TaskLogSession session = _TaskLogSession(
+    final session = _TaskLogSession(
       response: <Object?>[
         <Object?, Object?>{'n': 1, 't': 'starting backup'},
         <Object?, Object?>{'n': 2, 't': 'completed'},
       ],
     );
 
-    final PveTaskLogResult result = await const ProxmoxTaskLogRepository().load(
-      session,
-      task,
-    );
+    final result = await const ProxmoxTaskLogRepository().load(session, task);
 
     expect(result.state, PveTaskLogState.available);
     expect(result.lines.map((PveTaskLogLine line) => line.text), <String>[
@@ -38,26 +35,24 @@ void main() {
   test(
     'reports authorization limits and unavailable endpoints distinctly',
     () async {
-      final PveTaskLogResult limited = await const ProxmoxTaskLogRepository()
-          .load(
-            _TaskLogSession(
-              error: const ProxmoxResponseException(
-                statusCode: 403,
-                message: 'forbidden',
-              ),
-            ),
-            task,
-          );
-      final PveTaskLogResult unavailable =
-          await const ProxmoxTaskLogRepository().load(
-            _TaskLogSession(
-              error: const ProxmoxResponseException(
-                statusCode: 404,
-                message: 'not found',
-              ),
-            ),
-            task,
-          );
+      final limited = await const ProxmoxTaskLogRepository().load(
+        _TaskLogSession(
+          error: const ProxmoxResponseException(
+            statusCode: 403,
+            message: 'forbidden',
+          ),
+        ),
+        task,
+      );
+      final unavailable = await const ProxmoxTaskLogRepository().load(
+        _TaskLogSession(
+          error: const ProxmoxResponseException(
+            statusCode: 404,
+            message: 'not found',
+          ),
+        ),
+        task,
+      );
 
       expect(limited.state, PveTaskLogState.permissionLimited);
       expect(unavailable.state, PveTaskLogState.unavailable);
@@ -67,15 +62,14 @@ void main() {
   test(
     'reports malformed log data as a failure instead of an empty log',
     () async {
-      final PveTaskLogResult result = await const ProxmoxTaskLogRepository()
-          .load(
-            _TaskLogSession(
-              response: <Object?>[
-                <Object?, Object?>{'n': '1', 't': 'bad'},
-              ],
-            ),
-            task,
-          );
+      final result = await const ProxmoxTaskLogRepository().load(
+        _TaskLogSession(
+          response: <Object?>[
+            <Object?, Object?>{'n': '1', 't': 'bad'},
+          ],
+        ),
+        task,
+      );
 
       expect(result.state, PveTaskLogState.failed);
     },

@@ -6,7 +6,7 @@ import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('derives workload, task activity, and reported-node pressure', () {
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+    final health = DatacenterHealthEvaluator.evaluate(
       ClusterOverviewSnapshot(
         version: const PveVersion(version: '8.4'),
         nodes: const <ClusterNode>[
@@ -96,9 +96,9 @@ void main() {
   test(
     'uses inclusive 75 percent warning and 90 percent critical thresholds',
     () {
-      final DatacenterHealth normal = _healthWithCpu(0.749);
-      final DatacenterHealth warning = _healthWithCpu(0.75);
-      final DatacenterHealth critical = _healthWithCpu(0.90);
+      final normal = _healthWithCpu(0.749);
+      final warning = _healthWithCpu(0.75);
+      final critical = _healthWithCpu(0.90);
 
       expect(normal.state, DatacenterHealthState.healthy);
       expect(warning.state, DatacenterHealthState.warning);
@@ -117,7 +117,7 @@ void main() {
   test(
     'raises offline nodes and failed recent tasks without flagging stopped guests',
     () {
-      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+      final health = DatacenterHealthEvaluator.evaluate(
         ClusterOverviewSnapshot(
           version: const PveVersion(version: '8.4'),
           nodes: const <ClusterNode>[
@@ -174,7 +174,7 @@ void main() {
   test(
     'treats a completed failed task as attention, not an ongoing outage',
     () {
-      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+      final health = DatacenterHealthEvaluator.evaluate(
         ClusterOverviewSnapshot(
           version: const PveVersion(version: '8.4'),
           nodes: const <ClusterNode>[
@@ -207,7 +207,7 @@ void main() {
   test(
     'surfaces critical node pressure even when known-node aggregate is low',
     () {
-      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+      final health = DatacenterHealthEvaluator.evaluate(
         const ClusterOverviewSnapshot(
           version: PveVersion(version: '8.4'),
           nodes: <ClusterNode>[
@@ -240,7 +240,7 @@ void main() {
   );
 
   test('orders offline nodes before critical, warning, and healthy nodes', () {
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+    final health = DatacenterHealthEvaluator.evaluate(
       const ClusterOverviewSnapshot(
         version: PveVersion(version: '8.4'),
         nodes: <ClusterNode>[
@@ -262,7 +262,7 @@ void main() {
   });
 
   test('does not invent pressure from incomplete node metrics', () {
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+    final health = DatacenterHealthEvaluator.evaluate(
       const ClusterOverviewSnapshot(
         version: PveVersion(version: '8.4'),
         nodes: <ClusterNode>[
@@ -287,7 +287,7 @@ void main() {
   });
 
   test('excludes stale offline-node telemetry from cluster pressure', () {
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
+    final health = DatacenterHealthEvaluator.evaluate(
       const ClusterOverviewSnapshot(
         version: PveVersion(version: '9.2'),
         nodes: <ClusterNode>[

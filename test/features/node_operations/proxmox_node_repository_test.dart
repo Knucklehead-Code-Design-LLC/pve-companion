@@ -6,14 +6,14 @@ import 'package:pve_companion/features/node_operations/data/proxmox_node_reposit
 import 'package:pve_companion/features/node_operations/domain/pve_node_details.dart';
 
 void main() {
-  const PveNodeDetailsSeed seed = PveNodeDetailsSeed(
+  const seed = PveNodeDetailsSeed(
     ClusterNode(name: 'pve-01', status: 'online'),
   );
 
   test(
     'loads optional operational node telemetry without inventing values',
     () async {
-      final _NodeSession session = _NodeSession(<String, Object?>{
+      final session = _NodeSession(<String, Object?>{
         'nodes/pve-01/status': <String, Object?>{
           'pveversion': '9.0.4',
           'kversion': 'Linux 6.14.11-2-pve',
@@ -37,10 +37,7 @@ void main() {
         ],
       });
 
-      final PveNodeDetails details = await ProxmoxNodeRepository().loadDetails(
-        session,
-        seed,
-      );
+      final details = await ProxmoxNodeRepository().loadDetails(session, seed);
 
       expect(details.pveVersion, '9.0.4');
       expect(details.kernelVersion, 'Linux 6.14.11-2-pve');
@@ -52,7 +49,7 @@ void main() {
   );
 
   test('submits a node restart as a tracked Proxmox task', () async {
-    final _NodeSession session = _NodeSession(
+    final session = _NodeSession(
       const <String, Object?>{},
       postResponse: 'UPID:pve-01:node-restart',
     );
@@ -71,7 +68,7 @@ void main() {
   test(
     'does not interpolate an unsafe service name into an endpoint',
     () async {
-      final _NodeSession session = _NodeSession(const <String, Object?>{});
+      final session = _NodeSession(const <String, Object?>{});
 
       await expectLater(
         ProxmoxNodeRepository().restartService(
@@ -102,7 +99,7 @@ class _NodeSession implements ProxmoxSession {
     String resource, {
     Map<String, String> query = const <String, String>{},
   }) async {
-    final Object? response = responses[resource];
+    final response = responses[resource];
     if (response is Exception) {
       throw response;
     }

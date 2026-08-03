@@ -61,7 +61,7 @@ void main() {
       expect(find.text('Open Datacenter → Backup'), findsOneWidget);
       expect(find.text('Copy storage path'), findsOneWidget);
 
-      final Finder copyStoragePath = find.text('Copy storage path');
+      final copyStoragePath = find.text('Copy storage path');
       await tester.ensureVisible(copyStoragePath);
       await tester.pumpAndSettle();
       await tester.tap(copyStoragePath);

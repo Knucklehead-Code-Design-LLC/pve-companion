@@ -82,21 +82,20 @@ class _PveCommandMenuButtonState<T> extends State<PveCommandMenuButton<T>> {
     if (_menuEntry != null) {
       return;
     }
-    final RenderObject? renderObject = _buttonKey.currentContext
-        ?.findRenderObject();
+    final renderObject = _buttonKey.currentContext?.findRenderObject();
     if (renderObject is! RenderBox) {
       return;
     }
-    final OverlayState? overlay = Overlay.maybeOf(context, rootOverlay: true);
+    final overlay = Overlay.maybeOf(context, rootOverlay: true);
     if (overlay == null) {
       return;
     }
-    final RenderBox button = renderObject;
-    final Offset origin = button.localToGlobal(Offset.zero);
-    final Rect anchor = origin & button.size;
-    final bool alignsToLeadingEdge =
+    final button = renderObject;
+    final origin = button.localToGlobal(Offset.zero);
+    final anchor = origin & button.size;
+    final alignsToLeadingEdge =
         anchor.center.dx < MediaQuery.sizeOf(context).width / 2;
-    final OverlayEntry entry = OverlayEntry(
+    final entry = OverlayEntry(
       builder: (BuildContext overlayContext) => _PveCommandMenuOverlay<T>(
         layerLink: _menuLayerLink,
         alignsToLeadingEdge: alignsToLeadingEdge,
@@ -111,7 +110,7 @@ class _PveCommandMenuButtonState<T> extends State<PveCommandMenuButton<T>> {
   }
 
   void _dismissMenu() {
-    final OverlayEntry? entry = _menuEntry;
+    final entry = _menuEntry;
     _menuEntry = null;
     entry?.remove();
     entry?.dispose();
@@ -148,7 +147,7 @@ class _PveCommandMenuOverlay<T> extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final EdgeInsets safeArea = MediaQuery.paddingOf(context);
+        final safeArea = MediaQuery.paddingOf(context);
         final double resolvedWidth = math.min(
           width,
           math.max(0, constraints.maxWidth - 24),
@@ -157,10 +156,10 @@ class _PveCommandMenuOverlay<T> extends StatelessWidget {
           120,
           constraints.maxHeight - safeArea.top - safeArea.bottom - 18,
         );
-        final Alignment targetAnchor = alignsToLeadingEdge
+        final targetAnchor = alignsToLeadingEdge
             ? Alignment.bottomLeft
             : Alignment.bottomRight;
-        final Alignment followerAnchor = alignsToLeadingEdge
+        final followerAnchor = alignsToLeadingEdge
             ? Alignment.topLeft
             : Alignment.topRight;
         return Stack(
@@ -215,7 +214,7 @@ class _PveCommandMenuPanel<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final BorderRadius borderRadius = BorderRadius.circular(14);
+    final borderRadius = BorderRadius.circular(14);
     return DecoratedBox(
       decoration: BoxDecoration(
         borderRadius: borderRadius,
@@ -270,7 +269,7 @@ class _PveCommandMenuRow<T> extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color foreground = item.destructive
+    final foreground = item.destructive
         ? PveAppleColors.destructive(context)
         : PveAppleColors.label(context);
     return CupertinoButton(

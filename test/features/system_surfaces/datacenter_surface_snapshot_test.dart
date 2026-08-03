@@ -8,14 +8,13 @@ void main() {
   test('projects only glanceable aggregate datacenter values', () {
     final cluster = healthyDatacenterSnapshot();
     final health = DatacenterHealthEvaluator.evaluate(cluster);
-    final DateTime updatedAt = DateTime.utc(2026, 8, 1, 20, 30);
+    final updatedAt = DateTime.utc(2026, 8, 1, 20, 30);
 
-    final DatacenterSurfaceSnapshot snapshot =
-        DatacenterSurfaceSnapshot.fromCluster(
-          snapshot: cluster,
-          health: health,
-          updatedAt: updatedAt,
-        );
+    final snapshot = DatacenterSurfaceSnapshot.fromCluster(
+      snapshot: cluster,
+      health: health,
+      updatedAt: updatedAt,
+    );
 
     expect(snapshot.healthCode, 'healthy');
     expect(snapshot.healthLabel, 'Healthy');
@@ -46,7 +45,7 @@ void main() {
   });
 
   test('omits unavailable pressure instead of inventing widget values', () {
-    final DatacenterSurfaceSnapshot snapshot = DatacenterSurfaceSnapshot(
+    final snapshot = DatacenterSurfaceSnapshot(
       healthCode: 'healthy',
       healthLabel: 'Healthy',
       issueCount: 0,

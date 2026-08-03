@@ -14,10 +14,11 @@ void main() {
     (WidgetTester tester) async {
       await tester.binding.setSurfaceSize(const Size(390, 844));
       addTearDown(() => tester.binding.setSurfaceSize(null));
-      final ClusterOverviewController controller =
-          await readyDashboardController(healthyDatacenterSnapshot());
+      final controller = await readyDashboardController(
+        healthyDatacenterSnapshot(),
+      );
       addTearDown(controller.dispose);
-      int guestDrillDownCount = 0;
+      var guestDrillDownCount = 0;
 
       await tester.pumpWidget(
         _DashboardTestApp(
@@ -57,7 +58,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1180, 860));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       criticalDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -108,11 +109,11 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       criticalDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
-    int nodeDrillDownCount = 0;
+    var nodeDrillDownCount = 0;
 
     await tester.pumpWidget(
       _DashboardTestApp(
@@ -134,7 +135,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -157,7 +158,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(390, 844));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       criticalDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -179,7 +180,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1180, 860));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -202,14 +203,14 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1180, 860));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
-    int guestDrillDownCount = 0;
-    int nodeDrillDownCount = 0;
-    int storageDrillDownCount = 0;
-    int taskDrillDownCount = 0;
+    var guestDrillDownCount = 0;
+    var nodeDrillDownCount = 0;
+    var storageDrillDownCount = 0;
+    var taskDrillDownCount = 0;
 
     await tester.pumpWidget(
       _DashboardTestApp(
@@ -241,7 +242,7 @@ void main() {
   testWidgets('keeps stale data visible after a refresh failure', (
     WidgetTester tester,
   ) async {
-    final ClusterOverviewController controller = await staleDashboardController(
+    final controller = await staleDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -256,7 +257,7 @@ void main() {
   testWidgets('states the coverage behind combined storage use', (
     WidgetTester tester,
   ) async {
-    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    const snapshot = ClusterOverviewSnapshot(
       version: PveVersion(version: '9.0'),
       nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
       guests: <PveGuest>[],

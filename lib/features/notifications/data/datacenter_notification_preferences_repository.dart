@@ -28,7 +28,7 @@ class SharedPreferencesDatacenterNotificationPreferencesRepository
     // Reload the legacy cache before every read so resuming the app does not
     // overwrite that newer state on its next connection attempt.
     await _preferences.reload();
-    final String? raw = _preferences.getString(_storageKey);
+    final raw = _preferences.getString(_storageKey);
     if (raw == null || raw.isEmpty) {
       return const DatacenterNotificationPreferences.defaults();
     }

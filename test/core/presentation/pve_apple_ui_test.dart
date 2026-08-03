@@ -3,7 +3,6 @@ import 'dart:ui' show Tristate;
 
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 
@@ -56,9 +55,9 @@ void main() {
       ),
     );
 
-    final Rect rowRect = tester.getRect(find.byType(PveListRow));
-    final Rect labelRect = tester.getRect(find.text('Kernel'));
-    final Rect valueRect = tester.getRect(
+    final rowRect = tester.getRect(find.byType(PveListRow));
+    final labelRect = tester.getRect(find.text('Kernel'));
+    final valueRect = tester.getRect(
       find.text('Linux 7.0.14-8-pve #1 SMP PREEMPT_DYNAMIC'),
     );
 
@@ -92,9 +91,7 @@ void main() {
   testWidgets('freshness labels expose their exact refresh timestamp', (
     WidgetTester tester,
   ) async {
-    final DateTime refreshedAt = DateTime.now().subtract(
-      const Duration(minutes: 2),
-    );
+    final refreshedAt = DateTime.now().subtract(const Duration(minutes: 2));
     await tester.pumpWidget(
       CupertinoApp(
         home: CupertinoPageScaffold(
@@ -103,9 +100,7 @@ void main() {
       ),
     );
 
-    final String semantics = tester
-        .getSemantics(find.byType(PveFreshnessLabel))
-        .label;
+    final semantics = tester.getSemantics(find.byType(PveFreshnessLabel)).label;
     expect(semantics, startsWith('Data refreshed at '));
     expect(find.byTooltip(semantics), findsOneWidget);
     expect(find.textContaining('Data refreshed'), findsOneWidget);
@@ -116,8 +111,8 @@ void main() {
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      final Completer<void> refreshCompleter = Completer<void>();
-      int refreshCount = 0;
+      final refreshCompleter = Completer<void>();
+      var refreshCount = 0;
 
       await tester.pumpWidget(
         CupertinoApp(
@@ -136,7 +131,7 @@ void main() {
         ),
       );
 
-      final CustomScrollView scrollView = tester.widget<CustomScrollView>(
+      final scrollView = tester.widget<CustomScrollView>(
         find.byType(CustomScrollView),
       );
       expect(scrollView.physics, isA<BouncingScrollPhysics>());
@@ -175,7 +170,7 @@ void main() {
       ),
     );
 
-    final SemanticsNode all = tester.getSemantics(find.text('All'));
+    final all = tester.getSemantics(find.text('All'));
     expect(all.label, 'All workloads');
     expect(all.flagsCollection.isSelected, Tristate.isTrue);
   });
