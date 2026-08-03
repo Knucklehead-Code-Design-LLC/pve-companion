@@ -12,7 +12,7 @@ class GuestInventoryInsights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final _GuestResourceSummary summary = _GuestResourceSummary.from(guests);
+    final summary = _GuestResourceSummary.from(guests);
     return PveAdaptiveCardGrid(
       children: <Widget>[
         KeyedSubtree(
@@ -127,11 +127,11 @@ class GuestInventoryInsights extends StatelessWidget {
   }
 
   String _cpuReportingDetail(_GuestResourceSummary summary, int workloadCount) {
-    final String currentUse = summary.runningCount == 0
+    final currentUse = summary.runningCount == 0
         ? 'No workloads are currently reported running'
         : '${summary.runningCpuReportingCount}/${summary.runningCount} '
               'running workloads report CPU';
-    final String allocation = summary.cpuCores == null
+    final allocation = summary.cpuCores == null
         ? 'vCPU allocation not reported'
         : '${summary.cpuCores} vCPU assigned across '
               '${summary.cpuCoreReportingCount}/$workloadCount workloads';
@@ -158,23 +158,23 @@ class _GuestResourceSummary {
   });
 
   factory _GuestResourceSummary.from(List<PveGuest> guests) {
-    int runningCount = 0;
-    int virtualMachineCount = 0;
-    int cpuCores = 0;
-    int cpuCoreReportingCount = 0;
+    var runningCount = 0;
+    var virtualMachineCount = 0;
+    var cpuCores = 0;
+    var cpuCoreReportingCount = 0;
     double runningCpuTotal = 0;
-    int runningCpuCount = 0;
-    int memoryUsedBytes = 0;
-    int memoryCapacityBytes = 0;
-    int memoryReportingCount = 0;
-    int diskUsedBytes = 0;
-    int diskCapacityBytes = 0;
-    int diskReportingCount = 0;
-    final Set<String> nodes = <String>{};
+    var runningCpuCount = 0;
+    var memoryUsedBytes = 0;
+    var memoryCapacityBytes = 0;
+    var memoryReportingCount = 0;
+    var diskUsedBytes = 0;
+    var diskCapacityBytes = 0;
+    var diskReportingCount = 0;
+    final nodes = <String>{};
 
-    for (final PveGuest guest in guests) {
+    for (final guest in guests) {
       nodes.add(guest.node);
-      final int? guestCpuCores = guest.cpuCores;
+      final guestCpuCores = guest.cpuCores;
       if (guestCpuCores != null && guestCpuCores >= 0) {
         cpuCores += guestCpuCores;
         cpuCoreReportingCount += 1;
@@ -184,14 +184,14 @@ class _GuestResourceSummary {
       }
       if (guest.isRunning) {
         runningCount += 1;
-        final double? cpu = guest.cpuFraction;
+        final cpu = guest.cpuFraction;
         if (cpu != null && cpu >= 0) {
           runningCpuTotal += cpu;
           runningCpuCount += 1;
         }
       }
-      final int? memoryUsed = guest.memoryBytes;
-      final int? memoryCapacity = guest.memoryLimitBytes;
+      final memoryUsed = guest.memoryBytes;
+      final memoryCapacity = guest.memoryLimitBytes;
       if (memoryUsed != null &&
           memoryUsed >= 0 &&
           memoryCapacity != null &&
@@ -200,8 +200,8 @@ class _GuestResourceSummary {
         memoryCapacityBytes += memoryCapacity;
         memoryReportingCount += 1;
       }
-      final int? diskUsed = guest.diskBytes;
-      final int? diskCapacity = guest.diskLimitBytes;
+      final diskUsed = guest.diskBytes;
+      final diskCapacity = guest.diskLimitBytes;
       if (diskUsed != null &&
           diskUsed >= 0 &&
           diskCapacity != null &&

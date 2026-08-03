@@ -136,18 +136,20 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
   }
 
   Future<void> _handlePowerAction(PveNodePowerAction action) async {
-    final bool approved = await _confirmNodePowerAction(action);
+    final approved = await _confirmNodePowerAction(action);
     if (!approved || !mounted) {
       return;
     }
-    await switch (action) {
-      PveNodePowerAction.reboot => await _controller.restartNode(),
-      PveNodePowerAction.shutdown => await _controller.shutdownNode(),
-    };
+    switch (action) {
+      case PveNodePowerAction.reboot:
+        await _controller.restartNode();
+      case PveNodePowerAction.shutdown:
+        await _controller.shutdownNode();
+    }
   }
 
   Future<void> _restartService(PveNodeService service) async {
-    final bool? approved = await showCupertinoDialog<bool>(
+    final approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => CupertinoAlertDialog(
         title: Text('Restart ${service.name}?'),
@@ -178,8 +180,8 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
   }
 
   Future<bool> _confirmNodePowerAction(PveNodePowerAction action) async {
-    final bool isShutdown = action == PveNodePowerAction.shutdown;
-    final bool? approved = await showCupertinoDialog<bool>(
+    final isShutdown = action == PveNodePowerAction.shutdown;
+    final approved = await showCupertinoDialog<bool>(
       context: context,
       builder: (BuildContext dialogContext) => CupertinoAlertDialog(
         title: Text('${action.label}?'),
@@ -224,8 +226,8 @@ class _NodeDetailContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PveNodeDetails details = controller.details!;
-    final bool controlsDisabled =
+    final details = controller.details!;
+    final controlsDisabled =
         controller.hasRunningTask || !details.node.isOnline;
     return ListView(
       controller: scrollController,
@@ -266,7 +268,7 @@ class _NodeDetailColumns extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> primarySections = <Widget>[
+    final primarySections = <Widget>[
       _NodeStatusCard(details: details, seed: seed),
       if (controller.activeTask != null)
         ProxmoxTaskStatusCard(task: controller.activeTask!),
@@ -280,7 +282,7 @@ class _NodeDetailColumns extends StatelessWidget {
       ),
       _NodeSystemInformationSection(details: details),
     ];
-    final List<Widget> secondarySections = <Widget>[
+    final secondarySections = <Widget>[
       _NodeUpdatesSection(
         updates: details.availablePackageUpdates,
         enabled: !controlsDisabled,
@@ -367,10 +369,10 @@ class _NodePowerSection extends StatelessWidget {
   }
 
   String _impactMessage(PveNodeDetailsSeed seed) {
-    final String guestImpact = seed.runningHostedGuestCount == 0
+    final guestImpact = seed.runningHostedGuestCount == 0
         ? 'No running guests were reported on this node.'
         : '${seed.runningHostedGuestCount} running ${seed.runningHostedGuestCount == 1 ? 'guest is' : 'guests are'} hosted here.';
-    final String quorumImpact = seed.isLastKnownOnlineNode
+    final quorumImpact = seed.isLastKnownOnlineNode
         ? ' This is the last online node reported, so this action can make the cluster unavailable.'
         : seed.clusterOnlineNodeCount > 1
         ? ' ${seed.clusterOnlineNodeCount} nodes are currently online, but quorum can still be affected.'
@@ -417,7 +419,7 @@ class _NodeUpdatesSection extends StatelessWidget {
           title: 'Package updates',
           actionLabel: 'Refresh Index',
           actionSemanticsLabel: 'Refresh the package index on this node',
-          onAction: enabled ? () => onRefreshPackageIndex() : null,
+          onAction: enabled ? onRefreshPackageIndex : null,
         ),
         _NodeUpdatesCard(updates: updates),
       ],
@@ -445,10 +447,10 @@ class _NodeServicesSectionState extends State<_NodeServicesSection> {
 
   @override
   Widget build(BuildContext context) {
-    final int attentionCount = widget.services
+    final attentionCount = widget.services
         .where((PveNodeService service) => !service.isRunning)
         .length;
-    final String title = attentionCount == 0
+    final title = attentionCount == 0
         ? 'Node services'
         : 'Node services · $attentionCount need attention';
     return Column(
@@ -498,7 +500,7 @@ class _NodeStatusCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color statusColor = details.node.isOnline
+    final statusColor = details.node.isOnline
         ? PveAppleColors.success(context)
         : PveAppleColors.destructive(context);
     return PveInsetGroup(
@@ -550,10 +552,10 @@ class _NodeStatusCard extends StatelessWidget {
           const SizedBox(height: 18),
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool isCompact = constraints.maxWidth < 520;
-              final double metricWidth = isCompact
+              final isCompact = constraints.maxWidth < 520;
+              final metricWidth = isCompact
                   ? (constraints.maxWidth - 16) / 2
-                  : 125;
+                  : 125.0;
 
               return Wrap(
                 spacing: isCompact ? 16 : 26,
@@ -652,7 +654,7 @@ class _NodeSystemInformationCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<_NodeInfoRow> rows = <_NodeInfoRow>[
+    final rows = <_NodeInfoRow>[
       _NodeInfoRow(label: 'Kernel', value: details.kernelVersion),
       _NodeInfoRow(label: 'CPU model', value: details.cpuModel),
       _NodeInfoRow(
@@ -748,20 +750,19 @@ class _NodeServicesCard extends StatelessWidget {
         child: Text('Service status was not reported by this Proxmox account.'),
       );
     }
-    final List<PveNodeService> scanOrderedServices =
-        List<PveNodeService>.of(services)
-          ..sort((PveNodeService first, PveNodeService second) {
-            if (first.isRunning == second.isRunning) {
-              return first.name.compareTo(second.name);
-            }
-            return first.isRunning ? 1 : -1;
-          });
-    final List<PveNodeService> visibleServices = showsHealthyServices
+    final scanOrderedServices = List<PveNodeService>.of(services)
+      ..sort((PveNodeService first, PveNodeService second) {
+        if (first.isRunning == second.isRunning) {
+          return first.name.compareTo(second.name);
+        }
+        return first.isRunning ? 1 : -1;
+      });
+    final visibleServices = showsHealthyServices
         ? scanOrderedServices
         : scanOrderedServices
               .where((PveNodeService service) => !service.isRunning)
               .toList(growable: false);
-    final int healthyServiceCount = scanOrderedServices
+    final healthyServiceCount = scanOrderedServices
         .where((PveNodeService service) => service.isRunning)
         .length;
     return PveInsetGroup(
@@ -855,8 +856,8 @@ class _NodeInfoRow {
 }
 
 String _packageUpdateSubtitle(PveNodePackageUpdate update) {
-  final String? installed = update.installedVersion;
-  final String? available = update.availableVersion;
+  final installed = update.installedVersion;
+  final available = update.availableVersion;
   if (installed != null && available != null) {
     return '$installed → $available';
   }

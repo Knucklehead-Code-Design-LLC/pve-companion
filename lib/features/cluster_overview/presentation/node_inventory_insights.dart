@@ -12,23 +12,23 @@ class NodeInventoryInsights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int healthyCount = health.nodes
+    final healthyCount = health.nodes
         .where(
           (DatacenterNodeHealth node) =>
               node.node.isOnline && node.state == DatacenterHealthState.healthy,
         )
         .length;
-    final int attentionCount = health.nodes
+    final attentionCount = health.nodes
         .where(
           (DatacenterNodeHealth node) =>
               node.node.isOnline && node.state != DatacenterHealthState.healthy,
         )
         .length;
-    final int offlineCount = health.offlineNodeCount;
-    final List<DatacenterNodeHealth> nodesWithCpuCores = health.nodes
+    final offlineCount = health.offlineNodeCount;
+    final nodesWithCpuCores = health.nodes
         .where((DatacenterNodeHealth node) => node.node.cpuCores != null)
         .toList(growable: false);
-    final int? totalCores = nodesWithCpuCores.isEmpty
+    final totalCores = nodesWithCpuCores.isEmpty
         ? null
         : nodesWithCpuCores.fold<int>(
             0,
@@ -145,7 +145,7 @@ class _PressureMeter extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForPressure(pressure);
+    final tone = dashboardToneForPressure(pressure);
     return PveResourceMeter(
       label: label,
       value: datacenterPressureValueLabel(pressure),

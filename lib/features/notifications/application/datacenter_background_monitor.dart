@@ -19,18 +19,22 @@ class DatacenterBackgroundMonitor {
   Future<void> refresh() async {
     await _connectionProfiles.initialize();
     final profile = _connectionProfiles.selectedProfile;
-    final bool canMonitor =
-        profile != null &&
-        await _connectionProfiles.hasStoredCredentials(profile);
+    var canMonitor = false;
+    if (profile != null) {
+      canMonitor = await _connectionProfiles.hasStoredCredentials(profile);
+    }
     await _notifications.setBackgroundMonitoringEligible(canMonitor);
     await _notifications.initialize();
-    if (_connectionProfiles.loadState != ConnectionProfilesLoadState.ready ||
-        !_notifications.settings.connectionStatusEnabled ||
-        profile == null) {
+    if (_connectionProfiles.loadState != ConnectionProfilesLoadState.ready) {
       return;
     }
-    final BackgroundSessionAttempt attempt = await _connectionProfiles
-        .openBackgroundSession(profile);
+    if (!_notifications.settings.connectionStatusEnabled) {
+      return;
+    }
+    if (profile == null) {
+      return;
+    }
+    final attempt = await _connectionProfiles.openBackgroundSession(profile);
     if (!attempt.canMonitorReachability) {
       return;
     }

@@ -114,7 +114,7 @@ String datacenterPressureReportingLabel(
   DatacenterPressureMetric? pressure, {
   String? detail,
 }) {
-  final String reportingLabel = pressure == null
+  final reportingLabel = pressure == null
       ? 'No nodes reporting'
       : '${pressure.reportedNodeCount} '
             '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
@@ -127,7 +127,7 @@ String datacenterPressureScopeLabel(DatacenterPressureMetric? pressure) {
   if (pressure == null) {
     return 'No nodes reporting';
   }
-  final String coverage =
+  final coverage =
       '${pressure.reportedNodeCount} '
       '${pressure.reportedNodeCount == 1 ? 'node' : 'nodes'} reporting';
   return switch (pressure.aggregation) {

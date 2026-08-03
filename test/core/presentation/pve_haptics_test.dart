@@ -4,14 +4,14 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/presentation/pve_haptics.dart';
 
 void main() {
-  const MethodChannel channel = MethodChannel(PveHaptics.channelName);
+  const channel = MethodChannel(PveHaptics.channelName);
 
   testWidgets('uses the native notification haptic on iPhone and iPad', (
     WidgetTester tester,
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
     try {
-      final List<String> events = <String>[];
+      final events = <String>[];
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall call) async {
             events.add(call.method);
@@ -41,7 +41,7 @@ void main() {
   ) async {
     debugDefaultTargetPlatformOverride = TargetPlatform.macOS;
     try {
-      bool invoked = false;
+      var invoked = false;
       TestDefaultBinaryMessengerBinding.instance.defaultBinaryMessenger
           .setMockMethodCallHandler(channel, (MethodCall call) async {
             invoked = true;

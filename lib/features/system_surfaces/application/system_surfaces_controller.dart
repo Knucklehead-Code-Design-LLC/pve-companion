@@ -36,8 +36,7 @@ class SystemSurfacesController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final SystemSurfaceCapabilities capabilities = await _repository
-          .loadCapabilities();
+      final capabilities = await _repository.loadCapabilities();
       _widgetsAvailable = capabilities.widgetsAvailable;
       _liveActivitiesAvailable = capabilities.liveActivitiesAvailable;
       _datacenterWatchActive = capabilities.datacenterWatchActive;
@@ -67,7 +66,7 @@ class SystemSurfacesController extends ChangeNotifier {
   Future<void> clearSnapshot() async {
     _latestSnapshot = null;
     _errorMessage = null;
-    bool failed = false;
+    var failed = false;
     if (_datacenterWatchActive) {
       try {
         await _repository.endDatacenterWatch();
@@ -88,13 +87,13 @@ class SystemSurfacesController extends ChangeNotifier {
   }
 
   Future<bool> startDatacenterWatch() async {
-    final DatacenterSurfaceSnapshot? snapshot = _latestSnapshot;
+    final snapshot = _latestSnapshot;
     if (snapshot == null || !canStartDatacenterWatch) {
       return false;
     }
     _setBusy(true);
     try {
-      final bool started = await _repository.startDatacenterWatch(
+      final started = await _repository.startDatacenterWatch(
         snapshot,
         duration: datacenterWatchDuration,
       );

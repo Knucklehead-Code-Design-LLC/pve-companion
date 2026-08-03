@@ -49,7 +49,7 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
 
   @override
   Widget build(BuildContext context) {
-    final ui.Image? image = _image;
+    final image = _image;
     if (image == null) {
       return const ColoredBox(color: CupertinoColors.black);
     }
@@ -82,7 +82,7 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
               if (event is! PointerScrollEvent || event.scrollDelta.dy == 0) {
                 return;
               }
-              final int wheelButton = event.scrollDelta.dy < 0 ? 8 : 16;
+              final wheelButton = event.scrollDelta.dy < 0 ? 8 : 16;
               _sendPointer(
                 event.localPosition,
                 constraints,
@@ -116,20 +116,20 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
   }
 
   void _replaceImage() {
-    final PveConsoleFramebuffer framebuffer = widget.framebuffer;
-    final ui.Image nextImage = ui.decodeImageFromPixelsSync(
+    final framebuffer = widget.framebuffer;
+    final nextImage = ui.decodeImageFromPixelsSync(
       framebuffer.rgbaPixels,
       framebuffer.width,
       framebuffer.height,
       ui.PixelFormat.rgba8888,
     );
-    final ui.Image? previousImage = _image;
+    final previousImage = _image;
     _image = nextImage;
     previousImage?.dispose();
   }
 
   KeyEventResult _handleKeyEvent(FocusNode node, KeyEvent event) {
-    final int? keySym = _keySymFor(event);
+    final keySym = _keySymFor(event);
     if (keySym == null) {
       return KeyEventResult.ignored;
     }
@@ -145,37 +145,32 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
     BoxConstraints constraints, {
     required int buttons,
   }) {
-    final Size targetSize = Size(constraints.maxWidth, constraints.maxHeight);
+    final targetSize = Size(constraints.maxWidth, constraints.maxHeight);
     if (targetSize.isEmpty ||
         !targetSize.width.isFinite ||
         !targetSize.height.isFinite) {
       return;
     }
-    final Size sourceSize = Size(
+    final sourceSize = Size(
       widget.framebuffer.width.toDouble(),
       widget.framebuffer.height.toDouble(),
     );
-    final FittedSizes fitted = applyBoxFit(
-      BoxFit.contain,
-      sourceSize,
-      targetSize,
-    );
-    final Size destination = fitted.destination;
-    final Offset offset = Offset(
+    final fitted = applyBoxFit(BoxFit.contain, sourceSize, targetSize);
+    final destination = fitted.destination;
+    final offset = Offset(
       (targetSize.width - destination.width) / 2,
       (targetSize.height - destination.height) / 2,
     );
-    final int x =
-        ((position.dx - offset.dx) * sourceSize.width / destination.width)
-            .floor();
-    final int y =
+    final x = ((position.dx - offset.dx) * sourceSize.width / destination.width)
+        .floor();
+    final y =
         ((position.dy - offset.dy) * sourceSize.height / destination.height)
             .floor();
     widget.controller.sendPointer(x: x, y: y, buttons: buttons);
   }
 
   int _rfbButtonMask(int buttons) {
-    int mask = 0;
+    var mask = 0;
     if (buttons & kPrimaryMouseButton != 0) {
       mask |= 1;
     }
@@ -189,8 +184,8 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
   }
 
   int? _keySymFor(KeyEvent event) {
-    final LogicalKeyboardKey key = event.logicalKey;
-    final int? special = switch (key) {
+    final key = event.logicalKey;
+    final special = switch (key) {
       LogicalKeyboardKey.backspace => 0xff08,
       LogicalKeyboardKey.tab => 0xff09,
       LogicalKeyboardKey.enter => 0xff0d,
@@ -228,11 +223,11 @@ class _RfbFramebufferViewState extends State<RfbFramebufferView> {
     if (special != null) {
       return special;
     }
-    final String? character = event.character;
+    final character = event.character;
     if (character == null || character.isEmpty) {
       return null;
     }
-    final int codePoint = character.runes.first;
+    final codePoint = character.runes.first;
     return rfbKeySymForCodePoint(codePoint);
   }
 }

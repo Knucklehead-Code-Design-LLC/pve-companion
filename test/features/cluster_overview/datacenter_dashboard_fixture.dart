@@ -17,7 +17,7 @@ ClusterOverviewSnapshot criticalDatacenterSnapshot() {
 Future<ClusterOverviewController> readyDashboardController(
   ClusterOverviewSnapshot snapshot,
 ) async {
-  final ClusterOverviewController controller = ClusterOverviewController(
+  final controller = ClusterOverviewController(
     _StaticDashboardRepository(snapshot),
   );
   await controller.refresh(const _DashboardFixtureSession());
@@ -27,17 +27,17 @@ Future<ClusterOverviewController> readyDashboardController(
 Future<ClusterOverviewController> staleDashboardController(
   ClusterOverviewSnapshot snapshot,
 ) async {
-  final ClusterOverviewController controller = ClusterOverviewController(
+  final controller = ClusterOverviewController(
     _FailingAfterSnapshotRepository(snapshot),
   );
-  const _DashboardFixtureSession session = _DashboardFixtureSession();
+  const session = _DashboardFixtureSession();
   await controller.refresh(session);
   await controller.refresh(session);
   return controller;
 }
 
 Future<ClusterOverviewController> failedDashboardController() async {
-  final ClusterOverviewController controller = ClusterOverviewController(
+  final controller = ClusterOverviewController(
     const _FailingDashboardRepository(),
   );
   await controller.refresh(const _DashboardFixtureSession());

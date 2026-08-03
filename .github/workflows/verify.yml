@@ -43,5 +43,5 @@ jobs:
           "$FLUTTER_ROOT/bin/flutter" --version
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test tool
-      - run: flutter analyze
+      - run: flutter analyze --fatal-infos
       - run: flutter test

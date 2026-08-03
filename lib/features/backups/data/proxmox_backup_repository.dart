@@ -16,19 +16,13 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     ProxmoxSession session,
     ClusterOverviewSnapshot overview,
   ) async {
-    final List<PveBackupDestination> destinations = overview.storages
+    final destinations = overview.storages
         .where(PveBackupDestination.supportsBackupContent)
         .map((ClusterStorage storage) => PveBackupDestination(storage: storage))
         .toList(growable: false);
-    final Future<_OptionalBackupData> schedulesRequest = _loadOptional(
-      session,
-      'cluster/backup',
-    );
-    final List<_BackupContentRoute> routes = _contentRoutes(
-      overview,
-      destinations,
-    );
-    final List<Future<_OptionalBackupData>> recordRequests = routes
+    final schedulesRequest = _loadOptional(session, 'cluster/backup');
+    final routes = _contentRoutes(overview, destinations);
+    final recordRequests = routes
         .map(
           (_BackupContentRoute route) => _loadOptional(
             session,
@@ -36,24 +30,21 @@ class ProxmoxBackupRepository implements PveBackupRepository {
           ),
         )
         .toList(growable: false);
-    final List<_OptionalBackupData> results =
-        await Future.wait<_OptionalBackupData>(<Future<_OptionalBackupData>>[
-          schedulesRequest,
-          ...recordRequests,
-        ]);
-    final List<PveBackupRecord> records = <PveBackupRecord>[];
-    for (int index = 0; index < routes.length; index += 1) {
+    final results = await Future.wait<_OptionalBackupData>(
+      <Future<_OptionalBackupData>>[schedulesRequest, ...recordRequests],
+    );
+    final records = <PveBackupRecord>[];
+    for (var index = 0; index < routes.length; index += 1) {
       records.addAll(_decodeRecords(results[index + 1].data, routes[index]));
     }
-    final Map<String, PveBackupRecord> uniqueRecords =
-        <String, PveBackupRecord>{};
-    for (final PveBackupRecord record in records) {
-      final PveBackupRecord? existing = uniqueRecords[record.volumeId];
+    final uniqueRecords = <String, PveBackupRecord>{};
+    for (final record in records) {
+      final existing = uniqueRecords[record.volumeId];
       if (existing == null || _isNewer(record, existing)) {
         uniqueRecords[record.volumeId] = record;
       }
     }
-    final List<PveBackupRecord> orderedRecords = uniqueRecords.values.toList()
+    final orderedRecords = uniqueRecords.values.toList()
       ..sort(
         (PveBackupRecord left, PveBackupRecord right) =>
             (right.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0))
@@ -61,7 +52,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
                   left.createdAt ?? DateTime.fromMillisecondsSinceEpoch(0),
                 ),
       );
-    final List<ClusterTask> recentTasks =
+    final recentTasks =
         overview.tasks
             .where(
               (ClusterTask task) => task.type.toLowerCase().contains('vzdump'),
@@ -88,29 +79,33 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     ClusterOverviewSnapshot overview,
     List<PveBackupDestination> destinations,
   ) {
-    final List<_BackupContentRoute> routes = <_BackupContentRoute>[];
-    for (final PveBackupDestination destination in destinations) {
-      final List<String> reportingNodes = destination.storage.resources
+    final routes = <_BackupContentRoute>[];
+    for (final destination in destinations) {
+      final reportingNodes = destination.storage.resources
           .map((ClusterStorageResource resource) => resource.node)
           .toSet()
           .toList(growable: false);
-      final List<String> availableReportingNodes = destination.storage.resources
+      final availableReportingNodes = destination.storage.resources
           .where((ClusterStorageResource resource) => resource.isAvailable)
           .map((ClusterStorageResource resource) => resource.node)
           .toSet()
           .toList(growable: false);
-      final List<String> candidateNodes = availableReportingNodes.isNotEmpty
-          ? availableReportingNodes
-          : reportingNodes;
-      final Iterable<String> nodes = candidateNodes.isNotEmpty
-          ? destination.storage.shared
-                ? candidateNodes.take(1)
-                : candidateNodes
-          : overview.nodes
-                .where((ClusterNode node) => node.isOnline)
-                .map((ClusterNode node) => node.name)
-                .take(destination.storage.shared ? 1 : overview.nodes.length);
-      for (final String node in nodes) {
+      var candidateNodes = reportingNodes;
+      if (availableReportingNodes.isNotEmpty) {
+        candidateNodes = availableReportingNodes;
+      }
+      Iterable<String> nodes;
+      if (candidateNodes.isNotEmpty) {
+        nodes = candidateNodes;
+      } else {
+        nodes = overview.nodes
+            .where((ClusterNode node) => node.isOnline)
+            .map((ClusterNode node) => node.name);
+      }
+      if (destination.storage.shared) {
+        nodes = nodes.take(1);
+      }
+      for (final node in nodes) {
         routes.add(_BackupContentRoute(node: node, storage: destination.name));
       }
     }
@@ -128,8 +123,8 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     if (!hasRoutes) {
       return PveBackupDataState.unavailable;
     }
-    final bool hasAvailableData = states.contains(PveBackupDataState.available);
-    final bool hasLimitedData = states.any(
+    final hasAvailableData = states.contains(PveBackupDataState.available);
+    final hasLimitedData = states.any(
       (PveBackupDataState state) => state != PveBackupDataState.available,
     );
     if (hasAvailableData && hasLimitedData) {
@@ -178,7 +173,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> item) {
-          final String? id = _string(item['id']);
+          final id = _string(item['id']);
           if (id == null) {
             return null;
           }
@@ -195,11 +190,11 @@ class ProxmoxBackupRepository implements PveBackupRepository {
   }
 
   bool _isBackupContent(Map<Object?, Object?> item) {
-    final String? content = _string(item['content']);
+    final content = _string(item['content']);
     if (content != null) {
       return content.toLowerCase() == 'backup';
     }
-    final String? volumeId = _string(item['volid']);
+    final volumeId = _string(item['volid']);
     return volumeId?.toLowerCase().contains(':backup/') ?? false;
   }
 
@@ -214,7 +209,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
         .whereType<Map<Object?, Object?>>()
         .where(_isBackupContent)
         .map((Map<Object?, Object?> item) {
-          final String? volumeId = _string(item['volid']);
+          final volumeId = _string(item['volid']);
           if (volumeId == null) {
             return null;
           }
@@ -235,8 +230,8 @@ class ProxmoxBackupRepository implements PveBackupRepository {
   }
 
   bool _isNewer(PveBackupRecord candidate, PveBackupRecord current) {
-    final DateTime? candidateDate = candidate.createdAt;
-    final DateTime? currentDate = current.createdAt;
+    final candidateDate = candidate.createdAt;
+    final currentDate = current.createdAt;
     if (candidateDate == null) {
       return false;
     }

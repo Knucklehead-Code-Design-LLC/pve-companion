@@ -49,7 +49,7 @@ its signing key is configured.
 ```sh
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
-flutter analyze
+flutter analyze --fatal-infos
 flutter test
 tool/capture_macos_store_screenshots.sh
 tool/verify_app_store_submission.sh

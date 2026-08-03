@@ -22,9 +22,7 @@ class KeychainConnectionCredentialStore implements ConnectionCredentialStore {
 
   @override
   Future<ConnectionCredentials?> read(ConnectionProfile profile) async {
-    final String? secret = await _secureValueStore.read(
-      _keyForProfile(profile.id),
-    );
+    final secret = await _secureValueStore.read(_keyForProfile(profile.id));
     if (secret == null || secret.isEmpty) {
       return null;
     }

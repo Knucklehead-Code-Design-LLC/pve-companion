@@ -124,11 +124,11 @@ class ConnectionProfilesController extends ChangeNotifier {
       List<ConnectionProfile>.unmodifiable(_profiles);
 
   ConnectionProfile? get selectedProfile {
-    final String? selectedId = _selectedProfileId;
+    final selectedId = _selectedProfileId;
     if (selectedId == null) {
       return null;
     }
-    for (final ConnectionProfile profile in _profiles) {
+    for (final profile in _profiles) {
       if (profile.id == selectedId) {
         return profile;
       }
@@ -161,8 +161,7 @@ class ConnectionProfilesController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final SavedConnectionProfiles savedProfiles = await _profileRepository
-          .load();
+      final savedProfiles = await _profileRepository.load();
       if (_isDisposed) {
         return;
       }
@@ -193,7 +192,7 @@ class ConnectionProfilesController extends ChangeNotifier {
   }
 
   Future<ConnectionAttemptResult> connectSelectedProfile() async {
-    final ConnectionProfile? profile = selectedProfile;
+    final profile = selectedProfile;
     if (profile == null) {
       return const ConnectionAttemptResult.failed(
         'Choose a saved server first.',
@@ -257,7 +256,7 @@ class ConnectionProfilesController extends ChangeNotifier {
       );
     }
     try {
-      final ProxmoxSession session = await _connectionRepository.authenticate(
+      final session = await _connectionRepository.authenticate(
         profile,
         credentials,
       );
@@ -285,14 +284,14 @@ class ConnectionProfilesController extends ChangeNotifier {
     if (_operationInFlight) {
       return false;
     }
-    final List<ConnectionProfile> updatedProfiles = _profiles
+    final updatedProfiles = _profiles
         .where((ConnectionProfile profile) => profile.id != profileId)
         .toList(growable: false);
     if (updatedProfiles.length == _profiles.length) {
       return false;
     }
 
-    final bool removesActiveProfile = _selectedProfileId == profileId;
+    final removesActiveProfile = _selectedProfileId == profileId;
     await _profileRepository.save(
       SavedConnectionProfiles(
         profiles: updatedProfiles,
@@ -342,7 +341,7 @@ class ConnectionProfilesController extends ChangeNotifier {
       return const ConnectionAttemptResult.busy();
     }
     _operationInFlight = true;
-    final int epoch = ++_operationEpoch;
+    final epoch = ++_operationEpoch;
     // Keep the current workspace available while another saved server is
     // being checked. The per-profile state below carries the switching state
     // without implying that the established session has gone away.
@@ -364,10 +363,8 @@ class ConnectionProfilesController extends ChangeNotifier {
         return const ConnectionAttemptResult.busy();
       }
 
-      final ConnectionProfile connectedProfile = profile.withLastConnectedAt(
-        DateTime.now(),
-      );
-      final List<ConnectionProfile> updatedProfiles = <ConnectionProfile>[
+      final connectedProfile = profile.withLastConnectedAt(DateTime.now());
+      final updatedProfiles = <ConnectionProfile>[
         ..._profiles.where(
           (ConnectionProfile existing) => existing.id != connectedProfile.id,
         ),

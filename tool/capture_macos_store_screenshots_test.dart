@@ -19,7 +19,7 @@ void main() {
     await tester.pumpAndSettle();
   });
 
-  for (final MapEntry<String, String> scene in <String, String>{
+  for (final scene in <String, String>{
     'overview': '01-datacenter-overview.png',
     'guests': '02-guest-inventory.png',
     'nodes': '03-node-health.png',
@@ -65,7 +65,7 @@ Future<void> _loadStoreScreenshotFonts() async {
 }
 
 Future<void> _loadFileFont(String family, String path) async {
-  final Uint8List bytes = await File(path).readAsBytes();
+  final bytes = await File(path).readAsBytes();
   await (FontLoader(
     family,
   )..addFont(Future<ByteData>.value(ByteData.sublistView(bytes)))).load();

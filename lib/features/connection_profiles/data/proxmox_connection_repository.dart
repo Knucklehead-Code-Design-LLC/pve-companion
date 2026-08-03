@@ -16,7 +16,7 @@ class HttpProxmoxConnectionRepository implements ProxmoxConnectionRepository {
     ConnectionProfile profile,
     ConnectionCredentials credentials,
   ) async {
-    final ProxmoxApiService session = ProxmoxApiService(
+    final session = ProxmoxApiService(
       endpoint: profile.endpoint,
       authentication: credentials.toProxmoxAuthentication(profile),
       trustedCertificateSha256: profile.trustedCertificateSha256,

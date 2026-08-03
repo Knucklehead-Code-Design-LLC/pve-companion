@@ -5,7 +5,7 @@ import 'package:pve_companion/core/api/proxmox_vnc_authentication.dart';
 
 void main() {
   test('creates the standard RFB response for a VNC challenge', () {
-    final Uint8List response = ProxmoxVncAuthentication.responseForTicket(
+    final response = ProxmoxVncAuthentication.responseForTicket(
       ticket: 'password',
       challenge: Uint8List.fromList(
         List<int>.generate(16, (int value) => value),

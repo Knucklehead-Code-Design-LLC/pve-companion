@@ -35,7 +35,7 @@ class JsonConnectionProfileRepository implements ConnectionProfileRepository {
 
   @override
   Future<SavedConnectionProfiles> load() async {
-    final String? rawValue = await _preferences.read();
+    final rawValue = await _preferences.read();
     if (rawValue == null || rawValue.isEmpty) {
       return const SavedConnectionProfiles(profiles: <ConnectionProfile>[]);
     }
@@ -46,12 +46,12 @@ class JsonConnectionProfileRepository implements ConnectionProfileRepository {
         'Saved connection profiles are not an object.',
       );
     }
-    final Object? rawProfiles = decoded['profiles'];
+    final rawProfiles = decoded['profiles'];
     if (rawProfiles is! List<Object?>) {
       throw const FormatException('Saved connection profiles are not a list.');
     }
 
-    final List<ConnectionProfile> profiles = rawProfiles
+    final profiles = rawProfiles
         .map((Object? profile) {
           if (profile is! Map<Object?, Object?>) {
             throw const FormatException(
@@ -66,10 +66,8 @@ class JsonConnectionProfileRepository implements ConnectionProfileRepository {
         })
         .toList(growable: false);
 
-    final Object? selectedProfileId = decoded['selectedProfileId'];
-    final String? selected = selectedProfileId is String
-        ? selectedProfileId
-        : null;
+    final selectedProfileId = decoded['selectedProfileId'];
+    final selected = selectedProfileId is String ? selectedProfileId : null;
     return SavedConnectionProfiles(
       profiles: profiles,
       selectedProfileId:
@@ -81,7 +79,7 @@ class JsonConnectionProfileRepository implements ConnectionProfileRepository {
 
   @override
   Future<void> save(SavedConnectionProfiles savedProfiles) {
-    final String encoded = jsonEncode(<String, Object?>{
+    final encoded = jsonEncode(<String, Object?>{
       'profiles': savedProfiles.profiles
           .map((ConnectionProfile profile) => profile.toJson())
           .toList(growable: false),

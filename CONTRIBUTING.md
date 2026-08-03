@@ -17,8 +17,8 @@ the repository's Apache-2.0 license.
 
    ```sh
    flutter pub get
-   dart format --output=none --set-exit-if-changed lib test
-   flutter analyze
+   dart format --output=none --set-exit-if-changed lib test tool
+   flutter analyze --fatal-infos
    flutter test
    ```
 

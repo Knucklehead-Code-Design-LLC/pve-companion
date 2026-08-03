@@ -5,11 +5,9 @@ import 'datacenter_incident.dart';
 
 abstract final class DatacenterIncidentEvaluator {
   static DatacenterIncidentSnapshot evaluate(ClusterOverviewSnapshot overview) {
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
-      overview,
-    );
-    final List<DatacenterIncident> incidents = <DatacenterIncident>[];
-    for (final DatacenterNodeHealth node in health.nodes) {
+    final health = DatacenterHealthEvaluator.evaluate(overview);
+    final incidents = <DatacenterIncident>[];
+    for (final node in health.nodes) {
       if (!node.node.isOnline) {
         incidents.add(
           DatacenterIncident(
@@ -41,7 +39,7 @@ abstract final class DatacenterIncidentEvaluator {
         pressure: node.rootDisk,
       );
     }
-    for (final ClusterStorage storage in overview.storages) {
+    for (final storage in overview.storages) {
       if (storage.hasAvailabilityTelemetry && !storage.isAvailable) {
         incidents.add(
           DatacenterIncident(
@@ -53,12 +51,11 @@ abstract final class DatacenterIncidentEvaluator {
           ),
         );
       }
-      final double? fraction = storage.usageFraction;
+      final fraction = storage.usageFraction;
       if (fraction == null) {
         continue;
       }
-      final DatacenterIncidentSeverity? severity =
-          fraction >= datacenterPressureCriticalThreshold
+      final severity = fraction >= datacenterPressureCriticalThreshold
           ? DatacenterIncidentSeverity.critical
           : fraction >= datacenterPressureWarningThreshold
           ? DatacenterIncidentSeverity.warning
@@ -76,7 +73,7 @@ abstract final class DatacenterIncidentEvaluator {
         );
       }
     }
-    for (final ClusterTask task in overview.tasks) {
+    for (final task in overview.tasks) {
       if (task.state != ClusterTaskState.failed) {
         continue;
       }
@@ -108,8 +105,7 @@ void _addPressureIncident(
   if (pressure == null || pressure.level == DatacenterPressureLevel.normal) {
     return;
   }
-  final DatacenterIncidentSeverity severity =
-      pressure.level == DatacenterPressureLevel.critical
+  final severity = pressure.level == DatacenterPressureLevel.critical
       ? DatacenterIncidentSeverity.critical
       : DatacenterIncidentSeverity.warning;
   incidents.add(
@@ -126,7 +122,7 @@ void _addPressureIncident(
 }
 
 int _compareIncidents(DatacenterIncident left, DatacenterIncident right) {
-  final int severityComparison = _severityRank(
+  final severityComparison = _severityRank(
     left.severity,
   ).compareTo(_severityRank(right.severity));
   if (severityComparison != 0) {

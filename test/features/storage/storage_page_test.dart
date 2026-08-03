@@ -145,7 +145,7 @@ void main() {
   testWidgets('does not mark an unreported backup destination as ready', (
     WidgetTester tester,
   ) async {
-    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    const snapshot = ClusterOverviewSnapshot(
       version: PveVersion(version: '9.0'),
       nodes: <ClusterNode>[],
       guests: [],

@@ -22,7 +22,7 @@ class ProxmoxTaskReference {
         'The server did not return an operation task ID.',
       );
     }
-    final String upid = response.trim();
+    final upid = response.trim();
     if (!RegExp(r'^[A-Za-z0-9._:@!+=-]+$').hasMatch(upid)) {
       throw const ProxmoxMalformedResponseException(
         'The server returned an unsafe operation task ID.',
@@ -100,7 +100,7 @@ class ProxmoxTaskClient {
     ProxmoxSession session,
     ProxmoxTaskReference reference,
   ) async {
-    final Object? response = await session.getData(
+    final response = await session.getData(
       'nodes/${reference.node}/tasks/${reference.upid}/status',
     );
     if (response is! Map<Object?, Object?>) {
@@ -108,9 +108,9 @@ class ProxmoxTaskClient {
         'The task status response was not an object.',
       );
     }
-    final String? status = _string(response['status']);
-    final String? exitStatus = _string(response['exitstatus']);
-    final DateTime? endedAt = _date(response['endtime']);
+    final status = _string(response['status']);
+    final exitStatus = _string(response['exitstatus']);
+    final endedAt = _date(response['endtime']);
     return ProxmoxTaskStatus(
       reference: reference,
       state: _stateFor(status: status, exitStatus: exitStatus),
@@ -125,7 +125,7 @@ class ProxmoxTaskClient {
     int start = 0,
     int limit = 200,
   }) async {
-    final Object? response = await session.getData(
+    final response = await session.getData(
       'nodes/${reference.node}/tasks/${reference.upid}/log',
       query: <String, String>{'start': '$start', 'limit': '$limit'},
     );
@@ -137,8 +137,8 @@ class ProxmoxTaskClient {
     return response
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> line) {
-          final Object? lineNumber = line['n'];
-          final String? text = _string(line['t']);
+          final lineNumber = line['n'];
+          final text = _string(line['t']);
           if (lineNumber is! num || text == null) {
             throw const ProxmoxMalformedResponseException(
               'The task log response contained an invalid line.',
@@ -195,7 +195,7 @@ Future<ProxmoxTaskPollResult?> pollProxmoxTask(
   int maxAttempts = 30,
   Duration interval = const Duration(seconds: 2),
 }) async {
-  for (int attempt = 0; attempt < maxAttempts; attempt += 1) {
+  for (var attempt = 0; attempt < maxAttempts; attempt += 1) {
     if (attempt > 0) {
       await Future<void>.delayed(interval);
     }
@@ -203,10 +203,7 @@ Future<ProxmoxTaskPollResult?> pollProxmoxTask(
       return null;
     }
     try {
-      final ProxmoxTaskStatus status = await client.loadStatus(
-        session,
-        reference,
-      );
+      final status = await client.loadStatus(session, reference);
       if (isCancelled()) {
         return null;
       }

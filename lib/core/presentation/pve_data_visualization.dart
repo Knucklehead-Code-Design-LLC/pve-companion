@@ -17,11 +17,19 @@ class PveChartSegment {
 
   @override
   bool operator ==(Object other) {
-    return identical(this, other) ||
-        other is PveChartSegment &&
-            other.label == label &&
-            other.value == value &&
-            other.color == color;
+    if (identical(this, other)) {
+      return true;
+    }
+    if (other is! PveChartSegment) {
+      return false;
+    }
+    if (other.label != label) {
+      return false;
+    }
+    if (other.value != value) {
+      return false;
+    }
+    return other.color == color;
   }
 
   @override
@@ -109,34 +117,26 @@ class _PveRingChartPainter extends CustomPainter {
 
   @override
   void paint(Canvas canvas, Size size) {
-    final Offset center = size.center(Offset.zero);
-    final double radius = (math.min(size.width, size.height) - strokeWidth) / 2;
-    final Rect bounds = Rect.fromCircle(center: center, radius: radius);
-    final Paint paint = Paint()
+    final center = size.center(Offset.zero);
+    final radius = (math.min(size.width, size.height) - strokeWidth) / 2;
+    final bounds = Rect.fromCircle(center: center, radius: radius);
+    final paint = Paint()
       ..style = PaintingStyle.stroke
       ..strokeWidth = strokeWidth
       ..strokeCap = StrokeCap.butt;
     canvas.drawCircle(center, radius, paint..color = trackColor);
 
-    final List<PveChartSegment> visibleSegments = segments
-        .where(
-          (PveChartSegment segment) =>
-              segment.value.isFinite && segment.value > 0,
-        )
-        .toList(growable: false);
-    final double total = visibleSegments.fold<double>(
-      0,
-      (double value, PveChartSegment segment) => value + segment.value,
-    );
+    final visibleSegments = _visibleChartSegments(segments);
+    final total = _totalSegmentValue(visibleSegments);
     if (total <= 0) {
       return;
     }
 
-    const double gap = 0.025;
-    double startAngle = -math.pi / 2;
-    for (final PveChartSegment segment in visibleSegments) {
-      final double sweep = (segment.value / total) * math.pi * 2;
-      final double visibleSweep = math.max(0, sweep - gap);
+    const gap = 0.025;
+    var startAngle = -math.pi / 2;
+    for (final segment in visibleSegments) {
+      final sweep = (segment.value / total) * math.pi * 2;
+      final visibleSweep = sweep > gap ? sweep - gap : 0.0;
       canvas.drawArc(
         bounds,
         startAngle + gap / 2,
@@ -150,17 +150,42 @@ class _PveRingChartPainter extends CustomPainter {
 
   @override
   bool shouldRepaint(_PveRingChartPainter oldDelegate) {
-    return !_segmentsMatch(oldDelegate.segments, segments) ||
-        oldDelegate.trackColor != trackColor ||
-        oldDelegate.strokeWidth != strokeWidth;
+    if (!_segmentsMatch(oldDelegate.segments, segments)) {
+      return true;
+    }
+    if (oldDelegate.trackColor != trackColor) {
+      return true;
+    }
+    return oldDelegate.strokeWidth != strokeWidth;
   }
+}
+
+List<PveChartSegment> _visibleChartSegments(
+  Iterable<PveChartSegment> segments,
+) {
+  final visibleSegments = <PveChartSegment>[];
+  for (final segment in segments) {
+    if (!segment.value.isFinite || segment.value <= 0) {
+      continue;
+    }
+    visibleSegments.add(segment);
+  }
+  return visibleSegments;
+}
+
+double _totalSegmentValue(Iterable<PveChartSegment> segments) {
+  var total = 0.0;
+  for (final segment in segments) {
+    total += segment.value;
+  }
+  return total;
 }
 
 bool _segmentsMatch(List<PveChartSegment> left, List<PveChartSegment> right) {
   if (left.length != right.length) {
     return false;
   }
-  for (int index = 0; index < left.length; index++) {
+  for (var index = 0; index < left.length; index++) {
     if (left[index] != right[index]) {
       return false;
     }
@@ -240,32 +265,47 @@ class PveAdaptiveCardGrid extends StatelessWidget {
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool supportsColumns =
-            constraints.maxWidth >= breakpoint &&
-            MediaQuery.textScalerOf(context).scale(17) < 24;
-        if (!supportsColumns || children.length < 2) {
-          return Column(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              for (int index = 0; index < children.length; index++) ...<Widget>[
-                if (index > 0) SizedBox(height: spacing),
-                children[index],
-              ],
-            ],
-          );
+        if (!_canUseColumns(context, constraints)) {
+          return _stackedChildren();
         }
-        return IntrinsicHeight(
-          child: Row(
-            crossAxisAlignment: CrossAxisAlignment.stretch,
-            children: <Widget>[
-              for (int index = 0; index < children.length; index++) ...<Widget>[
-                if (index > 0) SizedBox(width: spacing),
-                Expanded(child: children[index]),
-              ],
-            ],
-          ),
-        );
+        if (children.length < 2) {
+          return _stackedChildren();
+        }
+        return _columnChildren();
       },
+    );
+  }
+
+  bool _canUseColumns(BuildContext context, BoxConstraints constraints) {
+    if (constraints.maxWidth < breakpoint) {
+      return false;
+    }
+    return MediaQuery.textScalerOf(context).scale(17) < 24;
+  }
+
+  Widget _stackedChildren() {
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        for (int index = 0; index < children.length; index++) ...<Widget>[
+          if (index > 0) SizedBox(height: spacing),
+          children[index],
+        ],
+      ],
+    );
+  }
+
+  Widget _columnChildren() {
+    return IntrinsicHeight(
+      child: Row(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          for (int index = 0; index < children.length; index++) ...<Widget>[
+            if (index > 0) SizedBox(width: spacing),
+            Expanded(child: children[index]),
+          ],
+        ],
+      ),
     );
   }
 }
@@ -286,11 +326,19 @@ class PveResourceMeter extends StatelessWidget {
   final Color color;
   final String? detail;
 
+  String get _semanticLabel {
+    final detail = this.detail;
+    if (detail == null) {
+      return '$label: $value';
+    }
+    return '$label: $value, $detail';
+  }
+
   @override
   Widget build(BuildContext context) {
     return Semantics(
       excludeSemantics: true,
-      label: '$label: $value${detail == null ? '' : ', $detail'}',
+      label: _semanticLabel,
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.stretch,
         children: <Widget>[

@@ -42,9 +42,7 @@ class DatacenterResourceSample {
   final double? storageFraction;
 
   static double? _average(Iterable<double?> values) {
-    final List<double> reported = values.whereType<double>().toList(
-      growable: false,
-    );
+    final reported = values.whereType<double>().toList(growable: false);
     if (reported.isEmpty) return null;
     return reported.reduce((double total, double value) => total + value) /
         reported.length;
@@ -60,12 +58,12 @@ class DatacenterResourceSample {
     int? Function(ClusterNode node) used,
     int? Function(ClusterNode node) capacity,
   ) {
-    int reportedUsage = 0;
-    int reportedCapacity = 0;
+    var reportedUsage = 0;
+    var reportedCapacity = 0;
     var hasReportedPair = false;
-    for (final ClusterNode node in nodes) {
-      final int? nodeUsage = used(node);
-      final int? nodeCapacity = capacity(node);
+    for (final node in nodes) {
+      final nodeUsage = used(node);
+      final nodeCapacity = capacity(node);
       if (nodeUsage == null || nodeCapacity == null || nodeCapacity <= 0) {
         continue;
       }
@@ -77,12 +75,12 @@ class DatacenterResourceSample {
   }
 
   static double? _ratioForStorages(Iterable<ClusterStorage> storages) {
-    int reportedUsage = 0;
-    int reportedCapacity = 0;
+    var reportedUsage = 0;
+    var reportedCapacity = 0;
     var hasReportedPair = false;
-    for (final ClusterStorage storage in storages) {
-      final int? storageUsage = storage.usedBytes;
-      final int? storageCapacity = storage.capacityBytes;
+    for (final storage in storages) {
+      final storageUsage = storage.usedBytes;
+      final storageCapacity = storage.capacityBytes;
       if (storageUsage == null ||
           storageCapacity == null ||
           storageCapacity <= 0) {

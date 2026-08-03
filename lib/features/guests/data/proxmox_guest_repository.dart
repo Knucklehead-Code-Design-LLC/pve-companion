@@ -72,35 +72,32 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     ProxmoxSession session,
     PveGuest guest,
   ) async {
-    final String guestPath =
+    final guestPath =
         'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}';
-    final List<Object?> responses = await Future.wait<Object?>(
-      <Future<Object?>>[
-        session.getData('$guestPath/config'),
-        _loadOptional(session, '$guestPath/status/current'),
-        _loadOptional(session, '$guestPath/snapshot'),
-        _loadOptional(
-          session,
-          'nodes/${guest.node}/tasks',
-          query: <String, String>{
-            'vmid': '${guest.vmid}',
-            'source': 'all',
-            'limit': '12',
-          },
-        ),
-      ],
-    );
-    final Object? configurationResponse = responses.first;
+    final responses = await Future.wait<Object?>(<Future<Object?>>[
+      session.getData('$guestPath/config'),
+      _loadOptional(session, '$guestPath/status/current'),
+      _loadOptional(session, '$guestPath/snapshot'),
+      _loadOptional(
+        session,
+        'nodes/${guest.node}/tasks',
+        query: <String, String>{
+          'vmid': '${guest.vmid}',
+          'source': 'all',
+          'limit': '12',
+        },
+      ),
+    ]);
+    final configurationResponse = responses.first;
     if (configurationResponse is! Map<Object?, Object?>) {
       throw const ProxmoxMalformedResponseException(
         'The guest configuration response was not an object.',
       );
     }
 
-    final Map<String, String> configuration = <String, String>{};
-    for (final MapEntry<Object?, Object?> entry
-        in configurationResponse.entries) {
-      final String key = entry.key.toString();
+    final configuration = <String, String>{};
+    for (final entry in configurationResponse.entries) {
+      final key = entry.key.toString();
       if (_visibleConfigurationKeys.contains(key) && entry.value != null) {
         configuration[key] = entry.value.toString();
       }
@@ -132,7 +129,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
         message: '${action.label} is not supported for ${guest.kind.label}s.',
       );
     }
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/status/'
       '${action.apiPathSegment}',
       fields: const <String, String>{},
@@ -152,7 +149,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     String? description,
     required bool includeMemoryState,
   }) async {
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/snapshot',
       fields: <String, String>{
         'snapname': name,
@@ -175,8 +172,8 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     PveGuest guest,
     PveGuestSnapshot snapshot,
   ) async {
-    final String snapshotName = _safeSnapshotName(snapshot);
-    final Object? response = await session.postForm(
+    final snapshotName = _safeSnapshotName(snapshot);
+    final response = await session.postForm(
       'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/snapshot/'
       '$snapshotName/rollback',
       fields: const <String, String>{},
@@ -194,9 +191,9 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     PveGuest guest,
     PveGuestSnapshot snapshot,
   ) async {
-    final String snapshotName = _safeSnapshotName(snapshot);
-    final ProxmoxWritableSession writable = _writableSession(session);
-    final Object? response = await writable.deleteResource(
+    final snapshotName = _safeSnapshotName(snapshot);
+    final writable = _writableSession(session);
+    final response = await writable.deleteResource(
       'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/snapshot/'
       '$snapshotName',
     );
@@ -213,7 +210,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     PveGuest guest,
     PveGuestBackupRequest request,
   ) async {
-    final Object? response = await session.postForm(
+    final response = await session.postForm(
       'nodes/${guest.node}/vzdump',
       fields: <String, String>{
         'vmid': '${guest.vmid}',
@@ -238,7 +235,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     if (change.isEmpty) {
       return;
     }
-    final ProxmoxWritableSession writable = _writableSession(session);
+    final writable = _writableSession(session);
     await writable.putForm(
       'nodes/${guest.node}/${guest.resourceSegment}/${guest.vmid}/config',
       fields: change.toFormFields(),
@@ -287,7 +284,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> snapshot) {
-          final String? name = _string(snapshot['name']);
+          final name = _string(snapshot['name']);
           if (name == null) {
             return null;
           }
@@ -312,13 +309,13 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> task) {
-          final String? upid = _string(task['upid']);
-          final String? type = _string(task['type']);
+          final upid = _string(task['upid']);
+          final type = _string(task['type']);
           if (upid == null || type == null) {
             return null;
           }
-          final String? status = _string(task['status']);
-          final DateTime? endedAt = _date(task['endtime']);
+          final status = _string(task['status']);
+          final endedAt = _date(task['endtime']);
           return PveGuestTask(
             upid: upid,
             type: type,
@@ -336,7 +333,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
     required String? status,
     required DateTime? endedAt,
   }) {
-    final String normalized = status?.trim().toLowerCase() ?? '';
+    final normalized = status?.trim().toLowerCase() ?? '';
     if (endedAt == null &&
         (normalized.isEmpty ||
             normalized == 'running' ||
@@ -388,9 +385,7 @@ class ProxmoxGuestRepository implements PveGuestRepository {
   }
 
   String _safeSnapshotName(PveGuestSnapshot snapshot) {
-    final PveGuestSnapshotRequest request = PveGuestSnapshotRequest(
-      name: snapshot.name,
-    );
+    final request = PveGuestSnapshotRequest(name: snapshot.name);
     if (!request.hasValidName) {
       throw const ProxmoxResponseException(
         statusCode: 400,

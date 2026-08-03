@@ -2,7 +2,6 @@ import 'package:flutter/cupertino.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
-import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/cluster_nodes_page.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
@@ -43,7 +42,7 @@ void main() {
     );
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    final Finder attentionFilter = find.descendant(
+    final attentionFilter = find.descendant(
       of: find.byKey(const ValueKey<String>('node-status-filter')),
       matching: find.text('Attention'),
     );
@@ -63,7 +62,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       criticalDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -101,7 +100,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(900, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -127,7 +126,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1200, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
@@ -157,12 +156,12 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);
-    int guestDrillThroughs = 0;
-    int taskDrillThroughs = 0;
+    var guestDrillThroughs = 0;
+    var taskDrillThroughs = 0;
 
     await tester.pumpWidget(
       MaterialApp(
@@ -192,18 +191,14 @@ void main() {
     expect(find.textContaining('View 2 hosted guests'), findsOneWidget);
     expect(find.textContaining('View 3 node tasks'), findsOneWidget);
 
-    final Finder hostedGuestsAction = find.textContaining(
-      'View 2 hosted guests',
-    );
-    final Finder nodeTasksAction = find.textContaining('View 3 node tasks');
+    final hostedGuestsAction = find.textContaining('View 2 hosted guests');
+    final nodeTasksAction = find.textContaining('View 3 node tasks');
     await tester.tap(hostedGuestsAction);
     await tester.tap(nodeTasksAction);
     expect(guestDrillThroughs, 1);
     expect(taskDrillThroughs, 1);
 
-    final Finder pve02 = find.byKey(
-      const ValueKey<String>('node-inventory-pve-02'),
-    );
+    final pve02 = find.byKey(const ValueKey<String>('node-inventory-pve-02'));
     await tester.tap(pve02);
     await tester.pump();
 
@@ -217,16 +212,14 @@ void main() {
   testWidgets('does not present an unreported CPU core count as zero', (
     WidgetTester tester,
   ) async {
-    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    const snapshot = ClusterOverviewSnapshot(
       version: PveVersion(version: '9.0'),
       nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
       guests: <PveGuest>[],
       storages: <ClusterStorage>[],
       tasks: <ClusterTask>[],
     );
-    final ClusterOverviewController controller = await readyDashboardController(
-      snapshot,
-    );
+    final controller = await readyDashboardController(snapshot);
     addTearDown(controller.dispose);
 
     await tester.pumpWidget(

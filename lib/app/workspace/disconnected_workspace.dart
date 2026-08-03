@@ -22,11 +22,11 @@ class DisconnectedWorkspace extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool isConnecting = status == ConnectionStatus.connecting;
-    final String title = profile == null
+    final isConnecting = status == ConnectionStatus.connecting;
+    final title = profile == null
         ? 'Choose a server'
         : 'Connect to ${profile!.displayName}';
-    final String message = profile == null
+    final message = profile == null
         ? 'Add a Proxmox VE server to open its datacenter.'
         : 'PVE Companion connects only when you ask and keeps the last '
               'reported view on this device.';
@@ -101,7 +101,7 @@ class DisconnectedWorkspace extends StatelessWidget {
                     child: CupertinoButton.filled(
                       onPressed: profile == null || isConnecting
                           ? null
-                          : () => onConnect(),
+                          : onConnect,
                       child: isConnecting
                           ? const CupertinoActivityIndicator(
                               color: CupertinoColors.white,

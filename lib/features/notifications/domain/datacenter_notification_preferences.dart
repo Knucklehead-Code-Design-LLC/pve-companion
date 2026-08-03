@@ -30,15 +30,15 @@ class DatacenterNotificationSettings {
 
   factory DatacenterNotificationSettings.fromJson(Map<String, Object?> value) {
     return DatacenterNotificationSettings(
-      criticalIncidentsEnabled: value['criticalIncidentsEnabled'] is bool
-          ? value['criticalIncidentsEnabled']! as bool
-          : true,
-      attentionIncidentsEnabled: value['attentionIncidentsEnabled'] is bool
-          ? value['attentionIncidentsEnabled']! as bool
-          : false,
-      connectionStatusEnabled: value['connectionStatusEnabled'] is bool
-          ? value['connectionStatusEnabled']! as bool
-          : true,
+      criticalIncidentsEnabled: _enabledByDefault(
+        value['criticalIncidentsEnabled'],
+      ),
+      attentionIncidentsEnabled: _disabledByDefault(
+        value['attentionIncidentsEnabled'],
+      ),
+      connectionStatusEnabled: _enabledByDefault(
+        value['connectionStatusEnabled'],
+      ),
     );
   }
 }
@@ -60,8 +60,8 @@ class DatacenterConnectionObservation {
   };
 
   factory DatacenterConnectionObservation.fromJson(Map<String, Object?> json) {
-    final Object? isAvailable = json['isAvailable'];
-    final Object? transitionCount = json['transitionCount'];
+    final isAvailable = json['isAvailable'];
+    final transitionCount = json['transitionCount'];
     if (isAvailable is! bool ||
         transitionCount is! int ||
         transitionCount < 0) {
@@ -120,42 +120,41 @@ class DatacenterNotificationPreferences {
   factory DatacenterNotificationPreferences.fromJson(
     Map<String, Object?> value,
   ) {
-    final Object? rawSettings = value['settings'];
-    final Map<String, Object?> settings = rawSettings is Map<Object?, Object?>
+    final rawSettings = value['settings'];
+    final settings = rawSettings is Map<Object?, Object?>
         ? rawSettings.map<String, Object?>(
             (Object? key, Object? item) => MapEntry(key.toString(), item),
           )
         : const <String, Object?>{};
-    final Map<String, List<String>> active = <String, List<String>>{};
-    final Object? rawActive = value['activeIncidentIdsByProfile'];
+    final active = <String, List<String>>{};
+    final rawActive = value['activeIncidentIdsByProfile'];
     if (rawActive is Map<Object?, Object?>) {
-      for (final MapEntry<Object?, Object?> entry in rawActive.entries) {
-        final Object? rawIds = entry.value;
-        if (entry.key is! String || rawIds is! List<Object?>) {
+      for (final entry in rawActive.entries) {
+        final profileId = entry.key;
+        final rawIds = entry.value;
+        if (profileId is! String || rawIds is! List<Object?>) {
           continue;
         }
-        active[entry.key as String] = rawIds.whereType<String>().toList(
-          growable: false,
-        );
+        active[profileId] = rawIds.whereType<String>().toList(growable: false);
       }
     }
-    final Map<String, DatacenterConnectionObservation> observations =
-        <String, DatacenterConnectionObservation>{};
-    final Object? rawObservations = value['connectionObservationsByProfile'];
+    final observations = <String, DatacenterConnectionObservation>{};
+    final rawObservations = value['connectionObservationsByProfile'];
     if (rawObservations is Map<Object?, Object?>) {
-      for (final MapEntry<Object?, Object?> entry in rawObservations.entries) {
-        final Object? rawObservation = entry.value;
-        if (entry.key is! String || rawObservation is! Map<Object?, Object?>) {
+      for (final entry in rawObservations.entries) {
+        final profileId = entry.key;
+        final rawObservation = entry.value;
+        if (profileId is! String || rawObservation is! Map<Object?, Object?>) {
           continue;
         }
         try {
-          final Map<String, Object?> observation = rawObservation
-              .map<String, Object?>(
-                (Object? key, Object? item) =>
-                    MapEntry<String, Object?>(key.toString(), item),
-              );
-          observations[entry.key as String] =
-              DatacenterConnectionObservation.fromJson(observation);
+          final observation = rawObservation.map<String, Object?>(
+            (Object? key, Object? item) =>
+                MapEntry<String, Object?>(key.toString(), item),
+          );
+          observations[profileId] = DatacenterConnectionObservation.fromJson(
+            observation,
+          );
         } on FormatException {
           // Ignore a single malformed legacy observation while preserving
           // other notification preferences.
@@ -168,6 +167,20 @@ class DatacenterNotificationPreferences {
       connectionObservationsByProfile: observations,
     );
   }
+}
+
+bool _enabledByDefault(Object? value) {
+  if (value is bool) {
+    return value;
+  }
+  return true;
+}
+
+bool _disabledByDefault(Object? value) {
+  if (value is bool) {
+    return value;
+  }
+  return false;
 }
 
 class DatacenterNotificationEvent {

@@ -14,10 +14,9 @@ class GuestConsoleController extends ChangeNotifier {
   GuestConsoleController({
     required PveGuestConsoleRepository repository,
     required ProxmoxSession session,
-    required PveGuest guest,
+    required this.guest,
   }) : _repository = repository,
-       _session = session,
-       guest = guest;
+       _session = session;
 
   final PveGuestConsoleRepository _repository;
   final ProxmoxSession _session;
@@ -43,7 +42,7 @@ class GuestConsoleController extends ChangeNotifier {
     if (_disposed || _state == GuestConsoleConnectionState.connecting) {
       return;
     }
-    final int epoch = ++_connectionEpoch;
+    final epoch = ++_connectionEpoch;
     await _releaseConnection();
     if (_isStale(epoch)) {
       return;
@@ -139,9 +138,8 @@ class GuestConsoleController extends ChangeNotifier {
   }
 
   Future<void> _releaseConnection() async {
-    final StreamSubscription<PveConsoleFramebuffer>? subscription =
-        _framebufferSubscription;
-    final ProxmoxRfbClient? client = _client;
+    final subscription = _framebufferSubscription;
+    final client = _client;
     _framebufferSubscription = null;
     _client = null;
     await subscription?.cancel();

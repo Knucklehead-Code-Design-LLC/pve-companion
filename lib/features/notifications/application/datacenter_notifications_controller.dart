@@ -65,15 +65,15 @@ class DatacenterNotificationsController extends ChangeNotifier {
 
   Future<void> initialize() async {
     try {
-      final List<Object> results = await Future.wait<Object>(<Future<Object>>[
+      final (preferences, authorization) = await (
         _preferencesRepository.load(),
         _notificationRepository.loadAuthorization(),
-      ]);
+      ).wait;
       if (_isDisposed) {
         return;
       }
-      _preferences = results[0] as DatacenterNotificationPreferences;
-      _authorization = results[1] as LocalNotificationAuthorization;
+      _preferences = preferences;
+      _authorization = authorization;
       _errorMessage = null;
     } catch (_) {
       if (_isDisposed) {
@@ -90,10 +90,10 @@ class DatacenterNotificationsController extends ChangeNotifier {
   }
 
   Future<void> updateSettings(DatacenterNotificationSettings settings) async {
-    final bool disablesConnectionMonitoring =
+    final disablesConnectionMonitoring =
         _preferences.settings.connectionStatusEnabled &&
         !settings.connectionStatusEnabled;
-    final DatacenterNotificationPreferences updated = _preferences.copyWith(
+    final updated = _preferences.copyWith(
       settings: settings,
       connectionObservationsByProfile: disablesConnectionMonitoring
           ? <String, DatacenterConnectionObservation>{}
@@ -141,24 +141,21 @@ class DatacenterNotificationsController extends ChangeNotifier {
   /// server profile is removed. This state is not a credential, but retaining
   /// it after the profile is gone provides no user value.
   Future<void> removeProfile(String profileId) async {
-    final bool hasIncidentState = _preferences.activeIncidentIdsByProfile
+    final hasIncidentState = _preferences.activeIncidentIdsByProfile
         .containsKey(profileId);
-    final bool hasConnectionState = _preferences.connectionObservationsByProfile
+    final hasConnectionState = _preferences.connectionObservationsByProfile
         .containsKey(profileId);
     if (!hasIncidentState && !hasConnectionState) {
       return;
     }
-    final Map<String, List<String>> remaining = <String, List<String>>{};
-    for (final MapEntry<String, List<String>> entry
-        in _preferences.activeIncidentIdsByProfile.entries) {
+    final remaining = <String, List<String>>{};
+    for (final entry in _preferences.activeIncidentIdsByProfile.entries) {
       if (entry.key != profileId) {
         remaining[entry.key] = List<String>.from(entry.value);
       }
     }
-    final Map<String, DatacenterConnectionObservation> remainingObservations =
-        <String, DatacenterConnectionObservation>{};
-    for (final MapEntry<String, DatacenterConnectionObservation> entry
-        in _preferences.connectionObservationsByProfile.entries) {
+    final remainingObservations = <String, DatacenterConnectionObservation>{};
+    for (final entry in _preferences.connectionObservationsByProfile.entries) {
       if (entry.key != profileId) {
         remainingObservations[entry.key] = entry.value;
       }
@@ -185,23 +182,22 @@ class DatacenterNotificationsController extends ChangeNotifier {
     String profileName,
     DatacenterIncidentSnapshot incidents,
   ) async {
-    final List<DatacenterIncident> relevant = incidents.incidents
+    final relevant = incidents.incidents
         .where(_matchesEnabledRule)
         .toList(growable: false);
-    final Set<String> previous =
+    final previous =
         (_preferences.activeIncidentIdsByProfile[profileId] ?? const <String>[])
             .toSet();
-    final Set<String> current = relevant
+    final current = relevant
         .map((DatacenterIncident incident) => incident.id)
         .toSet();
-    final List<DatacenterIncident> newIncidents = relevant
+    final newIncidents = relevant
         .where((DatacenterIncident incident) => !previous.contains(incident.id))
         .toList(growable: false);
-    final Map<String, List<String>> updatedActive =
-        _preferences.activeIncidentIdsByProfile.map(
-          (String key, List<String> value) =>
-              MapEntry<String, List<String>>(key, List<String>.from(value)),
-        )..[profileId] = current.toList(growable: false);
+    final updatedActive = _preferences.activeIncidentIdsByProfile.map(
+      (String key, List<String> value) =>
+          MapEntry<String, List<String>>(key, List<String>.from(value)),
+    )..[profileId] = current.toList(growable: false);
     _preferences = _preferences.copyWith(
       activeIncidentIdsByProfile: updatedActive,
     );
@@ -216,7 +212,7 @@ class DatacenterNotificationsController extends ChangeNotifier {
     if (_authorization != LocalNotificationAuthorization.authorized) {
       return;
     }
-    for (final DatacenterIncident incident in newIncidents) {
+    for (final incident in newIncidents) {
       try {
         await _notificationRepository.deliver(
           DatacenterNotificationEvent(
@@ -246,22 +242,19 @@ class DatacenterNotificationsController extends ChangeNotifier {
     if (!settings.connectionStatusEnabled) {
       return;
     }
-    final DatacenterConnectionObservation? previous =
-        _preferences.connectionObservationsByProfile[profileId];
-    final bool stateChanged =
+    final previous = _preferences.connectionObservationsByProfile[profileId];
+    final stateChanged =
         previous != null && previous.isAvailable != isAvailable;
-    final int transitionCount = stateChanged
+    final transitionCount = stateChanged
         ? previous.transitionCount + 1
         : previous?.transitionCount ?? 0;
-    final DatacenterConnectionObservation updated =
-        DatacenterConnectionObservation(
-          isAvailable: isAvailable,
-          transitionCount: transitionCount,
-        );
-    final Map<String, DatacenterConnectionObservation> observations =
-        Map<String, DatacenterConnectionObservation>.from(
-          _preferences.connectionObservationsByProfile,
-        )..[profileId] = updated;
+    final updated = DatacenterConnectionObservation(
+      isAvailable: isAvailable,
+      transitionCount: transitionCount,
+    );
+    final observations = Map<String, DatacenterConnectionObservation>.from(
+      _preferences.connectionObservationsByProfile,
+    )..[profileId] = updated;
     _preferences = _preferences.copyWith(
       connectionObservationsByProfile: observations,
     );
@@ -278,18 +271,12 @@ class DatacenterNotificationsController extends ChangeNotifier {
         _authorization != LocalNotificationAuthorization.authorized) {
       return;
     }
-    final DatacenterNotificationEvent event = isAvailable
-        ? DatacenterNotificationEvent(
-            identifier: 'connection:$profileId:$transitionCount',
-            title: '$profileName: Reconnected',
-            body: 'PVE Companion can reach this datacenter again.',
-          )
-        : DatacenterNotificationEvent(
-            identifier: 'connection:$profileId:$transitionCount',
-            title: '$profileName: Connection unavailable',
-            body:
-                'PVE Companion could not reach this datacenter during its most recent check.',
-          );
+    final event = _connectionNotificationEvent(
+      profileId: profileId,
+      profileName: profileName,
+      transitionCount: transitionCount,
+      isAvailable: isAvailable,
+    );
     try {
       await _notificationRepository.deliver(event);
     } catch (_) {
@@ -312,8 +299,30 @@ class DatacenterNotificationsController extends ChangeNotifier {
       ? 'Critical alert'
       : 'Attention needed';
 
+  DatacenterNotificationEvent _connectionNotificationEvent({
+    required String profileId,
+    required String profileName,
+    required int transitionCount,
+    required bool isAvailable,
+  }) {
+    final identifier = 'connection:$profileId:$transitionCount';
+    if (isAvailable) {
+      return DatacenterNotificationEvent(
+        identifier: identifier,
+        title: '$profileName: Reconnected',
+        body: 'PVE Companion can reach this datacenter again.',
+      );
+    }
+    return DatacenterNotificationEvent(
+      identifier: identifier,
+      title: '$profileName: Connection unavailable',
+      body:
+          'PVE Companion could not reach this datacenter during its most recent check.',
+    );
+  }
+
   Future<void> _synchronizeBackgroundMonitoring() async {
-    final bool enabled =
+    final enabled =
         settings.connectionStatusEnabled &&
         _authorization == LocalNotificationAuthorization.authorized &&
         _backgroundMonitoringEligible;

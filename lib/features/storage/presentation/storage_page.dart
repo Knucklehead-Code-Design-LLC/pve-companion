@@ -37,9 +37,10 @@ class _StoragePageState extends State<StoragePage> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesExpandedPresentation =
-        PveAppleLayout.usesExpandedPresentation(context);
-    final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
+    final usesExpandedPresentation = PveAppleLayout.usesExpandedPresentation(
+      context,
+    );
+    final snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Storage',
       showsSliverNavigationBar: widget.showsSliverNavigationBar,
@@ -75,48 +76,47 @@ class _StoragePageState extends State<StoragePage> {
     List<ClusterStorage> storages, {
     required bool usesExpandedPresentation,
   }) {
-    final List<ClusterStorage> visibleStorages =
+    final visibleStorages =
         storages.where(_matchesFilter).toList(growable: false)
           ..sort(_compareStorageRisk);
-    final int fullyAvailableCount = storages
+    final fullyAvailableCount = storages
         .where(
           (ClusterStorage storage) =>
               storage.hasAvailabilityTelemetry && storage.isFullyAvailable,
         )
         .length;
-    final int availabilityReportedCount = storages
+    final availabilityReportedCount = storages
         .where((ClusterStorage storage) => storage.hasAvailabilityTelemetry)
         .length;
-    final List<ClusterStorage> storagesWithCapacity = storages
+    final storagesWithCapacity = storages
         .where(
           (ClusterStorage storage) =>
               storage.usedBytes != null && storage.capacityBytes != null,
         )
         .toList(growable: false);
-    final bool hasCapacityTelemetry = storagesWithCapacity.isNotEmpty;
-    final int aggregateUsedBytes = storagesWithCapacity.fold<int>(
+    final hasCapacityTelemetry = storagesWithCapacity.isNotEmpty;
+    final aggregateUsedBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
-    final int aggregateAvailableBytes = storagesWithCapacity.fold<int>(
+    final aggregateAvailableBytes = storagesWithCapacity.fold<int>(
       0,
       (int total, ClusterStorage storage) => total + storage.availableBytes!,
     );
-    final List<ClusterStorage> backupDestinations = storages
+    final backupDestinations = storages
         .where(PveBackupDestination.supportsBackupContent)
         .toList(growable: false);
-    final List<ClusterStorage> availableBackupDestinations = backupDestinations
+    final availableBackupDestinations = backupDestinations
         .where(PveBackupDestination.isAvailableForExecution)
         .toList(growable: false);
-    final int backupDestinationsWithUnknownAvailability = backupDestinations
+    final backupDestinationsWithUnknownAvailability = backupDestinations
         .where((ClusterStorage storage) => !storage.hasAvailabilityTelemetry)
         .length;
-    final PveMetricStripItem availabilityCoverageMetric =
-        _availabilityCoverageMetric(
-          context,
-          fullyAvailableCount: fullyAvailableCount,
-          availabilityReportedCount: availabilityReportedCount,
-        );
+    final availabilityCoverageMetric = _availabilityCoverageMetric(
+      context,
+      fullyAvailableCount: fullyAvailableCount,
+      availabilityReportedCount: availabilityReportedCount,
+    );
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
       key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
@@ -289,23 +289,22 @@ class _StoragePageState extends State<StoragePage> {
         else
           LayoutBuilder(
             builder: (BuildContext context, BoxConstraints constraints) {
-              final bool twoColumns =
+              final twoColumns =
                   constraints.maxWidth >=
                   PveAppleLayout.controlBarStackBreakpoint;
-              final double cardWidth = twoColumns
+              final cardWidth = twoColumns
                   ? (constraints.maxWidth - 12) / 2
                   : constraints.maxWidth;
               return Wrap(
                 spacing: 12,
                 runSpacing: 12,
-                children: visibleStorages
-                    .map(
-                      (ClusterStorage storage) => SizedBox(
-                        width: cardWidth,
-                        child: _StorageCard(storage: storage),
-                      ),
-                    )
-                    .toList(growable: false),
+                children: <Widget>[
+                  for (final storage in visibleStorages)
+                    SizedBox(
+                      width: cardWidth,
+                      child: _StorageCard(storage: storage),
+                    ),
+                ],
               );
             },
           ),
@@ -334,15 +333,15 @@ class _StoragePageState extends State<StoragePage> {
   };
 
   int _compareStorageRisk(ClusterStorage left, ClusterStorage right) {
-    final int riskComparison = _storageRiskRank(
+    final riskComparison = _storageRiskRank(
       left,
     ).compareTo(_storageRiskRank(right));
     if (riskComparison != 0) {
       return riskComparison;
     }
-    final double leftUsage = left.usageFraction ?? -1;
-    final double rightUsage = right.usageFraction ?? -1;
-    final int usageComparison = rightUsage.compareTo(leftUsage);
+    final leftUsage = left.usageFraction ?? -1;
+    final rightUsage = right.usageFraction ?? -1;
+    final usageComparison = rightUsage.compareTo(leftUsage);
     if (usageComparison != 0) {
       return usageComparison;
     }
@@ -350,8 +349,8 @@ class _StoragePageState extends State<StoragePage> {
   }
 
   Future<void> _showBackupCenter() async {
-    final ProxmoxSession? session = widget.session;
-    final ClusterOverviewSnapshot? overview = widget.controller.snapshot;
+    final session = widget.session;
+    final overview = widget.controller.snapshot;
     if (session == null || overview == null) {
       return;
     }
@@ -404,9 +403,7 @@ class _BackupDestinationReadiness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final _BackupDestinationReadinessPresentation presentation = _presentation(
-      context,
-    );
+    final presentation = _presentation(context);
     return Row(
       children: <Widget>[
         PveStatusPill(label: presentation.label, color: presentation.color),
@@ -423,7 +420,7 @@ class _BackupDestinationReadiness extends StatelessWidget {
 
   _BackupDestinationReadinessPresentation _presentation(BuildContext context) {
     if (availableDestinations > 0) {
-      final String noun = availableDestinations == 1
+      final noun = availableDestinations == 1
           ? 'available destination'
           : 'available destinations';
       return _BackupDestinationReadinessPresentation(
@@ -433,7 +430,7 @@ class _BackupDestinationReadiness extends StatelessWidget {
       );
     }
     if (unknownAvailabilityDestinations > 0) {
-      final String verb = unknownAvailabilityDestinations == 1
+      final verb = unknownAvailabilityDestinations == 1
           ? 'configured destination does'
           : 'configured destinations do';
       return _BackupDestinationReadinessPresentation(
@@ -444,7 +441,7 @@ class _BackupDestinationReadiness extends StatelessWidget {
       );
     }
     if (configuredDestinations > 0) {
-      final String verb = configuredDestinations == 1
+      final verb = configuredDestinations == 1
           ? 'configured destination is'
           : 'configured destinations are';
       return _BackupDestinationReadinessPresentation(
@@ -481,10 +478,9 @@ class _StorageCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double? usageFraction = storage.usageFraction;
-    final Color accent = _storageAccent(context, storage, usageFraction);
-    final _StorageAvailabilityPresentation availability =
-        _storageAvailabilityPresentation(context, storage);
+    final usageFraction = storage.usageFraction;
+    final accent = _storageAccent(context, storage, usageFraction);
+    final availability = _storageAvailabilityPresentation(context, storage);
     return PveInsetGroup(
       key: ValueKey<String>('ipad-storage-card-${storage.name}'),
       padding: const EdgeInsets.all(16),
@@ -630,7 +626,7 @@ int _storageRiskRank(ClusterStorage storage) {
   if (storage.isPartiallyAvailable) {
     return 1;
   }
-  final double? usage = storage.usageFraction;
+  final usage = storage.usageFraction;
   if (usage != null && usage >= 0.9) {
     return 2;
   }
@@ -647,7 +643,7 @@ String _storageCountLabel({
   required int visibleCount,
   required int totalCount,
 }) {
-  final String noun = totalCount == 1 ? 'pool' : 'pools';
+  final noun = totalCount == 1 ? 'pool' : 'pools';
   if (visibleCount == totalCount) {
     return 'Showing all $totalCount storage $noun · highest risk first';
   }

@@ -4,7 +4,7 @@ import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_
 
 void main() {
   test('only reported available backup storage is executable', () {
-    const ClusterStorage unavailableTelemetry = ClusterStorage(
+    const unavailableTelemetry = ClusterStorage(
       name: 'backup-unknown',
       type: 'dir',
       content: 'backup,iso',
@@ -13,7 +13,7 @@ void main() {
         ClusterStorageResource(node: 'pve-01', status: ''),
       ],
     );
-    const ClusterStorage availableStorage = ClusterStorage(
+    const availableStorage = ClusterStorage(
       name: 'backup-ready',
       type: 'dir',
       content: 'backup',

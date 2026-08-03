@@ -43,11 +43,12 @@ class _PveModalSheetState extends State<_PveModalSheet> {
 
   @override
   Widget build(BuildContext context) {
-    final bool usesDesktopPresentation =
-        PveAppleLayout.usesExpandedPresentation(context);
+    final usesDesktopPresentation = PveAppleLayout.usesExpandedPresentation(
+      context,
+    );
     final Color backgroundColor = CupertinoColors.systemGroupedBackground
         .resolveFrom(context);
-    final BorderRadius borderRadius = usesDesktopPresentation
+    final borderRadius = usesDesktopPresentation
         ? BorderRadius.circular(20)
         : const BorderRadius.vertical(top: Radius.circular(24));
     return Shortcuts(

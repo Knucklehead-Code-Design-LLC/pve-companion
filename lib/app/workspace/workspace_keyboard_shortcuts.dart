@@ -71,7 +71,7 @@ class WorkspaceKeyboardShortcuts extends StatelessWidget {
               ),
           _WorkspaceDismissIntent: CallbackAction<_WorkspaceDismissIntent>(
             onInvoke: (_WorkspaceDismissIntent intent) {
-              final NavigatorState navigator = Navigator.of(context);
+              final navigator = Navigator.of(context);
               if (navigator.canPop()) {
                 navigator.maybePop();
               }

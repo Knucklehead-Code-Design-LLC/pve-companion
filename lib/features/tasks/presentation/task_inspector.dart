@@ -50,7 +50,7 @@ class _TaskInspectorState extends State<TaskInspector> {
 
   @override
   Widget build(BuildContext context) {
-    final List<Widget> details = <Widget>[
+    final details = <Widget>[
       if (widget.inline) ...<Widget>[
         Text('Task details', style: PveAppleText.title3(context)),
         const SizedBox(height: 6),
@@ -173,9 +173,10 @@ class TaskLogSection extends StatelessWidget {
         );
       }
 
-      final PveTaskLogResult? result = controller.result;
-      if (result == null)
+      final result = controller.result;
+      if (result == null) {
         return _TaskLogPanel(content: _TaskLogPrompt(controller: controller));
+      }
       if (result.state == PveTaskLogState.available) {
         return _TaskLogPanel(
           content: _AvailableTaskLog(result: result, controller: controller),
@@ -267,7 +268,7 @@ class _UnavailableTaskLog extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final String label = switch (result.state) {
+    final label = switch (result.state) {
       PveTaskLogState.empty =>
         'No server log lines were reported for this task.',
       PveTaskLogState.permissionLimited =>
@@ -316,15 +317,15 @@ class _InspectorRow extends StatelessWidget {
 }
 
 String taskDurationLabel(ClusterTask task) {
-  final DateTime? startedAt = task.startedAt;
-  final DateTime? endedAt = task.endedAt;
+  final startedAt = task.startedAt;
+  final endedAt = task.endedAt;
   if (endedAt == null) {
     return task.isRunning ? 'In progress' : 'Duration unavailable';
   }
   if (startedAt == null || endedAt.isBefore(startedAt)) {
     return 'Duration unavailable';
   }
-  final Duration duration = endedAt.difference(startedAt);
+  final duration = endedAt.difference(startedAt);
   if (duration.inHours > 0) {
     return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
   }

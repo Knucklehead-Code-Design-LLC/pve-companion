@@ -25,7 +25,7 @@ class ProxmoxClusterAdministrationRepository
     ProxmoxSession session,
     ClusterOverviewSnapshot overview,
   ) async {
-    final List<Object?> results = await Future.wait<Object?>(<Future<Object?>>[
+    final results = await Future.wait<Object?>(<Future<Object?>>[
       _loadOptional(session, 'cluster/status'),
       _loadOptional(session, 'cluster/options'),
       _loadOptional(session, 'cluster/ha/status/current'),
@@ -62,10 +62,9 @@ class ProxmoxClusterAdministrationRepository
     String? name;
     bool? quorate;
     int? version;
-    final List<PveClusterMember> members = <PveClusterMember>[];
-    for (final Map<Object?, Object?> item
-        in value.whereType<Map<Object?, Object?>>()) {
-      final String? type = _string(item['type']);
+    final members = <PveClusterMember>[];
+    for (final item in value.whereType<Map<Object?, Object?>>()) {
+      final type = _string(item['type']);
       if (type == null) {
         continue;
       }
@@ -75,7 +74,7 @@ class ProxmoxClusterAdministrationRepository
         version = _integer(item['version']) ?? version;
         continue;
       }
-      final String? memberName = _string(item['name']);
+      final memberName = _string(item['name']);
       if (memberName == null) {
         continue;
       }
@@ -102,9 +101,9 @@ class ProxmoxClusterAdministrationRepository
     if (value is! Map<Object?, Object?>) {
       return const <String, String>{};
     }
-    final Map<String, String> options = <String, String>{};
-    for (final MapEntry<Object?, Object?> entry in value.entries) {
-      final String key = entry.key.toString();
+    final options = <String, String>{};
+    for (final entry in value.entries) {
+      final key = entry.key.toString();
       if (_visibleOptionKeys.contains(key) && entry.value != null) {
         options[key] = entry.value.toString();
       }
@@ -119,9 +118,8 @@ class ProxmoxClusterAdministrationRepository
     return value
         .whereType<Map<Object?, Object?>>()
         .map((Map<Object?, Object?> item) {
-          final String? service =
-              _string(item['sid']) ?? _string(item['service']);
-          final String? state = _string(item['state']);
+          final service = _string(item['sid']) ?? _string(item['service']);
+          final state = _string(item['state']);
           if (service == null || state == null) {
             return null;
           }

@@ -25,22 +25,21 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    final ConnectionProfile profile = ConnectionProfile.password(
+    final profile = ConnectionProfile.password(
       displayName: 'Test datacenter',
       endpoint: Uri.parse('https://pve.example.test:8006'),
       username: 'operator',
       realm: 'pam',
     );
-    final ConnectionProfilesController profiles = ConnectionProfilesController(
+    final profiles = ConnectionProfilesController(
       profileRepository: _ProfileRepository(profile),
       credentialStore: const _CredentialStore(),
       connectionRepository: _ConnectionRepository(),
     );
-    final PveCompanionController controller =
-        PveCompanionController.createForTesting(
-          connectionProfiles: profiles,
-          clusterOverview: ClusterOverviewController(_ClusterRepository()),
-        );
+    final controller = PveCompanionController.createForTesting(
+      connectionProfiles: profiles,
+      clusterOverview: ClusterOverviewController(_ClusterRepository()),
+    );
     addTearDown(controller.dispose);
     await controller.initialize();
     await controller.connectSelectedProfile();

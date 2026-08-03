@@ -96,8 +96,8 @@ class ClusterStorage {
   );
 
   int? get availableBytes {
-    final int? capacity = capacityBytes;
-    final int? used = usedBytes;
+    final capacity = capacityBytes;
+    final used = usedBytes;
     if (capacity == null || used == null) {
       return null;
     }
@@ -105,8 +105,8 @@ class ClusterStorage {
   }
 
   double? get usageFraction {
-    final int? capacity = capacityBytes;
-    final int? used = usedBytes;
+    final capacity = capacityBytes;
+    final used = usedBytes;
     if (capacity == null || capacity <= 0 || used == null) {
       return null;
     }
@@ -126,7 +126,7 @@ class ClusterStorage {
   int? _aggregateResourceBytes(
     int? Function(ClusterStorageResource resource) selector,
   ) {
-    final List<int> values = resourcesWithCapacity
+    final values = resourcesWithCapacity
         .map(selector)
         .whereType<int>()
         .toList(growable: false);
@@ -158,7 +158,7 @@ class ClusterStorageResource {
   bool get hasAvailabilityStatus => status.trim().isNotEmpty;
 
   bool get isAvailable {
-    final String normalizedStatus = status.trim().toLowerCase();
+    final normalizedStatus = status.trim().toLowerCase();
     return normalizedStatus == 'available' || normalizedStatus == 'active';
   }
 
@@ -191,7 +191,7 @@ class ClusterTask {
   final DateTime? endedAt;
 
   ClusterTaskState get state {
-    final String normalisedStatus = status?.trim().toLowerCase() ?? '';
+    final normalisedStatus = status?.trim().toLowerCase() ?? '';
     if (endedAt == null &&
         (normalisedStatus.isEmpty ||
             normalisedStatus == 'running' ||
@@ -216,7 +216,7 @@ class ClusterTask {
   bool get isLongRunning => isLongRunningAt(DateTime.now());
 
   bool isLongRunningAt(DateTime now) {
-    final DateTime? startedAt = this.startedAt;
+    final startedAt = this.startedAt;
     if (!isRunning || isInteractiveSession || startedAt == null) return false;
     return now.difference(startedAt) >= const Duration(minutes: 30);
   }
@@ -224,7 +224,7 @@ class ClusterTask {
   /// Proxmox reports interactive connections as long-running tasks. They are
   /// sessions, not necessarily work that needs an operator's attention.
   bool get isInteractiveSession {
-    final String normalizedType = type.trim().toLowerCase();
+    final normalizedType = type.trim().toLowerCase();
     return normalizedType.contains('console') ||
         normalizedType.contains('vnc') ||
         normalizedType.contains('shell') ||
@@ -235,7 +235,7 @@ class ClusterTask {
   /// its documented worker-id position. A task type alone is not enough to
   /// attribute work to a guest.
   int? get guestVmid {
-    final List<String> parts = upid.split(':');
+    final parts = upid.split(':');
     if (parts.length < 8 || parts.first != 'UPID') {
       return null;
     }
@@ -244,8 +244,8 @@ class ClusterTask {
 }
 
 int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {
-  final DateTime? leftTime = left.startedAt;
-  final DateTime? rightTime = right.startedAt;
+  final leftTime = left.startedAt;
+  final rightTime = right.startedAt;
   if (leftTime == null && rightTime == null) {
     return left.upid.compareTo(right.upid);
   }
@@ -255,6 +255,6 @@ int compareClusterTasksByRecency(ClusterTask left, ClusterTask right) {
   if (rightTime == null) {
     return -1;
   }
-  final int timeComparison = rightTime.compareTo(leftTime);
+  final timeComparison = rightTime.compareTo(leftTime);
   return timeComparison != 0 ? timeComparison : left.upid.compareTo(right.upid);
 }

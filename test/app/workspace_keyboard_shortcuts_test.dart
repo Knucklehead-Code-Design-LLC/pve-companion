@@ -9,8 +9,8 @@ void main() {
   testWidgets('uses macOS shortcuts only for refresh and section navigation', (
     WidgetTester tester,
   ) async {
-    int refreshes = 0;
-    WorkspaceSection selectedSection = WorkspaceSection.overview;
+    var refreshes = 0;
+    var selectedSection = WorkspaceSection.overview;
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -40,7 +40,7 @@ void main() {
   testWidgets('does not install shortcuts when disabled', (
     WidgetTester tester,
   ) async {
-    int refreshes = 0;
+    var refreshes = 0;
     await tester.pumpWidget(
       CupertinoApp(
         home: WorkspaceKeyboardShortcuts(
@@ -63,7 +63,7 @@ void main() {
   testWidgets('opens the command palette from Command-K', (
     WidgetTester tester,
   ) async {
-    int paletteRequests = 0;
+    var paletteRequests = 0;
     await tester.pumpWidget(
       CupertinoApp(
         home: WorkspaceKeyboardShortcuts(

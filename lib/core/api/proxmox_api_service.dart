@@ -51,13 +51,13 @@ class ProxmoxApiService
         :final String principal,
         :final String password,
       ):
-        final Object? response = await _request(
+        final response = await _request(
           'POST',
           'access/ticket',
           fields: <String, String>{'username': principal, 'password': password},
           includeAuthentication: false,
         );
-        final Map<String, Object?> ticket = _requireObject(
+        final ticket = _requireObject(
           response,
           'The ticket response was not an object.',
         );
@@ -107,39 +107,35 @@ class ProxmoxApiService
     required int vmid,
   }) async {
     _ensureOpen();
-    if (!_isSafeResourceSegment(node) ||
-        (resource != 'qemu' && resource != 'lxc') ||
-        vmid <= 0) {
+    if (!_isValidConsoleRequest(node: node, resource: resource, vmid: vmid)) {
       throw const ProxmoxResponseException(
         statusCode: 400,
         message: 'The requested guest console is not valid.',
       );
     }
 
-    final Object? response = await _request(
+    final response = await _request(
       'POST',
       'nodes/$node/$resource/$vmid/vncproxy',
       fields: const <String, String>{'websocket': '1'},
     );
-    final Map<String, Object?> proxy = _requireObject(
+    final proxy = _requireObject(
       response,
       'The console ticket response was not an object.',
     );
-    final String vncTicket = _requireString(proxy, 'ticket');
-    final int port = _requirePort(proxy['port']);
+    final vncTicket = _requireString(proxy, 'ticket');
+    final port = _requirePort(proxy['port']);
 
-    final Uri uri = _apiUri(
+    final uri = _apiUri(
       'nodes/$node/$resource/$vmid/vncwebsocket',
       <String, String>{'port': '$port', 'vncticket': vncTicket},
     ).replace(scheme: _endpoint.scheme == 'https' ? 'wss' : 'ws');
 
     _rejectedCertificateFingerprint = null;
     try {
-      // The returned transport owns this socket and closes it when its console
-      // session ends. Keeping that ownership separate ensures the VNC ticket
-      // is never exposed outside this API layer.
+      // The returned transport exclusively owns this socket and its VNC ticket.
       // ignore: close_sinks
-      final WebSocket socket = await WebSocket.connect(
+      final socket = await WebSocket.connect(
         uri.toString(),
         headers: _webSocketAuthenticationHeaders(),
         customClient: _httpClient,
@@ -149,15 +145,7 @@ class ProxmoxApiService
     } on ProxmoxApiException {
       rethrow;
     } on HandshakeException catch (error) {
-      final String? fingerprint = _rejectedCertificateFingerprint;
-      if (fingerprint != null) {
-        throw ProxmoxTlsTrustRequiredException(
-          fingerprint: fingerprint,
-          host: _endpoint.host,
-          port: _endpointPort,
-        );
-      }
-      throw ProxmoxNetworkException('TLS negotiation failed: ${error.message}');
+      _throwTlsConnectionFailure(error);
     } on SocketException catch (error) {
       throw ProxmoxNetworkException(
         'Could not reach the server: ${error.message}',
@@ -199,72 +187,20 @@ class ProxmoxApiService
     _rejectedCertificateFingerprint = null;
 
     try {
-      final HttpClientRequest request = await _httpClient
+      final request = await _httpClient
           .openUrl(method, _apiUri(resource, query))
           .timeout(const Duration(seconds: 25));
-      request.headers.set(HttpHeaders.acceptHeader, 'application/json');
-      _addAuthenticationHeaders(request, method, includeAuthentication);
-
-      if (fields != null) {
-        final List<int> encodedFields = utf8.encode(
-          Uri(queryParameters: fields).query,
-        );
-        request.headers.contentType = ContentType(
-          'application',
-          'x-www-form-urlencoded',
-          charset: 'utf-8',
-        );
-        // Proxmox's API daemon rejects HTTP/1.1 chunked form uploads. Supplying
-        // the exact byte length makes Dart send a standard Content-Length body.
-        request.contentLength = encodedFields.length;
-        request.add(encodedFields);
-      }
-
-      final HttpClientResponse response = await request.close().timeout(
-        const Duration(seconds: 25),
+      _prepareRequest(
+        request,
+        method: method,
+        includeAuthentication: includeAuthentication,
+        fields: fields,
       );
-      final String body = await utf8.decoder.bind(response).join();
-
-      if (response.statusCode == HttpStatus.unauthorized ||
-          response.statusCode == HttpStatus.forbidden) {
-        throw ProxmoxUnauthorizedException(
-          _responseMessage(
-            body,
-            'Authentication was not accepted by the server.',
-          ),
-        );
-      }
-
-      if (response.statusCode < HttpStatus.ok ||
-          response.statusCode >= HttpStatus.multipleChoices) {
-        throw ProxmoxResponseException(
-          statusCode: response.statusCode,
-          message: _responseMessage(
-            body,
-            'The server returned HTTP ${response.statusCode}.',
-          ),
-        );
-      }
-
-      final Object? decoded = jsonDecode(body);
-      if (decoded is! Map<Object?, Object?> || !decoded.containsKey('data')) {
-        throw const ProxmoxMalformedResponseException(
-          'The server response did not contain an API data value.',
-        );
-      }
-      return decoded['data'];
+      return await _readDataResponse(request);
     } on ProxmoxApiException {
       rethrow;
     } on HandshakeException catch (error) {
-      final String? fingerprint = _rejectedCertificateFingerprint;
-      if (fingerprint != null) {
-        throw ProxmoxTlsTrustRequiredException(
-          fingerprint: fingerprint,
-          host: _endpoint.host,
-          port: _endpointPort,
-        );
-      }
-      throw ProxmoxNetworkException('TLS negotiation failed: ${error.message}');
+      _throwTlsConnectionFailure(error);
     } on SocketException catch (error) {
       throw ProxmoxNetworkException(
         'Could not reach the server: ${error.message}',
@@ -284,16 +220,86 @@ class ProxmoxApiService
     }
   }
 
+  void _prepareRequest(
+    HttpClientRequest request, {
+    required String method,
+    required bool includeAuthentication,
+    required Map<String, String>? fields,
+  }) {
+    request.headers.set(HttpHeaders.acceptHeader, 'application/json');
+    _addAuthenticationHeaders(request, method, includeAuthentication);
+    if (fields == null) {
+      return;
+    }
+    _writeFormBody(request, fields);
+  }
+
+  void _writeFormBody(HttpClientRequest request, Map<String, String> fields) {
+    final encodedFields = utf8.encode(Uri(queryParameters: fields).query);
+    request.headers.contentType = ContentType(
+      'application',
+      'x-www-form-urlencoded',
+      charset: 'utf-8',
+    );
+    // Proxmox's API daemon rejects HTTP/1.1 chunked form uploads. Supplying
+    // the exact byte length makes Dart send a standard Content-Length body.
+    request.contentLength = encodedFields.length;
+    request.add(encodedFields);
+  }
+
+  Future<Object?> _readDataResponse(HttpClientRequest request) async {
+    final response = await request.close().timeout(const Duration(seconds: 25));
+    final body = await utf8.decoder.bind(response).join();
+
+    if (response.statusCode == HttpStatus.unauthorized ||
+        response.statusCode == HttpStatus.forbidden) {
+      throw ProxmoxUnauthorizedException(
+        _responseMessage(
+          body,
+          'Authentication was not accepted by the server.',
+        ),
+      );
+    }
+
+    if (response.statusCode < HttpStatus.ok ||
+        response.statusCode >= HttpStatus.multipleChoices) {
+      throw ProxmoxResponseException(
+        statusCode: response.statusCode,
+        message: _responseMessage(
+          body,
+          'The server returned HTTP ${response.statusCode}.',
+        ),
+      );
+    }
+
+    return _responseData(body);
+  }
+
+  Object? _responseData(String body) {
+    final Object? decoded = jsonDecode(body);
+    if (decoded is! Map<Object?, Object?> || !decoded.containsKey('data')) {
+      throw const ProxmoxMalformedResponseException(
+        'The server response did not contain an API data value.',
+      );
+    }
+    return decoded['data'];
+  }
+
   Uri _apiUri(String resource, Map<String, String> query) {
-    final String normalisedResource = resource.replaceFirst(RegExp('^/+'), '');
-    final String basePath = _endpoint.path.endsWith('/')
-        ? _endpoint.path.substring(0, _endpoint.path.length - 1)
-        : _endpoint.path;
+    final normalisedResource = resource.replaceFirst(RegExp('^/+'), '');
 
     return _endpoint.replace(
-      path: '$basePath/api2/json/$normalisedResource',
+      path: '$_apiBasePath/api2/json/$normalisedResource',
       queryParameters: query.isEmpty ? null : query,
     );
+  }
+
+  String get _apiBasePath {
+    final endpointPath = _endpoint.path;
+    if (!endpointPath.endsWith('/')) {
+      return endpointPath;
+    }
+    return endpointPath.substring(0, endpointPath.length - 1);
   }
 
   void _addAuthenticationHeaders(
@@ -315,15 +321,14 @@ class ProxmoxApiService
           'PVEAPIToken=$tokenId=$secret',
         );
       case ProxmoxPasswordAuthentication():
-        final String? ticket = _ticket;
-        if (ticket == null) {
-          throw const ProxmoxUnauthorizedException(
-            'A session ticket is unavailable.',
-          );
-        }
+        final ticket = _passwordSessionTicket();
         request.headers.set(HttpHeaders.cookieHeader, 'PVEAuthCookie=$ticket');
-        if (method != 'GET' && _csrfPreventionToken != null) {
-          request.headers.set('CSRFPreventionToken', _csrfPreventionToken!);
+        if (method == 'GET') {
+          return;
+        }
+        final csrfPreventionToken = _csrfPreventionToken;
+        if (csrfPreventionToken != null) {
+          request.headers.set('CSRFPreventionToken', csrfPreventionToken);
         }
     }
   }
@@ -338,16 +343,21 @@ class ProxmoxApiService
           HttpHeaders.authorizationHeader: 'PVEAPIToken=$tokenId=$secret',
         };
       case ProxmoxPasswordAuthentication():
-        final String? ticket = _ticket;
-        if (ticket == null) {
-          throw const ProxmoxUnauthorizedException(
-            'A session ticket is unavailable.',
-          );
-        }
+        final ticket = _passwordSessionTicket();
         return <String, String>{
           HttpHeaders.cookieHeader: 'PVEAuthCookie=$ticket',
         };
     }
+  }
+
+  String _passwordSessionTicket() {
+    final ticket = _ticket;
+    if (ticket == null) {
+      throw const ProxmoxUnauthorizedException(
+        'A session ticket is unavailable.',
+      );
+    }
+    return ticket;
   }
 
   bool _shouldTrustBadCertificate(
@@ -355,12 +365,16 @@ class ProxmoxApiService
     String host,
     int port,
   ) {
-    final String fingerprint = sha256CertificateFingerprint(certificate.der);
+    final fingerprint = sha256CertificateFingerprint(certificate.der);
     _rejectedCertificateFingerprint = fingerprint;
 
-    return host.toLowerCase() == _endpoint.host.toLowerCase() &&
-        port == _endpointPort &&
-        fingerprint == _trustedCertificateSha256;
+    if (host.toLowerCase() != _endpoint.host.toLowerCase()) {
+      return false;
+    }
+    if (port != _endpointPort) {
+      return false;
+    }
+    return fingerprint == _trustedCertificateSha256;
   }
 
   int get _endpointPort => _endpoint.hasPort ? _endpoint.port : 443;
@@ -374,17 +388,16 @@ class ProxmoxApiService
       return httpClientFactory();
     }
 
-    final String? fingerprint = _normaliseFingerprint(trustedCertificateSha256);
+    final fingerprint = _normaliseFingerprint(trustedCertificateSha256);
     if (fingerprint == null) {
       return HttpClient();
     }
 
     // A saved fingerprint is a certificate pin. Do not let a different
     // certificate bypass that pin solely because a platform root trusts it.
-    final SecurityContext context =
-        (securityContextFactory ?? SecurityContext.new)(
-          withTrustedRoots: false,
-        );
+    final context = (securityContextFactory ?? SecurityContext.new)(
+      withTrustedRoots: false,
+    );
     return HttpClient(context: context);
   }
 
@@ -392,6 +405,18 @@ class ProxmoxApiService
     if (_closed) {
       throw StateError('This Proxmox session has already been closed.');
     }
+  }
+
+  Never _throwTlsConnectionFailure(HandshakeException error) {
+    final fingerprint = _rejectedCertificateFingerprint;
+    if (fingerprint != null) {
+      throw ProxmoxTlsTrustRequiredException(
+        fingerprint: fingerprint,
+        host: _endpoint.host,
+        port: _endpointPort,
+      );
+    }
+    throw ProxmoxNetworkException('TLS negotiation failed: ${error.message}');
   }
 
   static Map<String, Object?> _requireObject(Object? value, String message) {
@@ -404,7 +429,7 @@ class ProxmoxApiService
   }
 
   static String _requireString(Map<String, Object?> value, String key) {
-    final Object? result = value[key];
+    final result = value[key];
     if (result is String && result.isNotEmpty) {
       return result;
     }
@@ -428,6 +453,20 @@ class ProxmoxApiService
     return port;
   }
 
+  static bool _isValidConsoleRequest({
+    required String node,
+    required String resource,
+    required int vmid,
+  }) {
+    if (!_isSafeResourceSegment(node)) {
+      return false;
+    }
+    if (resource != 'qemu' && resource != 'lxc') {
+      return false;
+    }
+    return vmid > 0;
+  }
+
   static bool _isSafeResourceSegment(String value) =>
       RegExp(r'^[A-Za-z0-9][A-Za-z0-9._-]*$').hasMatch(value);
 
@@ -435,11 +474,11 @@ class ProxmoxApiService
     try {
       final Object? decoded = jsonDecode(body);
       if (decoded is Map<Object?, Object?>) {
-        final Object? errors = decoded['errors'];
+        final errors = decoded['errors'];
         if (errors is Map<Object?, Object?> && errors.isNotEmpty) {
           return errors.values.first.toString();
         }
-        final Object? message = decoded['message'];
+        final message = decoded['message'];
         if (message is String && message.isNotEmpty) {
           return message;
         }
@@ -451,7 +490,10 @@ class ProxmoxApiService
   }
 
   static String? _normaliseFingerprint(String? fingerprint) {
-    if (fingerprint == null || fingerprint.trim().isEmpty) {
+    if (fingerprint == null) {
+      return null;
+    }
+    if (fingerprint.trim().isEmpty) {
       return null;
     }
     return fingerprint.replaceAll(':', '').replaceAll(' ', '').toUpperCase();
@@ -475,7 +517,7 @@ class _WebSocketConsoleTransport implements ProxmoxConsoleTransport {
 
   @override
   Uint8List respondToVncChallenge(Uint8List challenge) {
-    final String? ticket = _vncTicket;
+    final ticket = _vncTicket;
     if (ticket == null) {
       throw StateError('The guest console ticket has already been used.');
     }

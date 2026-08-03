@@ -54,15 +54,12 @@ class NodeOperationsController extends ChangeNotifier {
       _operationInFlight || _activeTask?.state == ProxmoxTaskState.running;
 
   Future<void> load() async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = NodeOperationsLoadState.loading;
     _errorMessage = null;
     _notify();
     try {
-      final PveNodeDetails details = await _repository.loadDetails(
-        _session,
-        _seed,
-      );
+      final details = await _repository.loadDetails(_session, _seed);
       if (_isRequestStale(requestEpoch)) {
         return;
       }
@@ -112,7 +109,7 @@ class NodeOperationsController extends ChangeNotifier {
     _errorMessage = null;
     _notify();
     try {
-      final ProxmoxTaskReference task = await submit();
+      final task = await submit();
       if (_isDisposed) {
         return false;
       }
@@ -137,12 +134,12 @@ class NodeOperationsController extends ChangeNotifier {
   }
 
   void _trackTask(ProxmoxTaskReference reference) {
-    final int taskEpoch = ++_taskEpoch;
+    final taskEpoch = ++_taskEpoch;
     unawaited(_pollTask(reference, taskEpoch));
   }
 
   Future<void> _pollTask(ProxmoxTaskReference reference, int taskEpoch) async {
-    final ProxmoxTaskPollResult? result = await pollProxmoxTask(
+    final result = await pollProxmoxTask(
       _taskClient,
       _session,
       reference,
@@ -171,7 +168,7 @@ class NodeOperationsController extends ChangeNotifier {
   }
 
   Future<void> _notifyParentOfTerminalTask(int taskEpoch) async {
-    final Future<void> Function()? onTaskTerminal = _onTaskTerminal;
+    final onTaskTerminal = _onTaskTerminal;
     if (onTaskTerminal == null) {
       return;
     }

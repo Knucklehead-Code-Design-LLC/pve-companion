@@ -3,7 +3,7 @@ import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_
 
 void main() {
   test('orders cluster tasks newest first and missing timestamps last', () {
-    final List<ClusterTask> tasks = <ClusterTask>[
+    final tasks = <ClusterTask>[
       const ClusterTask(
         upid: 'missing',
         node: 'pve-01',
@@ -34,21 +34,21 @@ void main() {
   });
 
   test('uses an explicit terminal task status even without an end time', () {
-    const ClusterTask successful = ClusterTask(
+    const successful = ClusterTask(
       upid: 'success',
       node: 'pve-01',
       type: 'start',
       user: 'root@pam',
       status: 'OK',
     );
-    const ClusterTask failed = ClusterTask(
+    const failed = ClusterTask(
       upid: 'failed',
       node: 'pve-01',
       type: 'backup',
       user: 'root@pam',
       status: 'ERROR: backup failed',
     );
-    const ClusterTask running = ClusterTask(
+    const running = ClusterTask(
       upid: 'running',
       node: 'pve-01',
       type: 'backup',
@@ -62,14 +62,14 @@ void main() {
   });
 
   test('recognizes long-running interactive task types as sessions', () {
-    const ClusterTask console = ClusterTask(
+    const console = ClusterTask(
       upid: 'console',
       node: 'pve-01',
       type: 'vncproxy',
       user: 'root@pam',
       status: 'running',
     );
-    const ClusterTask backup = ClusterTask(
+    const backup = ClusterTask(
       upid: 'backup',
       node: 'pve-01',
       type: 'backup',
@@ -82,13 +82,13 @@ void main() {
   });
 
   test('derives a guest ID only from a valid server UPID worker ID', () {
-    const ClusterTask guestTask = ClusterTask(
+    const guestTask = ClusterTask(
       upid: 'UPID:pve-01:00000001:00000001:00000001:vzdump:101:root@pam:',
       node: 'pve-01',
       type: 'vzdump',
       user: 'root@pam',
     );
-    const ClusterTask unattributedTask = ClusterTask(
+    const unattributedTask = ClusterTask(
       upid: 'UPID:running',
       node: 'pve-01',
       type: 'backup',

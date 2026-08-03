@@ -34,15 +34,12 @@ class BackupCenterController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   Future<void> load() async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = BackupCenterLoadState.loading;
     _errorMessage = null;
     _notify();
     try {
-      final PveBackupCenterSnapshot snapshot = await _repository.load(
-        _session,
-        _overview,
-      );
+      final snapshot = await _repository.load(_session, _overview);
       if (_isStale(requestEpoch)) {
         return;
       }

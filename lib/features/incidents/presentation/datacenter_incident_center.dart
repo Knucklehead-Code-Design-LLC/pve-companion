@@ -44,9 +44,7 @@ class DatacenterIncidentHighlights extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     if (snapshot.isEmpty) return const SizedBox.shrink();
-    final List<DatacenterIncident> visible = snapshot.incidents
-        .take(3)
-        .toList(growable: false);
+    final visible = snapshot.incidents.take(3).toList(growable: false);
     return PveInsetGroup(
       padding: EdgeInsets.zero,
       child: Column(
@@ -228,7 +226,7 @@ class _IncidentRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = incident.severity == DatacenterIncidentSeverity.critical
+    final color = incident.severity == DatacenterIncidentSeverity.critical
         ? PveAppleColors.destructive(context)
         : PveAppleColors.warning(context);
     return PveListRow(

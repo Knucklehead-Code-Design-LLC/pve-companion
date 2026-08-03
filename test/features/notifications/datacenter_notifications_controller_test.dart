@@ -10,32 +10,30 @@ void main() {
   test(
     'notifies only newly active incidents permitted by the user settings',
     () async {
-      final _PreferencesRepository preferences = _PreferencesRepository();
-      final _LocalNotifications notifications = _LocalNotifications();
-      final DatacenterNotificationsController controller =
-          DatacenterNotificationsController(
-            preferencesRepository: preferences,
-            notificationRepository: notifications,
-          );
-      final DatacenterIncidentSnapshot incidents =
-          const DatacenterIncidentSnapshot(
-            incidents: <DatacenterIncident>[
-              DatacenterIncident(
-                id: 'node-offline:pve-01',
-                severity: DatacenterIncidentSeverity.critical,
-                target: DatacenterIncidentTarget.nodes,
-                title: 'pve-01 is offline',
-                detail: 'No heartbeat',
-              ),
-              DatacenterIncident(
-                id: 'task-failed:backup',
-                severity: DatacenterIncidentSeverity.warning,
-                target: DatacenterIncidentTarget.tasks,
-                title: 'Backup failed',
-                detail: 'Read the task log',
-              ),
-            ],
-          );
+      final preferences = _PreferencesRepository();
+      final notifications = _LocalNotifications();
+      final controller = DatacenterNotificationsController(
+        preferencesRepository: preferences,
+        notificationRepository: notifications,
+      );
+      final incidents = const DatacenterIncidentSnapshot(
+        incidents: <DatacenterIncident>[
+          DatacenterIncident(
+            id: 'node-offline:pve-01',
+            severity: DatacenterIncidentSeverity.critical,
+            target: DatacenterIncidentTarget.nodes,
+            title: 'pve-01 is offline',
+            detail: 'No heartbeat',
+          ),
+          DatacenterIncident(
+            id: 'task-failed:backup',
+            severity: DatacenterIncidentSeverity.warning,
+            target: DatacenterIncidentTarget.tasks,
+            title: 'Backup failed',
+            detail: 'Read the task log',
+          ),
+        ],
+      );
 
       await controller.initialize();
       await controller.evaluate('pa', 'PA Datacenter', incidents);
@@ -78,16 +76,14 @@ void main() {
   test(
     'alerts once when a monitored datacenter disconnects and reconnects',
     () async {
-      final _PreferencesRepository preferences = _PreferencesRepository();
-      final _LocalNotifications notifications = _LocalNotifications();
-      final _BackgroundMonitorScheduler scheduler =
-          _BackgroundMonitorScheduler();
-      final DatacenterNotificationsController controller =
-          DatacenterNotificationsController(
-            preferencesRepository: preferences,
-            notificationRepository: notifications,
-            backgroundMonitorScheduler: scheduler,
-          );
+      final preferences = _PreferencesRepository();
+      final notifications = _LocalNotifications();
+      final scheduler = _BackgroundMonitorScheduler();
+      final controller = DatacenterNotificationsController(
+        preferencesRepository: preferences,
+        notificationRepository: notifications,
+        backgroundMonitorScheduler: scheduler,
+      );
       addTearDown(controller.dispose);
 
       await controller.setBackgroundMonitoringEligible(true);
@@ -135,16 +131,14 @@ void main() {
   test(
     'clears connection baselines and cancels monitoring when disabled',
     () async {
-      final _PreferencesRepository preferences = _PreferencesRepository();
-      final _LocalNotifications notifications = _LocalNotifications();
-      final _BackgroundMonitorScheduler scheduler =
-          _BackgroundMonitorScheduler();
-      final DatacenterNotificationsController controller =
-          DatacenterNotificationsController(
-            preferencesRepository: preferences,
-            notificationRepository: notifications,
-            backgroundMonitorScheduler: scheduler,
-          );
+      final preferences = _PreferencesRepository();
+      final notifications = _LocalNotifications();
+      final scheduler = _BackgroundMonitorScheduler();
+      final controller = DatacenterNotificationsController(
+        preferencesRepository: preferences,
+        notificationRepository: notifications,
+        backgroundMonitorScheduler: scheduler,
+      );
       addTearDown(controller.dispose);
 
       await controller.setBackgroundMonitoringEligible(true);

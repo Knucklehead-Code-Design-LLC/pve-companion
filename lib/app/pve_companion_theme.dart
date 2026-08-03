@@ -9,13 +9,9 @@ abstract final class PveCompanionTheme {
   static ThemeData dark() => _materialTheme(Brightness.dark);
 
   static CupertinoThemeData cupertino(Brightness brightness) {
-    final bool dark = brightness == Brightness.dark;
-    final Color primary = dark
-        ? PveAppleColors.accentDark
-        : PveAppleColors.accent;
-    final CupertinoTextThemeData defaults = CupertinoTextThemeData(
-      primaryColor: primary,
-    );
+    final dark = brightness == Brightness.dark;
+    final primary = dark ? PveAppleColors.accentDark : PveAppleColors.accent;
+    final defaults = CupertinoTextThemeData(primaryColor: primary);
     return CupertinoThemeData(
       brightness: brightness,
       primaryColor: primary,
@@ -54,24 +50,18 @@ abstract final class PveCompanionTheme {
   }
 
   static ThemeData _materialTheme(Brightness brightness) {
-    final bool dark = brightness == Brightness.dark;
-    final Color primary = dark
-        ? PveAppleColors.accentDark
-        : PveAppleColors.accent;
-    final Color surface = dark ? const Color(0xFF1C1C1E) : Colors.white;
-    final Color background = dark
-        ? const Color(0xFF000000)
-        : const Color(0xFFF2F2F7);
-    final Color separator = dark
-        ? const Color(0xFF38383A)
-        : const Color(0xFFC6C6C8);
-    final ColorScheme colors = ColorScheme.fromSeed(
+    final dark = brightness == Brightness.dark;
+    final primary = dark ? PveAppleColors.accentDark : PveAppleColors.accent;
+    final surface = dark ? const Color(0xFF1C1C1E) : Colors.white;
+    final background = dark ? const Color(0xFF000000) : const Color(0xFFF2F2F7);
+    final separator = dark ? const Color(0xFF38383A) : const Color(0xFFC6C6C8);
+    final colors = ColorScheme.fromSeed(
       seedColor: primary,
       brightness: brightness,
       surface: surface,
       error: dark ? const Color(0xFFFF6961) : const Color(0xFFD70015),
     );
-    final TextTheme textTheme =
+    final textTheme =
         ThemeData(
           brightness: brightness,
           fontFamily: '.SF Pro Text',

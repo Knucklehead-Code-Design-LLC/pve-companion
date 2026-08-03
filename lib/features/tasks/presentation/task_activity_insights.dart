@@ -11,7 +11,7 @@ class TaskActivityInsights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final _TaskActivitySummary summary = _TaskActivitySummary.from(tasks);
+    final summary = _TaskActivitySummary.from(tasks);
     return PveAdaptiveCardGrid(
       children: <Widget>[
         KeyedSubtree(
@@ -191,17 +191,17 @@ class _TaskActivitySummary {
   });
 
   factory _TaskActivitySummary.from(List<ClusterTask> tasks) {
-    int runningCount = 0;
-    int interactiveSessionCount = 0;
-    int successfulCount = 0;
-    int failedCount = 0;
-    int unknownCount = 0;
-    int completedDurationMilliseconds = 0;
-    int durationCount = 0;
-    final Set<String> nodes = <String>{};
-    final Set<String> users = <String>{};
-    final Map<String, int> typeCounts = <String, int>{};
-    for (final ClusterTask task in tasks) {
+    var runningCount = 0;
+    var interactiveSessionCount = 0;
+    var successfulCount = 0;
+    var failedCount = 0;
+    var unknownCount = 0;
+    var completedDurationMilliseconds = 0;
+    var durationCount = 0;
+    final nodes = <String>{};
+    final users = <String>{};
+    final typeCounts = <String, int>{};
+    for (final task in tasks) {
       nodes.add(task.node);
       users.add(task.user);
       typeCounts.update(task.type, (int count) => count + 1, ifAbsent: () => 1);
@@ -219,8 +219,8 @@ class _TaskActivitySummary {
         case ClusterTaskState.unknown:
           unknownCount += 1;
       }
-      final DateTime? startedAt = task.startedAt;
-      final DateTime? endedAt = task.endedAt;
+      final startedAt = task.startedAt;
+      final endedAt = task.endedAt;
       if (startedAt != null &&
           endedAt != null &&
           !endedAt.isBefore(startedAt)) {
@@ -231,8 +231,8 @@ class _TaskActivitySummary {
       }
     }
     String? mostFrequentType;
-    int mostFrequentCount = 0;
-    for (final MapEntry<String, int> entry in typeCounts.entries) {
+    var mostFrequentCount = 0;
+    for (final entry in typeCounts.entries) {
       if (entry.value > mostFrequentCount) {
         mostFrequentType = entry.key;
         mostFrequentCount = entry.value;
@@ -266,7 +266,7 @@ class _TaskActivitySummary {
   final String? mostFrequentType;
 
   double? get completionRate {
-    final int completedCount = successfulCount + failedCount + unknownCount;
+    final completedCount = successfulCount + failedCount + unknownCount;
     if (completedCount == 0) {
       return null;
     }

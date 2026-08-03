@@ -53,7 +53,7 @@ workflows:
         script: |
           set -euo pipefail
           dart format --output=none --set-exit-if-changed lib test tool
-          flutter analyze
+          flutter analyze --fatal-infos
           flutter test
       - name: Apply App Store signing profiles
         script: xcode-project use-profiles --project ios/Runner.xcodeproj
@@ -117,7 +117,7 @@ workflows:
         script: |
           set -euo pipefail
           dart format --output=none --set-exit-if-changed lib test tool
-          flutter analyze
+          flutter analyze --fatal-infos
           flutter test
       - name: Initialize the signing keychain
         script: keychain initialize
@@ -229,7 +229,7 @@ workflows:
         script: |
           set -euo pipefail
           dart format --output=none --set-exit-if-changed lib test tool
-          flutter analyze
+          flutter analyze --fatal-infos
           flutter test
       - name: Apply App Store signing profiles
         script: xcode-project use-profiles --project ios/Runner.xcodeproj
@@ -300,7 +300,7 @@ workflows:
         script: |
           set -euo pipefail
           dart format --output=none --set-exit-if-changed lib test tool
-          flutter analyze
+          flutter analyze --fatal-infos
           flutter test
       - name: Initialize the signing keychain
         script: keychain initialize

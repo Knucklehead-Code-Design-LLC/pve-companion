@@ -7,8 +7,8 @@ import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 void main() {
   group('ProxmoxGuestRepository.runPowerAction', () {
     test('posts a VM start to its terminal action endpoint', () async {
-      final _RecordingSession session = _RecordingSession();
-      const PveGuest guest = PveGuest(
+      final session = _RecordingSession();
+      const guest = PveGuest(
         vmid: 201,
         node: 'compute-a',
         kind: GuestKind.virtualMachine,
@@ -28,8 +28,8 @@ void main() {
     });
 
     test('posts an LXC shutdown to its terminal action endpoint', () async {
-      final _RecordingSession session = _RecordingSession();
-      const PveGuest guest = PveGuest(
+      final session = _RecordingSession();
+      const guest = PveGuest(
         vmid: 302,
         node: 'edge-a',
         kind: GuestKind.container,
@@ -51,10 +51,10 @@ void main() {
 
   group('ProxmoxGuestRepository.createSnapshot', () {
     test('posts a VM snapshot and preserves its memory-state choice', () async {
-      final _RecordingSession session = _RecordingSession(
+      final session = _RecordingSession(
         postResponse: 'UPID:compute-a:vm-snapshot',
       );
-      const PveGuest guest = PveGuest(
+      const guest = PveGuest(
         vmid: 201,
         node: 'compute-a',
         kind: GuestKind.virtualMachine,
@@ -83,10 +83,10 @@ void main() {
     });
 
     test('posts an LXC snapshot without a VM memory-state field', () async {
-      final _RecordingSession session = _RecordingSession(
+      final session = _RecordingSession(
         postResponse: 'UPID:edge-a:lxc-snapshot',
       );
-      const PveGuest guest = PveGuest(
+      const guest = PveGuest(
         vmid: 302,
         node: 'edge-a',
         kind: GuestKind.container,
@@ -111,8 +111,8 @@ void main() {
     test(
       'uses PUT for the intentionally narrow guest configuration update',
       () async {
-        final _RecordingSession session = _RecordingSession();
-        const PveGuest guest = PveGuest(
+        final session = _RecordingSession();
+        const guest = PveGuest(
           vmid: 201,
           node: 'compute-a',
           kind: GuestKind.virtualMachine,
@@ -163,8 +163,8 @@ void main() {
   test(
     'rejects an unsafe snapshot name before constructing an action path',
     () async {
-      final _RecordingSession session = _RecordingSession();
-      const PveGuest guest = PveGuest(
+      final session = _RecordingSession();
+      const guest = PveGuest(
         vmid: 201,
         node: 'compute-a',
         kind: GuestKind.virtualMachine,

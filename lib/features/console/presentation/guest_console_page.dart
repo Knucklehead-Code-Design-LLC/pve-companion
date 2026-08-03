@@ -8,7 +8,6 @@ import '../../../core/presentation/pve_apple_ui.dart';
 import '../../guests/domain/pve_guest.dart';
 import '../application/guest_console_controller.dart';
 import '../data/proxmox_guest_console_repository.dart';
-import '../data/proxmox_rfb_client.dart';
 import '../data/rfb_key_sym.dart';
 import 'rfb_framebuffer_view.dart';
 
@@ -152,7 +151,7 @@ class _GuestConsolePageState extends State<GuestConsolePage>
   }
 
   Widget _buildConsoleSurface(BuildContext context) {
-    final PveConsoleFramebuffer? framebuffer = _controller.framebuffer;
+    final framebuffer = _controller.framebuffer;
     switch (_controller.state) {
       case GuestConsoleConnectionState.connecting:
         return const _ConsoleStatus(
@@ -220,19 +219,16 @@ class _GuestConsolePageState extends State<GuestConsolePage>
     if (_clearingTextInput) {
       return;
     }
-    final List<int> currentCodePoints = currentText.runes.toList(
-      growable: false,
-    );
-    final int sharedLength = _commonPrefixLength(
+    final currentCodePoints = currentText.runes.toList(growable: false);
+    final sharedLength = _commonPrefixLength(
       _previousTextInputCodePoints,
       currentCodePoints,
     );
-    final int removedLength =
-        _previousTextInputCodePoints.length - sharedLength;
-    for (int index = 0; index < removedLength; index += 1) {
+    final removedLength = _previousTextInputCodePoints.length - sharedLength;
+    for (var index = 0; index < removedLength; index += 1) {
       _controller.sendKeyStroke(0xff08);
     }
-    for (final int codePoint in currentCodePoints.skip(sharedLength)) {
+    for (final codePoint in currentCodePoints.skip(sharedLength)) {
       _controller.sendKeyStroke(rfbKeySymForCodePoint(codePoint));
     }
     _previousTextInputCodePoints = currentCodePoints;
@@ -244,10 +240,8 @@ class _GuestConsolePageState extends State<GuestConsolePage>
   }
 
   Future<void> _pasteClipboard() async {
-    final ClipboardData? clipboard = await Clipboard.getData(
-      Clipboard.kTextPlain,
-    );
-    final String? text = clipboard?.text;
+    final clipboard = await Clipboard.getData(Clipboard.kTextPlain);
+    final text = clipboard?.text;
     if (text == null || text.isEmpty) {
       return;
     }
@@ -277,9 +271,9 @@ class _GuestConsolePageState extends State<GuestConsolePage>
   }
 
   void _sendCtrlAltDelete() {
-    const int control = 0xffe3;
-    const int alt = 0xffe9;
-    const int delete = 0xffff;
+    const control = 0xffe3;
+    const alt = 0xffe9;
+    const delete = 0xffff;
     _controller.sendKey(keySym: control, down: true);
     _controller.sendKey(keySym: alt, down: true);
     _controller.sendKey(keySym: delete, down: true);
@@ -296,8 +290,8 @@ class _GuestConsolePageState extends State<GuestConsolePage>
   }
 
   int _commonPrefixLength(List<int> left, List<int> right) {
-    final int limit = left.length < right.length ? left.length : right.length;
-    int index = 0;
+    final limit = left.length < right.length ? left.length : right.length;
+    var index = 0;
     while (index < limit && left[index] == right[index]) {
       index += 1;
     }

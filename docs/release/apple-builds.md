@@ -11,7 +11,7 @@ Run these before preparing an Apple release:
 ```sh
 flutter pub get
 dart format --output=none --set-exit-if-changed lib test tool
-flutter analyze
+flutter analyze --fatal-infos
 flutter test
 flutter build ios --simulator
 xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \

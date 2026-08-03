@@ -42,11 +42,11 @@ class FleetOverviewController extends ChangeNotifier {
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
 
   Future<void> refresh() async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = FleetOverviewLoadState.loading;
     _notify();
-    final List<ConnectionProfile> profiles = _connectionProfiles.profiles;
-    final List<FleetDatacenter> datacenters = await _runWithConcurrencyLimit(
+    final profiles = _connectionProfiles.profiles;
+    final datacenters = await _runWithConcurrencyLimit(
       profiles,
       maximumConcurrentOperations: 3,
       task: _loadProfile,
@@ -62,8 +62,7 @@ class FleetOverviewController extends ChangeNotifier {
   }
 
   Future<FleetDatacenter> _loadProfile(ConnectionProfile profile) async {
-    final BackgroundSessionAttempt connection = await _connectionProfiles
-        .openBackgroundSession(profile);
+    final connection = await _connectionProfiles.openBackgroundSession(profile);
     final session = connection.session;
     if (session == null) {
       return FleetDatacenter(
@@ -73,12 +72,8 @@ class FleetOverviewController extends ChangeNotifier {
       );
     }
     try {
-      final ClusterOverviewSnapshot overview = await _overviewRepository.load(
-        session,
-      );
-      final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
-        overview,
-      );
+      final overview = await _overviewRepository.load(session);
+      final health = DatacenterHealthEvaluator.evaluate(overview);
       return FleetDatacenter(
         profile: profile,
         state: switch (health.state) {
@@ -125,30 +120,43 @@ Future<List<T>> _runWithConcurrencyLimit<S, T>(
   if (values.isEmpty) {
     return <T>[];
   }
-  final List<T?> results = List<T?>.filled(values.length, null);
-  int nextIndex = 0;
+  final completedTasks = <_CompletedTask<T>>[];
+  var nextIndex = 0;
   Future<void> worker() async {
     while (true) {
-      final int index = nextIndex;
+      final index = nextIndex;
       nextIndex += 1;
       if (index >= values.length) {
         return;
       }
-      results[index] = await task(values[index]);
+      final value = await task(values[index]);
+      completedTasks.add(_CompletedTask<T>(index: index, value: value));
     }
   }
 
-  final int workerCount = maximumConcurrentOperations
+  final workerCount = maximumConcurrentOperations
       .clamp(1, values.length)
       .toInt();
   await Future.wait<void>(
     List<Future<void>>.generate(workerCount, (_) => worker()),
   );
-  return results.cast<T>();
+  completedTasks.sort((left, right) => left.index.compareTo(right.index));
+  final orderedResults = <T>[];
+  for (final completedTask in completedTasks) {
+    orderedResults.add(completedTask.value);
+  }
+  return orderedResults;
+}
+
+class _CompletedTask<T> {
+  const _CompletedTask({required this.index, required this.value});
+
+  final int index;
+  final T value;
 }
 
 int _compareDatacenters(FleetDatacenter left, FleetDatacenter right) {
-  final int stateComparison = _stateRank(
+  final stateComparison = _stateRank(
     left.state,
   ).compareTo(_stateRank(right.state));
   if (stateComparison != 0) {

@@ -1,7 +1,6 @@
 import 'package:flutter/cupertino.dart' show CupertinoTheme;
 import 'package:flutter/material.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
-import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/domain/datacenter_health_evaluator.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/datacenter_dashboard.dart';
 
@@ -29,7 +28,7 @@ class _DatacenterDashboardPreviewAppState
 
   @override
   Widget build(BuildContext context) {
-    final ClusterOverviewSnapshot snapshot = switch (_scenario) {
+    final snapshot = switch (_scenario) {
       _PreviewScenario.healthy => datacenterDashboardHealthyPreviewSnapshot(),
       _PreviewScenario.critical => datacenterDashboardCriticalPreviewSnapshot(),
     };

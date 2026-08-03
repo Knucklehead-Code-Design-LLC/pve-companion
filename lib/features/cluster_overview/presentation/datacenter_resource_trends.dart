@@ -13,12 +13,8 @@ class DatacenterResourceTrends extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterResourceSample? current = samples.isEmpty
-        ? null
-        : samples.last;
-    final DatacenterResourceSample? previous = samples.length < 2
-        ? null
-        : samples[samples.length - 2];
+    final current = samples.isEmpty ? null : samples.last;
+    final previous = samples.length < 2 ? null : samples[samples.length - 2];
     return PveInsetGroup(
       key: const ValueKey<String>('datacenter-local-resource-trends'),
       padding: const EdgeInsets.all(16),
@@ -76,17 +72,17 @@ class _TrendRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double? change = current == null || previous == null
+    final change = current == null || previous == null
         ? null
         : current! - previous!;
-    final Color color = change == null
+    final color = change == null
         ? PveAppleColors.secondaryLabel(context)
         : change > 0
         ? PveAppleColors.warning(context)
         : change < 0
         ? PveAppleColors.success(context)
         : PveAppleColors.secondaryLabel(context);
-    final String trend = change == null
+    final trend = change == null
         ? 'Comparison unavailable'
         : change == 0
         ? 'Unchanged'

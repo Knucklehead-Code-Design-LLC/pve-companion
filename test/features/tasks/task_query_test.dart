@@ -3,10 +3,10 @@ import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_
 import 'package:pve_companion/features/tasks/presentation/task_query.dart';
 
 void main() {
-  final DateTime now = DateTime.utc(2026, 8, 2, 12);
+  final now = DateTime.utc(2026, 8, 2, 12);
 
   test('period filters exclude undated and future tasks', () {
-    final List<ClusterTask> tasks = <ClusterTask>[
+    final tasks = <ClusterTask>[
       _task('inside', now.subtract(const Duration(hours: 24)), upid: 'inside'),
       _task(
         'outside',
@@ -17,7 +17,7 @@ void main() {
       _task('future', now.add(const Duration(seconds: 1)), upid: 'future'),
     ];
 
-    final List<ClusterTask> result = const TaskQuery(
+    final result = const TaskQuery(
       period: TaskPeriodFilter.day,
     ).apply(tasks, now: now);
 
@@ -25,7 +25,7 @@ void main() {
   });
 
   test('all time keeps tasks without a reported start time', () {
-    final List<ClusterTask> result = TaskQuery.all.apply(<ClusterTask>[
+    final result = TaskQuery.all.apply(<ClusterTask>[
       _task('undated', null, upid: 'undated'),
     ], now: now);
 
@@ -33,7 +33,7 @@ void main() {
   });
 
   test('clear filters resets every selection while retaining the sort', () {
-    const TaskQuery query = TaskQuery(
+    const query = TaskQuery(
       state: TaskStateFilter.failed,
       period: TaskPeriodFilter.week,
       sort: TaskSort.node,
@@ -44,13 +44,13 @@ void main() {
     );
 
     expect(query.hasFilters, isTrue);
-    final TaskQuery cleared = query.clearFilters();
+    final cleared = query.clearFilters();
     expect(cleared.hasFilters, isFalse);
     expect(cleared.sort, TaskSort.node);
   });
 
   test('attention sorting uses the injected clock for long-running tasks', () {
-    final List<ClusterTask> result = const TaskQuery().apply(<ClusterTask>[
+    final result = const TaskQuery().apply(<ClusterTask>[
       _task(
         'recent running task',
         now.subtract(const Duration(minutes: 29)),
@@ -72,7 +72,7 @@ void main() {
   });
 
   test('query applies every selected facet before sorting', () {
-    final List<ClusterTask> result =
+    final result =
         const TaskQuery(
           state: TaskStateFilter.running,
           query: 'backup',

@@ -76,7 +76,7 @@ class MemoryConsoleTransport implements ProxmoxConsoleTransport {
 }
 
 List<int> rfbServerHandshake({required int width, required int height}) {
-  final BytesBuilder bytes = BytesBuilder(copy: false)
+  final bytes = BytesBuilder(copy: false)
     ..add(ascii.encode('RFB 003.008\n'))
     ..add(<int>[1, 2])
     ..add(List<int>.filled(16, 1))

@@ -134,7 +134,7 @@ class _BackupCenterContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final int protectedCount = snapshot.records
+    final protectedCount = snapshot.records
         .where((PveBackupRecord record) => record.protected)
         .length;
     return ListView(
@@ -211,9 +211,8 @@ class _BackupReadinessSummary extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final PveBackupReadiness readiness = snapshot.readiness;
-    final ({String title, String detail, Color color, IconData icon})
-    content = switch (readiness) {
+    final readiness = snapshot.readiness;
+    final content = switch (readiness) {
       PveBackupReadiness.noDestination => (
         title: 'No backup destination reported',
         detail:
@@ -719,7 +718,7 @@ String _emptyBackupDataMessage(
 };
 
 String _scheduleSubtitle(PveBackupSchedule schedule) {
-  final List<String> fragments = <String>[
+  final fragments = <String>[
     if (schedule.storage != null) schedule.storage!,
     if (schedule.schedule != null) schedule.schedule!,
     if (schedule.guestSelection != null) 'Guests: ${schedule.guestSelection!}',
@@ -730,12 +729,12 @@ String _scheduleSubtitle(PveBackupSchedule schedule) {
 }
 
 String _backupRecordTitle(PveBackupRecord record) {
-  final int? guestId = record.guestId;
+  final guestId = record.guestId;
   return guestId == null ? record.volumeId : 'Guest $guestId';
 }
 
 String _backupRecordSubtitle(PveBackupRecord record) {
-  final List<String> fragments = <String>[
+  final fragments = <String>[
     record.storage,
     formatPveDateTime(record.createdAt),
     if (record.format != null) record.format!,

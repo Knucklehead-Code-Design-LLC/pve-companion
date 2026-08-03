@@ -66,7 +66,7 @@ class WorkspaceToolbar extends StatelessWidget
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool showsDesktopWorkspaceCommands =
+        final showsDesktopWorkspaceCommands =
             desktopWorkspaceCommandsEnabled ??
             (defaultTargetPlatform == TargetPlatform.macOS &&
                 constraints.maxWidth >= _minimumDesktopCommandPaneWidth);
@@ -171,7 +171,7 @@ class _WorkspaceToolbarActions extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final WorkspaceActionsMenu menu = WorkspaceActionsMenu(
+    final menu = WorkspaceActionsMenu(
       connected: connected,
       onRefresh: onRefresh,
       onDisconnect: onDisconnect,

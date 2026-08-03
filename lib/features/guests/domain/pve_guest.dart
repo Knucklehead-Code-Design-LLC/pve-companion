@@ -142,7 +142,7 @@ class PveGuestSnapshotRequest {
   String get normalizedName => name.trim();
 
   String? get normalizedDescription {
-    final String value = description?.trim() ?? '';
+    final value = description?.trim() ?? '';
     return value.isEmpty ? null : value;
   }
 
@@ -150,7 +150,7 @@ class PveGuestSnapshotRequest {
   /// accidental space or shell-like input an immediately understandable form
   /// error instead of a remote API failure.
   String? get validationMessage {
-    final String loweredName = normalizedName.toLowerCase();
+    final loweredName = normalizedName.toLowerCase();
     if (!RegExp(
       r'^[A-Za-z0-9][A-Za-z0-9._-]{0,39}$',
     ).hasMatch(normalizedName)) {
@@ -230,7 +230,7 @@ class PveGuestConfigurationChange {
     if (cores != null) 'cores': '$cores',
     if (memoryMiB != null) 'memory': '$memoryMiB',
     if (onBoot != null) 'onboot': onBoot! ? '1' : '0',
-    if (description != null) 'description': description!,
+    'description': ?description,
   };
 }
 

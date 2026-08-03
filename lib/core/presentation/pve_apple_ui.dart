@@ -141,7 +141,7 @@ class PveIconAction extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = isDestructive
+    final color = isDestructive
         ? PveAppleColors.destructive(context)
         : PveAppleColors.primary(context);
     return Semantics(
@@ -202,7 +202,7 @@ class _PveFreshnessLabelState extends State<PveFreshnessLabel> {
 
   void _scheduleUpdate() {
     _updateTimer?.cancel();
-    final Duration age = DateTime.now().difference(widget.refreshedAt);
+    final age = DateTime.now().difference(widget.refreshedAt);
     final Duration delay;
     if (age.isNegative || age.inMinutes < 1) {
       delay = const Duration(seconds: 1);
@@ -220,13 +220,13 @@ class _PveFreshnessLabelState extends State<PveFreshnessLabel> {
 
   @override
   Widget build(BuildContext context) {
-    final DateTime localTime = widget.refreshedAt.toLocal();
-    final String clock =
+    final localTime = widget.refreshedAt.toLocal();
+    final clock =
         '${localTime.hour.toString().padLeft(2, '0')}:${localTime.minute.toString().padLeft(2, '0')}';
-    final String date = '${localTime.month}/${localTime.day}/${localTime.year}';
-    final Duration age = DateTime.now().difference(widget.refreshedAt);
-    final String relative = _relativeAge(age);
-    final String exact = '${widget.prefix} at $date, $clock';
+    final date = '${localTime.month}/${localTime.day}/${localTime.year}';
+    final age = DateTime.now().difference(widget.refreshedAt);
+    final relative = _relativeAge(age);
+    final exact = '${widget.prefix} at $date, $clock';
     return Semantics(
       label: exact,
       child: Tooltip(
@@ -272,11 +272,11 @@ class PvePrimaryScrollView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool supportsPullToRefresh = switch (defaultTargetPlatform) {
+    final supportsPullToRefresh = switch (defaultTargetPlatform) {
       TargetPlatform.iOS || TargetPlatform.android => true,
       _ => false,
     };
-    final ScrollPhysics physics = supportsPullToRefresh
+    final physics = supportsPullToRefresh
         ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
         : const AlwaysScrollableScrollPhysics();
     return CustomScrollView(
@@ -442,17 +442,16 @@ class PveMetricStrip extends StatelessWidget {
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
-            final double cellWidth = constraints.maxWidth / 2;
+            final cellWidth = constraints.maxWidth / 2;
             return Wrap(
               runSpacing: 14,
-              children: items
-                  .map(
-                    (PveMetricStripItem item) => SizedBox(
-                      width: cellWidth,
-                      child: _PveMetricStripCell(item: item),
-                    ),
-                  )
-                  .toList(growable: false),
+              children: <Widget>[
+                for (final item in items)
+                  SizedBox(
+                    width: cellWidth,
+                    child: _PveMetricStripCell(item: item),
+                  ),
+              ],
             );
           }
           return Row(
@@ -483,7 +482,7 @@ class _PveMetricStripCell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = item.color ?? PveAppleColors.primary(context);
+    final color = item.color ?? PveAppleColors.primary(context);
     return Semantics(
       excludeSemantics: true,
       label: <String>[
@@ -582,7 +581,7 @@ class PveSectionHeader extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasAction = actionLabel != null && onAction != null;
+    final hasAction = actionLabel != null && onAction != null;
     final Widget titleWidget = PveSectionTitle(title: title);
     final Widget action = Semantics(
       button: true,
@@ -599,7 +598,7 @@ class PveSectionHeader extends StatelessWidget {
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
           if (!hasAction) return titleWidget;
-          final bool stacksAction =
+          final stacksAction =
               constraints.maxWidth < 420 ||
               MediaQuery.textScalerOf(context).scale(14) >= 20;
           if (stacksAction) {
@@ -656,10 +655,10 @@ class PveInsetGroup extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool desktop = PveAppleLayout.usesExpandedPresentation(context);
-    final BorderRadius borderRadius = BorderRadius.circular(desktop ? 12 : 14);
-    final Color backgroundColor = color ?? PveAppleColors.surface(context);
-    final BoxDecoration decoration = BoxDecoration(
+    final desktop = PveAppleLayout.usesExpandedPresentation(context);
+    final borderRadius = BorderRadius.circular(desktop ? 12 : 14);
+    final backgroundColor = color ?? PveAppleColors.surface(context);
+    final decoration = BoxDecoration(
       color: onTap == null ? backgroundColor : null,
       borderRadius: borderRadius,
       border: desktop && onTap == null && color == null
@@ -731,7 +730,7 @@ class PveListRow extends StatelessWidget {
       padding: padding,
       child: LayoutBuilder(
         builder: (BuildContext context, BoxConstraints constraints) {
-          final double maxTrailingWidth = constraints.maxWidth * 0.6;
+          final maxTrailingWidth = constraints.maxWidth * 0.6;
           return Row(
             children: <Widget>[
               if (leading != null) ...<Widget>[
@@ -874,8 +873,7 @@ class PveProgressBar extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final double? normalizedValue =
-        value != null && value!.isFinite && value! >= 0
+    final normalizedValue = value != null && value!.isFinite && value! >= 0
         ? value!.clamp(0, 1).toDouble()
         : null;
     return Semantics(
@@ -1022,7 +1020,7 @@ class PveEmptyState extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color color = destructive
+    final color = destructive
         ? PveAppleColors.destructive(context)
         : PveAppleColors.primary(context);
     return Semantics(

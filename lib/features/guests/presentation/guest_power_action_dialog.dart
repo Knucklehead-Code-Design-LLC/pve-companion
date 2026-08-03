@@ -10,10 +10,10 @@ Future<bool> confirmGuestPowerAction(
   required PveGuest guest,
   required GuestPowerAction action,
 }) async {
-  final bool? approved = await showCupertinoDialog<bool>(
+  final approved = await showCupertinoDialog<bool>(
     context: context,
     builder: (BuildContext dialogContext) {
-      final String caution = switch (action) {
+      final caution = switch (action) {
         GuestPowerAction.start => 'Proxmox will start this guest normally.',
         GuestPowerAction.shutdown =>
           'Proxmox will request a graceful shutdown. Active users may be interrupted.',
@@ -42,13 +42,13 @@ Future<bool> confirmGuestPowerAction(
       );
     },
   );
-  if (approved == true) {
-    unawaited(
-      action.isPotentiallyDisruptive
-          ? PveHaptics.warning()
-          : PveHaptics.mediumImpact(),
-    );
+  if (approved != true) {
+    return false;
+  }
+  if (action.isPotentiallyDisruptive) {
+    unawaited(PveHaptics.warning());
     return true;
   }
-  return false;
+  unawaited(PveHaptics.mediumImpact());
+  return true;
 }

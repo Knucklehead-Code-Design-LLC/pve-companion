@@ -37,18 +37,18 @@ class ClusterOverviewController extends ChangeNotifier {
       List<DatacenterResourceSample>.unmodifiable(_resourceHistory);
 
   Future<ClusterOverviewSnapshot?> refresh(ProxmoxSession session) async {
-    final int requestEpoch = ++_requestEpoch;
+    final requestEpoch = ++_requestEpoch;
     _state = ClusterOverviewLoadState.loading;
     _errorMessage = null;
     _notify();
 
     try {
-      final ClusterOverviewSnapshot snapshot = await _repository.load(session);
+      final snapshot = await _repository.load(session);
       if (_isStale(requestEpoch)) {
         return null;
       }
       _snapshot = snapshot;
-      final DateTime refreshedAt = DateTime.now();
+      final refreshedAt = DateTime.now();
       _lastUpdatedAt = refreshedAt;
       _resourceHistory.add(
         DatacenterResourceSample.fromSnapshot(

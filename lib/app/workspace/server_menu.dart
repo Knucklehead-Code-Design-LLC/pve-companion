@@ -23,15 +23,14 @@ class ServerMenu extends StatelessWidget {
     return PveCommandMenuButton<String>(
       semanticLabel: 'Switch Proxmox server',
       menuWidth: 286,
-      items: profiles
-          .map(
-            (ConnectionProfile profile) => PveCommandMenuItem<String>(
-              value: profile.id,
-              label: profile.displayName,
-              selected: profile.id == selectedProfile?.id,
-            ),
-          )
-          .toList(growable: false),
+      items: <PveCommandMenuItem<String>>[
+        for (final profile in profiles)
+          PveCommandMenuItem<String>(
+            value: profile.id,
+            label: profile.displayName,
+            selected: profile.id == selectedProfile?.id,
+          ),
+      ],
       onSelected: onSelected,
       padding: compact
           ? const EdgeInsets.symmetric(horizontal: 4, vertical: 6)

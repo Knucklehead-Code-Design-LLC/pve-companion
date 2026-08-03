@@ -30,7 +30,7 @@ class ConnectionProfile {
   String get principal {
     switch (authenticationKind) {
       case ConnectionAuthenticationKind.password:
-        final String configuredUsername = username ?? '';
+        final configuredUsername = username ?? '';
         if (configuredUsername.contains('@')) {
           return configuredUsername;
         }
@@ -57,7 +57,7 @@ class ConnectionProfile {
       trustedCertificateSha256: clearTrustedCertificate
           ? null
           : trustedCertificateSha256 ?? this.trustedCertificateSha256,
-      lastConnectedAt: lastConnectedAt ?? this.lastConnectedAt,
+      lastConnectedAt: lastConnectedAt,
       savedAt: DateTime.now().toUtc(),
     );
   }
@@ -96,26 +96,23 @@ class ConnectionProfile {
   }
 
   factory ConnectionProfile.fromJson(Map<String, Object?> json) {
-    final String authenticationKindValue = _readRequiredString(
+    final authenticationKindValue = _readRequiredString(
       json,
       'authenticationKind',
     );
-    final ConnectionAuthenticationKind authenticationKind =
-        ConnectionAuthenticationKind.values.firstWhere(
-          (ConnectionAuthenticationKind value) =>
-              value.name == authenticationKindValue,
-          orElse: () => throw const FormatException(
-            'The connection profile has an unknown authentication kind.',
-          ),
-        );
-    final Uri endpoint = parseSecureEndpoint(
-      _readRequiredString(json, 'endpoint'),
+    final authenticationKind = ConnectionAuthenticationKind.values.firstWhere(
+      (ConnectionAuthenticationKind value) =>
+          value.name == authenticationKindValue,
+      orElse: () => throw const FormatException(
+        'The connection profile has an unknown authentication kind.',
+      ),
     );
-    final DateTime savedAt = DateTime.parse(
+    final endpoint = parseSecureEndpoint(_readRequiredString(json, 'endpoint'));
+    final savedAt = DateTime.parse(
       _readRequiredString(json, 'savedAt'),
     ).toUtc();
 
-    final ConnectionProfile profile = ConnectionProfile(
+    final profile = ConnectionProfile(
       id: _readRequiredString(json, 'id'),
       displayName: _readRequiredString(json, 'displayName'),
       endpoint: endpoint,
@@ -191,33 +188,47 @@ class ConnectionProfile {
 }
 
 Uri parseSecureEndpoint(String rawEndpoint) {
-  final Uri? candidate = Uri.tryParse(rawEndpoint.trim());
-  if (candidate == null ||
-      candidate.scheme != 'https' ||
-      candidate.host.isEmpty ||
-      candidate.userInfo.isNotEmpty ||
-      candidate.fragment.isNotEmpty) {
-    throw const FormatException(
-      'Use a complete HTTPS URL such as https://pve.example.net:8006.',
-    );
+  final candidate = Uri.tryParse(rawEndpoint.trim());
+  if (candidate == null) {
+    _throwInvalidEndpoint();
+  }
+  if (!_isSecureEndpoint(candidate)) {
+    _throwInvalidEndpoint();
   }
 
-  final String path = candidate.path == '/'
+  final path = candidate.path == '/'
       ? ''
       : candidate.path.replaceFirst(RegExp(r'/+$'), '');
   return candidate.replace(path: path, query: null);
 }
 
-String createConnectionProfileId() {
-  final String timestamp = DateTime.now().microsecondsSinceEpoch.toRadixString(
-    36,
+bool _isSecureEndpoint(Uri endpoint) {
+  if (endpoint.scheme != 'https') {
+    return false;
+  }
+  if (endpoint.host.isEmpty) {
+    return false;
+  }
+  if (endpoint.userInfo.isNotEmpty) {
+    return false;
+  }
+  return endpoint.fragment.isEmpty;
+}
+
+Never _throwInvalidEndpoint() {
+  throw const FormatException(
+    'Use a complete HTTPS URL such as https://pve.example.net:8006.',
   );
-  final String entropy = Random.secure().nextInt(1 << 32).toRadixString(36);
+}
+
+String createConnectionProfileId() {
+  final timestamp = DateTime.now().microsecondsSinceEpoch.toRadixString(36);
+  final entropy = Random.secure().nextInt(1 << 32).toRadixString(36);
   return 'pve-$timestamp-$entropy';
 }
 
 String _readRequiredString(Map<String, Object?> json, String key) {
-  final Object? value = json[key];
+  final value = json[key];
   if (value is String && value.trim().isNotEmpty) {
     return value;
   }
@@ -225,12 +236,12 @@ String _readRequiredString(Map<String, Object?> json, String key) {
 }
 
 String? _readOptionalString(Map<String, Object?> json, String key) {
-  final Object? value = json[key];
+  final value = json[key];
   return value is String && value.isNotEmpty ? value : null;
 }
 
 DateTime? _readOptionalDateTime(Map<String, Object?> json, String key) {
-  final String? value = _readOptionalString(json, key);
+  final value = _readOptionalString(json, key);
   if (value == null) {
     return null;
   }

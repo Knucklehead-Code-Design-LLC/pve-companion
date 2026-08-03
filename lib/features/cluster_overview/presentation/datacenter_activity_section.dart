@@ -18,11 +18,9 @@ class DatacenterRecentActivitySection extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
+    final orderedTasks = List<ClusterTask>.of(tasks)
       ..sort(compareClusterTasksByRecency);
-    final List<ClusterTask> visibleTasks = orderedTasks
-        .take(5)
-        .toList(growable: false);
+    final visibleTasks = orderedTasks.take(5).toList(growable: false);
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
@@ -66,8 +64,8 @@ class _DatacenterActivityItem extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForTask(task);
-    final String statusLabel = dashboardTaskStateLabel(task);
+    final tone = dashboardToneForTask(task);
+    final statusLabel = dashboardTaskStateLabel(task);
     return Semantics(
       label: 'Task ${task.type} on ${task.node}: $statusLabel',
       child: PveListRow(

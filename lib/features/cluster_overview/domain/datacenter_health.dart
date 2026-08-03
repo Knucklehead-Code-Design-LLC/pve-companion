@@ -57,15 +57,15 @@ class DatacenterPressureSummary {
   final DatacenterPressureMetric? rootDisk;
 
   Iterable<DatacenterPressureMetric> get reportedMetrics sync* {
-    final DatacenterPressureMetric? reportedCpu = cpu;
+    final reportedCpu = cpu;
     if (reportedCpu != null) {
       yield reportedCpu;
     }
-    final DatacenterPressureMetric? reportedMemory = memory;
+    final reportedMemory = memory;
     if (reportedMemory != null) {
       yield reportedMemory;
     }
-    final DatacenterPressureMetric? reportedRootDisk = rootDisk;
+    final reportedRootDisk = rootDisk;
     if (reportedRootDisk != null) {
       yield reportedRootDisk;
     }
@@ -138,15 +138,15 @@ class DatacenterNodeHealth {
   );
 
   Iterable<DatacenterPressureMetric> get _metrics sync* {
-    final DatacenterPressureMetric? reportedCpu = cpu;
+    final reportedCpu = cpu;
     if (reportedCpu != null) {
       yield reportedCpu;
     }
-    final DatacenterPressureMetric? reportedMemory = memory;
+    final reportedMemory = memory;
     if (reportedMemory != null) {
       yield reportedMemory;
     }
-    final DatacenterPressureMetric? reportedRootDisk = rootDisk;
+    final reportedRootDisk = rootDisk;
     if (reportedRootDisk != null) {
       yield reportedRootDisk;
     }

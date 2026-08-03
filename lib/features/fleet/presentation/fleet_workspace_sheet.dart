@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
 import '../../../core/presentation/pve_value_format.dart';
-import '../../cluster_overview/domain/datacenter_health.dart';
 import '../application/fleet_overview_controller.dart';
 import '../domain/fleet_datacenter.dart';
 
@@ -119,21 +118,21 @@ class _FleetContent extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final List<FleetDatacenter> datacenters = controller.datacenters;
-    final int healthyCount = datacenters
+    final datacenters = controller.datacenters;
+    final healthyCount = datacenters
         .where(
           (FleetDatacenter datacenter) =>
               datacenter.state == FleetDatacenterState.healthy,
         )
         .length;
-    final int attentionCount = datacenters
+    final attentionCount = datacenters
         .where(
           (FleetDatacenter datacenter) =>
               datacenter.state == FleetDatacenterState.warning ||
               datacenter.state == FleetDatacenterState.critical,
         )
         .length;
-    final int unavailableCount = datacenters
+    final unavailableCount = datacenters
         .where(
           (FleetDatacenter datacenter) =>
               datacenter.state == FleetDatacenterState.unavailable,
@@ -275,7 +274,7 @@ class _FleetDatacenterRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color accent = _fleetColor(context, datacenter.state);
+    final accent = _fleetColor(context, datacenter.state);
     return PveListRow(
       leading: Icon(_fleetIcon(datacenter.state), color: accent),
       title: Row(
@@ -325,7 +324,7 @@ String _fleetLabel(FleetDatacenterState state) => switch (state) {
 };
 
 String _fleetSubtitle(FleetDatacenter datacenter) {
-  final DatacenterHealth? health = datacenter.health;
+  final health = datacenter.health;
   if (health == null) {
     return datacenter.message ?? 'No telemetry was reported.';
   }

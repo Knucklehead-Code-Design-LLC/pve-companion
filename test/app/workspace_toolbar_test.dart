@@ -15,9 +15,9 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    bool refreshed = false;
-    final _RoutePushObserver routeObserver = _RoutePushObserver();
-    final ConnectionProfile profile = ConnectionProfile.apiToken(
+    var refreshed = false;
+    final routeObserver = _RoutePushObserver();
+    final profile = ConnectionProfile.apiToken(
       displayName: 'Pennsylvania Lab',
       endpoint: Uri.parse('https://pve-01.example.com:8006'),
       tokenId: 'viewer@pve!companion',
@@ -50,7 +50,7 @@ void main() {
     expect(find.byType(CupertinoNavigationBar), findsOneWidget);
     expect(find.text('Datacenter'), findsOneWidget);
     expect(find.byTooltip('Workspace actions and settings'), findsOneWidget);
-    final int initialPushCount = routeObserver.pushCount;
+    final initialPushCount = routeObserver.pushCount;
 
     await tester.tap(find.bySemanticsLabel('Workspace actions and settings'));
     await tester.pumpAndSettle();
@@ -63,7 +63,7 @@ void main() {
     expect(find.byType(CupertinoActionSheet), findsNothing);
     expect(routeObserver.pushCount, initialPushCount);
 
-    final Rect menuRect = tester.getRect(
+    final menuRect = tester.getRect(
       find.byKey(const ValueKey<String>('pve-command-menu-panel')),
     );
     expect(menuRect.width, 260);
@@ -84,8 +84,8 @@ void main() {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
 
-    bool openedNotifications = false;
-    bool openedServerManagement = false;
+    var openedNotifications = false;
+    var openedServerManagement = false;
     await tester.pumpWidget(
       MaterialApp(
         theme: PveCompanionTheme.light(),
@@ -123,9 +123,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1280, 800));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final DateTime refreshedAt = DateTime.now().subtract(
-      const Duration(minutes: 2),
-    );
+    final refreshedAt = DateTime.now().subtract(const Duration(minutes: 2));
 
     await tester.pumpWidget(
       MaterialApp(

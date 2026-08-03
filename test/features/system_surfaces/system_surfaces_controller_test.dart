@@ -5,17 +5,14 @@ import 'package:pve_companion/features/system_surfaces/domain/datacenter_surface
 
 void main() {
   test('publishes widgets and keeps an active watch current', () async {
-    final _RecordingSystemSurfacesRepository repository =
-        _RecordingSystemSurfacesRepository(
-          capabilities: const SystemSurfaceCapabilities(
-            widgetsAvailable: true,
-            liveActivitiesAvailable: true,
-            datacenterWatchActive: true,
-          ),
-        );
-    final SystemSurfacesController controller = SystemSurfacesController(
-      repository,
+    final repository = _RecordingSystemSurfacesRepository(
+      capabilities: const SystemSurfaceCapabilities(
+        widgetsAvailable: true,
+        liveActivitiesAvailable: true,
+        datacenterWatchActive: true,
+      ),
     );
+    final controller = SystemSurfacesController(repository);
     addTearDown(controller.dispose);
 
     await controller.initialize();
@@ -30,22 +27,19 @@ void main() {
   });
 
   test('starts and ends a four-hour Datacenter Watch', () async {
-    final _RecordingSystemSurfacesRepository repository =
-        _RecordingSystemSurfacesRepository(
-          capabilities: const SystemSurfaceCapabilities(
-            widgetsAvailable: true,
-            liveActivitiesAvailable: true,
-            datacenterWatchActive: false,
-          ),
-        );
-    final SystemSurfacesController controller = SystemSurfacesController(
-      repository,
+    final repository = _RecordingSystemSurfacesRepository(
+      capabilities: const SystemSurfaceCapabilities(
+        widgetsAvailable: true,
+        liveActivitiesAvailable: true,
+        datacenterWatchActive: false,
+      ),
     );
+    final controller = SystemSurfacesController(repository);
     addTearDown(controller.dispose);
 
     await controller.initialize();
     await controller.publish(_snapshot);
-    final bool started = await controller.startDatacenterWatch();
+    final started = await controller.startDatacenterWatch();
     await controller.endDatacenterWatch();
 
     expect(started, isTrue);
@@ -55,17 +49,14 @@ void main() {
   });
 
   test('clears a stale server snapshot and ends its active watch', () async {
-    final _RecordingSystemSurfacesRepository repository =
-        _RecordingSystemSurfacesRepository(
-          capabilities: const SystemSurfaceCapabilities(
-            widgetsAvailable: true,
-            liveActivitiesAvailable: true,
-            datacenterWatchActive: true,
-          ),
-        );
-    final SystemSurfacesController controller = SystemSurfacesController(
-      repository,
+    final repository = _RecordingSystemSurfacesRepository(
+      capabilities: const SystemSurfaceCapabilities(
+        widgetsAvailable: true,
+        liveActivitiesAvailable: true,
+        datacenterWatchActive: true,
+      ),
     );
+    final controller = SystemSurfacesController(repository);
     addTearDown(controller.dispose);
 
     await controller.initialize();

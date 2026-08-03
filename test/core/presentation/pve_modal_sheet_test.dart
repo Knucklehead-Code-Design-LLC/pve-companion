@@ -7,7 +7,7 @@ void main() {
   testWidgets('keeps the workspace at its natural size while a sheet is open', (
     WidgetTester tester,
   ) async {
-    final _RouteObserver routeObserver = _RouteObserver();
+    final routeObserver = _RouteObserver();
 
     await tester.pumpWidget(
       CupertinoApp(
@@ -57,10 +57,8 @@ void main() {
       ),
     );
 
-    final Finder workspace = find.byKey(
-      const ValueKey<String>('workspace-surface'),
-    );
-    final Rect workspaceRect = tester.getRect(workspace);
+    final workspace = find.byKey(const ValueKey<String>('workspace-surface'));
+    final workspaceRect = tester.getRect(workspace);
 
     await tester.tap(find.text('Show sheet'));
     await tester.pumpAndSettle();
@@ -129,7 +127,7 @@ void main() {
     await tester.tap(find.text('Show sheet'));
     await tester.pumpAndSettle();
 
-    final Rect contentRect = tester.getRect(
+    final contentRect = tester.getRect(
       find.byKey(const ValueKey<String>('desktop-sheet-content')),
     );
     expect(contentRect.width, lessThanOrEqualTo(1110));

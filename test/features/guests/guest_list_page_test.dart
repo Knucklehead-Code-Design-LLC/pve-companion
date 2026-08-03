@@ -4,7 +4,6 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
-import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 import 'package:pve_companion/features/guests/presentation/guest_list_page.dart';
@@ -46,7 +45,7 @@ void main() {
     expect(find.text('Showing 1 of 4 guests'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    final Finder stoppedFilter = find.text('Stopped').first;
+    final stoppedFilter = find.text('Stopped').first;
     await tester.tap(stoppedFilter);
     await tester.pump();
 
@@ -57,8 +56,8 @@ void main() {
   testWidgets('keeps templates out of the stopped inventory', (
     WidgetTester tester,
   ) async {
-    final ClusterOverviewSnapshot base = healthyDatacenterSnapshot();
-    final ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    final base = healthyDatacenterSnapshot();
+    final snapshot = ClusterOverviewSnapshot(
       version: base.version,
       nodes: base.nodes,
       guests: <PveGuest>[
@@ -95,7 +94,7 @@ void main() {
     expect(find.text('Templates'), findsWidgets);
     expect(find.text('Showing all 5 guests'), findsOneWidget);
 
-    final Finder stoppedFilter = find.text('Stopped').first;
+    final stoppedFilter = find.text('Stopped').first;
     await tester.tap(stoppedFilter);
     await tester.pump();
 
@@ -119,7 +118,7 @@ void main() {
   testWidgets('does not present unreported guest vCPU allocation as zero', (
     WidgetTester tester,
   ) async {
-    const ClusterOverviewSnapshot snapshot = ClusterOverviewSnapshot(
+    const snapshot = ClusterOverviewSnapshot(
       version: PveVersion(version: '9.0'),
       nodes: <ClusterNode>[ClusterNode(name: 'pve-01', status: 'online')],
       guests: <PveGuest>[
@@ -239,7 +238,7 @@ void main() {
   ) async {
     await tester.binding.setSurfaceSize(const Size(1440, 900));
     addTearDown(() => tester.binding.setSurfaceSize(null));
-    final ClusterOverviewController controller = await readyDashboardController(
+    final controller = await readyDashboardController(
       healthyDatacenterSnapshot(),
     );
     addTearDown(controller.dispose);

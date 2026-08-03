@@ -6,8 +6,7 @@ void main() {
   testWidgets('supports reachability scheduling on iOS and macOS', (
     WidgetTester tester,
   ) async {
-    final AppleDatacenterBackgroundMonitorScheduler scheduler =
-        AppleDatacenterBackgroundMonitorScheduler();
+    final scheduler = AppleDatacenterBackgroundMonitorScheduler();
     try {
       debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
       expect(scheduler.isSupported, isTrue);

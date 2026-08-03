@@ -59,7 +59,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
 
   @override
   Widget build(BuildContext context) {
-    final ClusterOverviewSnapshot? snapshot = widget.controller.snapshot;
+    final snapshot = widget.controller.snapshot;
     return PvePrimaryScrollView(
       title: 'Nodes',
       showsSliverNavigationBar: widget.showsSliverNavigationBar,
@@ -87,17 +87,14 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   }
 
   Widget _buildContent(BuildContext context, ClusterOverviewSnapshot snapshot) {
-    final bool usesDesktopInspector =
+    final usesDesktopInspector =
         Theme.of(context).platform == TargetPlatform.macOS &&
         PveAppleLayout.usesWidePresentation(context);
-    final DatacenterHealth health = DatacenterHealthEvaluator.evaluate(
-      snapshot,
-    );
-    final List<DatacenterNodeHealth> nodes = List<DatacenterNodeHealth>.of(
-      health.nodes,
-    )..sort(_compareNodes);
-    final String searchQuery = _searchController.text.trim().toLowerCase();
-    final List<DatacenterNodeHealth> visibleNodes = nodes
+    final health = DatacenterHealthEvaluator.evaluate(snapshot);
+    final nodes = List<DatacenterNodeHealth>.of(health.nodes)
+      ..sort(_compareNodes);
+    final searchQuery = _searchController.text.trim().toLowerCase();
+    final visibleNodes = nodes
         .where(
           (DatacenterNodeHealth node) =>
               _filter == _NodeFilter.all ||
@@ -109,26 +106,26 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               node.node.name.toLowerCase().contains(searchQuery),
         )
         .toList(growable: false);
-    final int onlineCount = nodes
+    final onlineCount = nodes
         .where((DatacenterNodeHealth node) => node.node.isOnline)
         .length;
-    final int attentionCount = nodes
+    final attentionCount = nodes
         .where(
           (DatacenterNodeHealth node) =>
               node.state != DatacenterHealthState.healthy,
         )
         .length;
-    final List<DatacenterNodeHealth> nodesWithCpuCores = nodes
+    final nodesWithCpuCores = nodes
         .where((DatacenterNodeHealth node) => node.node.cpuCores != null)
         .toList(growable: false);
-    final int? totalCores = nodesWithCpuCores.isEmpty
+    final totalCores = nodesWithCpuCores.isEmpty
         ? null
         : nodesWithCpuCores.fold<int>(
             0,
             (int total, DatacenterNodeHealth node) =>
                 total + node.node.cpuCores!,
           );
-    final bool canOpenNodeOperations =
+    final canOpenNodeOperations =
         widget.session != null && widget.onNodeOperation != null;
     final Widget search = CupertinoSearchTextField(
       controller: _searchController,
@@ -276,38 +273,36 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     required bool canOpenNodeOperations,
     required bool usesDesktopInspector,
   }) {
-    final DatacenterNodeHealth selectedNode = visibleNodes.firstWhere(
+    final selectedNode = visibleNodes.firstWhere(
       (DatacenterNodeHealth node) => node.node.name == _selectedNodeName,
       orElse: () => visibleNodes.first,
     );
     final Widget cards = LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool twoColumns = constraints.maxWidth >= 760;
-        final double width = twoColumns
+        final twoColumns = constraints.maxWidth >= 760;
+        final width = twoColumns
             ? (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
         return Wrap(
           spacing: 12,
           runSpacing: 12,
-          children: visibleNodes
-              .map(
-                (DatacenterNodeHealth node) => SizedBox(
-                  width: width,
-                  child: _NodeDetailCard(
-                    node: node,
-                    selected:
-                        usesDesktopInspector &&
-                        node.node.name == selectedNode.node.name,
-                    onTap: usesDesktopInspector
-                        ? () =>
-                              setState(() => _selectedNodeName = node.node.name)
-                        : canOpenNodeOperations
-                        ? () => _showNode(node)
-                        : null,
-                  ),
+          children: <Widget>[
+            for (final node in visibleNodes)
+              SizedBox(
+                width: width,
+                child: _NodeDetailCard(
+                  node: node,
+                  selected:
+                      usesDesktopInspector &&
+                      node.node.name == selectedNode.node.name,
+                  onTap: usesDesktopInspector
+                      ? () => setState(() => _selectedNodeName = node.node.name)
+                      : canOpenNodeOperations
+                      ? () => _showNode(node)
+                      : null,
                 ),
-              )
-              .toList(growable: false),
+              ),
+          ],
         );
       },
     );
@@ -327,8 +322,8 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   }
 
   Future<void> _showNode(DatacenterNodeHealth node) async {
-    final ProxmoxSession? session = widget.session;
-    final Future<void> Function()? onNodeOperation = widget.onNodeOperation;
+    final session = widget.session;
+    final onNodeOperation = widget.onNodeOperation;
     if (session == null || onNodeOperation == null) {
       return;
     }
@@ -358,7 +353,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   }
 
   int _compareNodes(DatacenterNodeHealth left, DatacenterNodeHealth right) {
-    final int result = switch (_sort) {
+    final result = switch (_sort) {
       _NodeInventorySort.attention => _attentionRank(
         left,
       ).compareTo(_attentionRank(right)),
@@ -388,7 +383,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     required int visibleCount,
     required int totalCount,
   }) {
-    final String noun = totalCount == 1 ? 'node' : 'nodes';
+    final noun = totalCount == 1 ? 'node' : 'nodes';
     if (visibleCount == totalCount) {
       return 'Showing all $totalCount $noun';
     }
@@ -399,26 +394,24 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       node.cpu?.progressFraction ?? node.memory?.progressFraction ?? -1;
 
   Future<void> _showSortPicker(BuildContext context) async {
-    final _NodeInventorySort? sort =
-        await showCupertinoModalPopup<_NodeInventorySort>(
-          context: context,
-          builder: (BuildContext popupContext) => CupertinoActionSheet(
-            title: const Text('Sort node inventory'),
-            actions: _NodeInventorySort.values
-                .map(
-                  (_NodeInventorySort value) => CupertinoActionSheetAction(
-                    isDefaultAction: value == _sort,
-                    onPressed: () => Navigator.of(popupContext).pop(value),
-                    child: Text(value.label),
-                  ),
-                )
-                .toList(growable: false),
-            cancelButton: CupertinoActionSheetAction(
-              onPressed: () => Navigator.of(popupContext).pop(),
-              child: const Text('Cancel'),
+    final sort = await showCupertinoModalPopup<_NodeInventorySort>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Sort node inventory'),
+        actions: <Widget>[
+          for (final value in _NodeInventorySort.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _sort,
+              onPressed: () => Navigator.of(popupContext).pop(value),
+              child: Text(value.label),
             ),
-          ),
-        );
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
     if (sort != null && mounted) {
       setState(() => _sort = sort);
     }
@@ -438,10 +431,10 @@ class _NodeDetailCard extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = node.node.isOnline
+    final tone = node.node.isOnline
         ? dashboardToneForHealth(node.state)
         : DatacenterDashboardTone.critical;
-    final Color accent = dashboardToneColor(context, tone);
+    final accent = dashboardToneColor(context, tone);
     return Semantics(
       selected: selected,
       label: '${node.node.name}, ${_statusLabel(node)} node',
@@ -536,14 +529,14 @@ class _NodeInventoryInspectorState extends State<_NodeInventoryInspector> {
 
   @override
   Widget build(BuildContext context) {
-    final ClusterNode node = widget.node.node;
-    final List<PveGuest> hostedGuests = widget.snapshot.guests
+    final node = widget.node.node;
+    final hostedGuests = widget.snapshot.guests
         .where((PveGuest guest) => guest.node == node.name)
         .toList(growable: false);
-    final int runningGuests = hostedGuests
+    final runningGuests = hostedGuests
         .where((PveGuest guest) => guest.isRunning)
         .length;
-    final List<ClusterTask> recentTasks = widget.snapshot.tasks
+    final recentTasks = widget.snapshot.tasks
         .where((ClusterTask task) => task.node == node.name)
         .toList(growable: false);
     return CupertinoContextMenu(
@@ -686,9 +679,9 @@ class _PressureRow extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final DatacenterDashboardTone tone = dashboardToneForPressure(pressure);
-    final Color accent = dashboardToneColor(context, tone);
-    final String value = datacenterPressureValueLabel(
+    final tone = dashboardToneForPressure(pressure);
+    final accent = dashboardToneColor(context, tone);
+    final value = datacenterPressureValueLabel(
       pressure,
       includeByteTotals: useBytes,
     );

@@ -25,7 +25,7 @@ class ClusterLoadStateView extends StatelessWidget {
       title: 'Datacenter unavailable',
       message: controller.errorMessage ?? 'Cluster data could not be loaded.',
       actionLabel: 'Try Again',
-      onAction: () => onRetry(),
+      onAction: onRetry,
       destructive: true,
     );
   }
@@ -43,7 +43,7 @@ class ClusterRefreshFailureBanner extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final Color warning = PveAppleColors.warning(context);
+    final warning = PveAppleColors.warning(context);
     return Semantics(
       container: true,
       liveRegion: true,
@@ -73,7 +73,7 @@ class ClusterRefreshFailureBanner extends StatelessWidget {
             CupertinoButton(
               padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 8),
               minimumSize: const Size(44, 40),
-              onPressed: () => onRetry(),
+              onPressed: onRetry,
               child: const Text('Retry'),
             ),
           ],

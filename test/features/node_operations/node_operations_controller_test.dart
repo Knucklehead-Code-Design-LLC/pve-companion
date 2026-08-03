@@ -10,12 +10,10 @@ import 'package:pve_companion/features/node_operations/domain/pve_node_details.d
 
 void main() {
   test('refreshes node details and the parent after a failed task', () async {
-    final List<String> refreshEvents = <String>[];
-    final _TerminalNodeRepository repository = _TerminalNodeRepository(
-      refreshEvents,
-    );
-    final Completer<void> parentRefreshed = Completer<void>();
-    final NodeOperationsController controller = NodeOperationsController(
+    final refreshEvents = <String>[];
+    final repository = _TerminalNodeRepository(refreshEvents);
+    final parentRefreshed = Completer<void>();
+    final controller = NodeOperationsController(
       repository: repository,
       session: const _FailedTaskSession(),
       seed: _seed,
@@ -38,9 +36,9 @@ void main() {
   test(
     'prevents duplicate node power requests while an action is in flight',
     () async {
-      final _ControlledNodeRepository repository = _ControlledNodeRepository();
-      final Completer<void> terminalTask = Completer<void>();
-      final NodeOperationsController controller = NodeOperationsController(
+      final repository = _ControlledNodeRepository();
+      final terminalTask = Completer<void>();
+      final controller = NodeOperationsController(
         repository: repository,
         session: const _SuccessfulTaskSession(),
         seed: _seed,
@@ -51,8 +49,8 @@ void main() {
       );
       addTearDown(controller.dispose);
 
-      final Future<bool> firstAction = controller.shutdownNode();
-      final bool secondAction = await controller.shutdownNode();
+      final firstAction = controller.shutdownNode();
+      final secondAction = await controller.shutdownNode();
 
       expect(secondAction, isFalse);
       expect(repository.powerRequests, 1);
