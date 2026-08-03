@@ -76,5 +76,4 @@ claiming parity before it exists.
 - Guest deletion or bulk destructive actions.
 - Persisting session tickets or certificate private material.
 - Public-internet assumptions for PVE management access.
-- Background analytics, background alert monitoring, push notifications, or
-  package-heavy architecture.
+- Background analytics, push notifications, or package-heavy architecture.

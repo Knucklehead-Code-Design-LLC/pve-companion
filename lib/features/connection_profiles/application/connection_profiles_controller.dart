@@ -42,22 +42,53 @@ class ConnectionAttemptResult {
   final String? certificateFingerprint;
 }
 
+enum BackgroundSessionAttemptKind {
+  connected,
+  unavailable,
+  credentialsUnavailable,
+  indeterminate,
+}
+
 /// An authenticated session created for a short-lived background read. Unlike
 /// [ConnectionAttemptResult], it never changes the active workspace or the
 /// selected profile. Its caller must close a successful [session].
 class BackgroundSessionAttempt {
-  const BackgroundSessionAttempt._({this.session, this.message});
+  const BackgroundSessionAttempt._({
+    required this.kind,
+    this.session,
+    this.message,
+  });
 
   const BackgroundSessionAttempt.connected(ProxmoxSession session)
-    : this._(session: session);
+    : this._(kind: BackgroundSessionAttemptKind.connected, session: session);
 
   const BackgroundSessionAttempt.unavailable(String message)
-    : this._(message: message);
+    : this._(kind: BackgroundSessionAttemptKind.unavailable, message: message);
 
+  const BackgroundSessionAttempt.credentialsUnavailable(String message)
+    : this._(
+        kind: BackgroundSessionAttemptKind.credentialsUnavailable,
+        message: message,
+      );
+
+  const BackgroundSessionAttempt.indeterminate(String message)
+    : this._(
+        kind: BackgroundSessionAttemptKind.indeterminate,
+        message: message,
+      );
+
+  final BackgroundSessionAttemptKind kind;
   final ProxmoxSession? session;
   final String? message;
 
-  bool get isConnected => session != null;
+  bool get isConnected => kind == BackgroundSessionAttemptKind.connected;
+
+  /// Only a successful connection or a transport failure describes
+  /// reachability. Authentication, certificate, API, and decoding failures
+  /// leave the monitor's last known state intact.
+  bool get canMonitorReachability =>
+      kind == BackgroundSessionAttemptKind.connected ||
+      kind == BackgroundSessionAttemptKind.unavailable;
 }
 
 class ConnectionProfilesController extends ChangeNotifier {
@@ -190,14 +221,25 @@ class ConnectionProfilesController extends ChangeNotifier {
     return _connect(profile, credentials, persistCredentials: false);
   }
 
-  /// Opens a transient authenticated session for a dashboard that reads more
-  /// than one saved datacenter. It intentionally does not persist selection,
-  /// mutate the active session, or retain a credential outside the call.
+  /// Reports whether a profile can be authenticated without presenting UI.
+  /// Background monitoring must never classify an unreadable Keychain item as
+  /// a datacenter outage.
+  Future<bool> hasStoredCredentials(ConnectionProfile profile) async {
+    try {
+      return await _credentialStore.read(profile) != null;
+    } catch (_) {
+      return false;
+    }
+  }
+
+  /// Opens a transient authenticated session for a read outside the active
+  /// workspace. It intentionally does not persist selection, mutate the active
+  /// session, or retain a credential outside the call.
   Future<BackgroundSessionAttempt> openBackgroundSession(
     ConnectionProfile profile,
   ) async {
     if (_isDisposed) {
-      return const BackgroundSessionAttempt.unavailable(
+      return const BackgroundSessionAttempt.indeterminate(
         'The app is no longer available to connect.',
       );
     }
@@ -205,12 +247,12 @@ class ConnectionProfilesController extends ChangeNotifier {
     try {
       credentials = await _credentialStore.read(profile);
     } catch (_) {
-      return const BackgroundSessionAttempt.unavailable(
+      return const BackgroundSessionAttempt.credentialsUnavailable(
         'Credentials could not be read from the local Keychain.',
       );
     }
     if (credentials == null) {
-      return const BackgroundSessionAttempt.unavailable(
+      return const BackgroundSessionAttempt.credentialsUnavailable(
         'Credentials are not saved on this device.',
       );
     }
@@ -221,21 +263,19 @@ class ConnectionProfilesController extends ChangeNotifier {
       );
       if (_isDisposed) {
         session.close();
-        return const BackgroundSessionAttempt.unavailable(
+        return const BackgroundSessionAttempt.indeterminate(
           'The app is no longer available to connect.',
         );
       }
       return BackgroundSessionAttempt.connected(session);
-    } on ProxmoxTlsTrustRequiredException {
-      return const BackgroundSessionAttempt.unavailable(
-        'The saved certificate fingerprint no longer matches this server.',
-      );
+    } on ProxmoxNetworkException catch (error) {
+      return BackgroundSessionAttempt.unavailable(error.message);
     } on ProxmoxApiException catch (error) {
-      return BackgroundSessionAttempt.unavailable(error.message);
+      return BackgroundSessionAttempt.indeterminate(error.message);
     } on FormatException catch (error) {
-      return BackgroundSessionAttempt.unavailable(error.message);
+      return BackgroundSessionAttempt.indeterminate(error.message);
     } catch (_) {
-      return const BackgroundSessionAttempt.unavailable(
+      return const BackgroundSessionAttempt.indeterminate(
         'A background connection could not be established.',
       );
     }

@@ -1,5 +1,8 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 
+import '../../../core/presentation/pve_haptics.dart';
 import '../domain/pve_guest.dart';
 
 Future<bool> confirmGuestPowerAction(
@@ -39,5 +42,13 @@ Future<bool> confirmGuestPowerAction(
       );
     },
   );
-  return approved == true;
+  if (approved == true) {
+    unawaited(
+      action.isPotentiallyDisruptive
+          ? PveHaptics.warning()
+          : PveHaptics.mediumImpact(),
+    );
+    return true;
+  }
+  return false;
 }

@@ -235,6 +235,59 @@ void main() {
     expect(controller.statusForProfile(profile), ConnectionStatus.failed);
     expect(controller.failureMessageForProfile(profile), 'Access denied.');
   });
+
+  test(
+    'does not classify an authentication failure as a reachability loss',
+    () async {
+      final ConnectionProfile profile = _passwordProfile();
+      final _MemoryCredentialStore credentialStore = _MemoryCredentialStore();
+      await credentialStore.save(
+        profile.id,
+        const ConnectionCredentials.password('saved-only-in-keychain'),
+      );
+      final ConnectionProfilesController controller =
+          ConnectionProfilesController(
+            profileRepository: _MemoryProfileRepository()
+              ..saved = SavedConnectionProfiles(
+                profiles: <ConnectionProfile>[profile],
+                selectedProfileId: profile.id,
+              ),
+            credentialStore: credentialStore,
+            connectionRepository: _FakeConnectionRepository(
+              failure: const ProxmoxUnauthorizedException('Access denied.'),
+            ),
+          );
+      addTearDown(controller.dispose);
+      await controller.initialize();
+
+      final BackgroundSessionAttempt attempt = await controller
+          .openBackgroundSession(profile);
+
+      expect(attempt.kind, BackgroundSessionAttemptKind.indeterminate);
+      expect(attempt.canMonitorReachability, isFalse);
+    },
+  );
+
+  test(
+    'does not classify a disposed controller as a reachability loss',
+    () async {
+      final ConnectionProfile profile = _passwordProfile();
+      final ConnectionProfilesController controller =
+          ConnectionProfilesController(
+            profileRepository: _MemoryProfileRepository(),
+            credentialStore: _MemoryCredentialStore(),
+            connectionRepository: _FakeConnectionRepository(),
+          );
+      await controller.initialize();
+      controller.dispose();
+
+      final BackgroundSessionAttempt attempt = await controller
+          .openBackgroundSession(profile);
+
+      expect(attempt.kind, BackgroundSessionAttemptKind.indeterminate);
+      expect(attempt.canMonitorReachability, isFalse);
+    },
+  );
 }
 
 ConnectionProfile _passwordProfile() {

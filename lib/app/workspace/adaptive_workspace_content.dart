@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/services.dart';
 
 import '../../core/presentation/pve_apple_ui.dart';
+import '../../core/presentation/pve_haptics.dart';
 import 'workspace_section.dart';
 
 /// The workspace's navigation layout, based on the available window width.
@@ -143,8 +146,13 @@ class AdaptiveWorkspaceContent extends StatelessWidget {
     );
   }
 
-  void _selectIndex(int index) =>
-      onSectionChanged(WorkspaceSection.values[index]);
+  void _selectIndex(int index) {
+    if (index == section.index) {
+      return;
+    }
+    unawaited(PveHaptics.selection());
+    onSectionChanged(WorkspaceSection.values[index]);
+  }
 
   double _sidebarWidth({
     required WorkspaceLayoutSize layout,

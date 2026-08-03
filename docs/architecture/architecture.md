@@ -16,13 +16,13 @@ domain, data, application, and presentation code.
 | `backups` | Backup destination, schedule, copy, and recent-task projection. |
 | `incidents` | Deterministic incident derivation from a cluster snapshot and incident-center presentation. |
 | `fleet` | Bounded-concurrency, short-lived read-only portfolio refreshes across saved profiles. |
-| `notifications` | Local foreground incident preferences, de-duplication state, and the Apple-notification adapter. |
+| `notifications` | Local incident and reachability-change preferences, de-duplication state, opportunistic Apple background checks, and Apple platform adapters. |
 | `cluster_administration` | Read-only cluster membership, quorum, HA, and safe option audit. |
 | `console` | In-app RFB/VNC negotiation, framebuffer/input adaptation, and guest-console presentation. |
 | `storage` and `tasks` | Cluster-overview presentation, with Storage also owning the Backup Center entry point. |
 | `system_surfaces` | Privacy-safe aggregate projection, WidgetKit snapshot publication, and Datacenter Watch lifecycle. |
 | `core/api` | Proxmox HTTP/WebSocket session, headers, in-memory ticket handling, response validation, typed transport errors, and a shared task contract/poller. |
-| `core/platform` | Narrow Apple platform channels for local notifications. |
+| `core/platform` | Narrow Apple platform channels for local notifications, background-refresh scheduling, and haptics. |
 | `core/security` | Keychain adapter and certificate fingerprint derivation. |
 | `app/workspace` | Adaptive shell navigation, server selection, and workspace-level actions. |
 | `core/presentation` | Apple-first colors, typography, value formatting, inset groups, list rows, progress, status, section, state, ring-chart, resource-meter, and responsive insight primitives shared across features. |
@@ -139,9 +139,15 @@ feature widgets and performs no network requests.
   authentication response without exposing credentials, tickets, or CSRF
   values to feature or presentation code. It uses the same certificate-pinned
   HTTP client as the API session and closes when the app leaves the foreground.
-- Local notifications are evaluated only after a foreground refresh. Their
-  persisted state contains incident IDs rather than credentials; visible alert
-  content may include the profile display name and incident title.
+- Local incident notifications are evaluated after a foreground refresh. On
+  iPhone and iPad, the app can use an iOS-granted Background App Refresh
+  window to make an authenticated reachability probe for the selected profile
+  when it has a saved Keychain credential. On macOS, an
+  `NSBackgroundActivityScheduler` activity makes the same probe while the app
+  remains running. Apple controls this timing, so the app does not claim
+  continuous monitoring. Persisted notification state contains incident IDs
+  and a reachability baseline rather than credentials; visible alert content
+  may include the profile display name and incident title.
 
 ## Adaptive Apple UI
 

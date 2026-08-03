@@ -26,7 +26,8 @@ PVE Companion is deliberately useful without claiming web-interface parity:
   operational problems first, then capacity, workload, nodes, and recent
   reported activity. Stopped guests remain workload inventory, not incidents.
 - Apple-native navigation and interaction patterns: stable tabs on iPhone,
-  collapsible sliver titles and pull-to-refresh, a persistent sidebar on iPad
+  collapsible sliver titles, tactile confirmation, and pull-to-refresh, a
+  persistent sidebar on iPad
   and Mac, real navigation bars, anchored command menus, Cupertino search and
   filters, inset grouped data, scoped sheets, clear confirmations, Dynamic
   Type support, and system light/dark appearance.
@@ -54,8 +55,12 @@ PVE Companion is deliberately useful without claiming web-interface parity:
   relevant guest detail so their scope is unambiguous.
 - A short-lived, read-only multi-datacenter portfolio for all saved Keychain
   profiles. It never changes the active workspace while collecting status.
-- Local, opt-in foreground alerts for newly observed critical or attention
-  incidents. They supplement—not replace—Proxmox or a real monitoring system.
+- Local alerts for newly observed critical or attention incidents, plus
+  opt-in reachability-change alerts on iPhone, iPad, and Mac for the selected
+  datacenter when its credential is saved in Keychain. OS-scheduled background
+  timing is controlled by Apple (and macOS checks require the app to remain
+  running), so they supplement—not replace—Proxmox or a real monitoring
+  system.
 - A Cluster Administration audit surface for membership, quorum, HA state, and
   safe datacenter options. Cluster topology, storage, and network changes stay
   in Proxmox's full administration UI.
@@ -66,8 +71,9 @@ PVE Companion is deliberately useful without claiming web-interface parity:
   flows for iPhone, iPad, and Mac.
 
 It does **not** yet provide guest creation or deletion, migration, restore,
-SPICE, package upgrades, cluster/network topology editing, roles, background
-monitoring, or a replacement for every Proxmox VE web surface. See the
+SPICE, package upgrades, cluster/network topology editing, roles, continuous
+background monitoring, or a replacement for every Proxmox VE web surface. See
+the
 [web-parity roadmap](docs/roadmap.md) for the planned path.
 
 ## Security model
@@ -89,9 +95,12 @@ port `8006` directly to the public internet.
   never exposed to UI code, and discarded after setup or when the app leaves
   the foreground.
 - Local incident notifications can display the selected profile name and an
-  incident title (such as a node or storage name) on the device. They are
-  evaluated only after a foreground refresh and may be visible to someone with
-  physical access to the device.
+  incident title (such as a node or storage name) on the device. Local
+  connection-change notifications can also be evaluated during Apple-scheduled
+  background activity for the selected profile when its credential is saved in
+  Keychain. These checks are opportunistic; on macOS the app must remain
+  running, and alerts may be visible to someone with physical access to the
+  device.
 - A sanitized aggregate snapshot is stored in the app's private Apple App
   Group so the WidgetKit extension can render it. Datacenter Watch is started
   only by the user and shows aggregate health/counts on visible system

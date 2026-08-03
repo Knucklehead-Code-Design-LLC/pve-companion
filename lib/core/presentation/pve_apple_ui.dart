@@ -1,7 +1,10 @@
 import 'dart:async';
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart' show Divider, Tooltip;
+
+import 'pve_haptics.dart';
 
 abstract final class PveAppleLayout {
   /// Named layout tiers keep desktop and tablet behavior consistent across pages.
@@ -269,20 +272,32 @@ class PvePrimaryScrollView extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final bool supportsPullToRefresh = switch (defaultTargetPlatform) {
+      TargetPlatform.iOS || TargetPlatform.android => true,
+      _ => false,
+    };
+    final ScrollPhysics physics = supportsPullToRefresh
+        ? const BouncingScrollPhysics(parent: AlwaysScrollableScrollPhysics())
+        : const AlwaysScrollableScrollPhysics();
     return CustomScrollView(
       key: scrollViewKey,
-      physics: const AlwaysScrollableScrollPhysics(),
+      physics: physics,
       slivers: <Widget>[
         if (showsSliverNavigationBar)
           CupertinoSliverNavigationBar(
             transitionBetweenRoutes: false,
-            stretch: true,
+            // A stretching navigation bar consumes the leading overscroll that
+            // CupertinoSliverRefreshControl needs to arm on a touch device.
+            stretch: !supportsPullToRefresh,
             largeTitle: Text(title),
             leading: navigationLeading,
             trailing: navigationTrailing,
           ),
+        // Keep the established desktop refresh affordance. The touch-specific
+        // physics and navigation-bar behavior above are what make the same
+        // control reachable by a pull gesture on iPhone and iPad.
         if (onRefresh != null)
-          CupertinoSliverRefreshControl(onRefresh: onRefresh),
+          CupertinoSliverRefreshControl(onRefresh: onRefresh!),
         ...slivers,
       ],
     );
@@ -352,7 +367,12 @@ class PveSlidingSegmentedControl<T extends Object> extends StatelessWidget {
                   : ExcludeSemantics(child: entry.value),
             ),
         },
-        onValueChanged: onValueChanged,
+        onValueChanged: (T? value) {
+          if (value != null && value != groupValue) {
+            unawaited(PveHaptics.selection());
+          }
+          onValueChanged(value);
+        },
       ),
     );
   }

@@ -45,6 +45,13 @@ class _PveCompanionAppState extends State<PveCompanionApp>
     return _handleDeepLink(routeInformation.uri);
   }
 
+  @override
+  void didChangeAppLifecycleState(AppLifecycleState state) {
+    if (state == AppLifecycleState.resumed) {
+      unawaited(widget.controller.refreshNotificationState());
+    }
+  }
+
   void _handleInitialDeepLink() {
     final String route =
         WidgetsBinding.instance.platformDispatcher.defaultRouteName;

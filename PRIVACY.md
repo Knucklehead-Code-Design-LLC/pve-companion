@@ -38,11 +38,21 @@ Visible system surfaces can be seen by someone with physical access to your
 device. Datacenter Watch can be ended from the app.
 
 If you enable local datacenter alerts, the app stores only the identifiers of
-currently active incidents in device preferences so it does not repeat the
-same alert during subsequent foreground refreshes. A visible alert can include
-the profile display name and an incident title, which may contain a node or
-storage name. Alerts are evaluated after a signed-in, foreground refresh; the
-app does not operate a background monitoring or push-notification service.
+currently active incidents and the last reachability state for each monitored
+profile in device preferences. This prevents repeat alerts and lets the app
+identify a later reconnect. A visible alert can include the profile display
+name and an incident title, which may contain a node or storage name.
+
+On iPhone, iPad, and Mac, if you allow notifications and leave **Connection
+changes** enabled, PVE Companion can ask the operating system for background
+activity time to authenticate directly to the selected profile when its
+credential is stored in Apple Keychain. iOS decides if and when to grant a
+short Background App Refresh window. macOS schedules an energy-aware activity
+only while PVE Companion remains running. The app does not run continuously,
+wake on a fixed schedule, receive a remote push, or send your profile data to
+the developer. A background check can alert when a previously reachable
+datacenter becomes unavailable and when it becomes reachable again. A selected
+profile without a saved Keychain credential is skipped.
 
 You can remove stored profile metadata and its associated Keychain credential
 by deleting the server profile in the app. Deleting the app also removes its
