@@ -26,6 +26,7 @@ jobs:
       - name: Set up Flutter
         env:
           FLUTTER_ROOT: ${{ runner.temp }}/flutter
+          FLUTTER_VERSION: 3.44.8
           FLUTTER_REVISION: 058e0af2c2b57e369d905a03ac9748b0ebf543c6
         run: |
           if [ -x "$FLUTTER_ROOT/bin/flutter" ]; then
@@ -33,8 +34,10 @@ jobs:
           else
             git init "$FLUTTER_ROOT"
             git -C "$FLUTTER_ROOT" remote add origin https://github.com/flutter/flutter.git
-            git -C "$FLUTTER_ROOT" fetch --depth=1 origin "$FLUTTER_REVISION"
-            git -C "$FLUTTER_ROOT" checkout --detach FETCH_HEAD
+            git -C "$FLUTTER_ROOT" fetch --depth=1 origin \
+              "refs/tags/$FLUTTER_VERSION:refs/tags/$FLUTTER_VERSION"
+            git -C "$FLUTTER_ROOT" checkout --detach "refs/tags/$FLUTTER_VERSION"
+            test "$(git -C "$FLUTTER_ROOT" rev-parse HEAD)" = "$FLUTTER_REVISION"
           fi
           echo "$FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
           "$FLUTTER_ROOT/bin/flutter" --version
