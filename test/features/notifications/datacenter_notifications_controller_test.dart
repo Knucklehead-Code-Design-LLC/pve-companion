@@ -1,6 +1,7 @@
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/features/incidents/domain/datacenter_incident.dart';
 import 'package:pve_companion/features/notifications/application/datacenter_notifications_controller.dart';
+import 'package:pve_companion/features/notifications/data/datacenter_background_monitor_scheduler.dart';
 import 'package:pve_companion/features/notifications/data/datacenter_notification_preferences_repository.dart';
 import 'package:pve_companion/features/notifications/data/local_notification_repository.dart';
 import 'package:pve_companion/features/notifications/domain/datacenter_notification_preferences.dart';
@@ -73,6 +74,100 @@ void main() {
       controller.dispose();
     },
   );
+
+  test(
+    'alerts once when a monitored datacenter disconnects and reconnects',
+    () async {
+      final _PreferencesRepository preferences = _PreferencesRepository();
+      final _LocalNotifications notifications = _LocalNotifications();
+      final _BackgroundMonitorScheduler scheduler =
+          _BackgroundMonitorScheduler();
+      final DatacenterNotificationsController controller =
+          DatacenterNotificationsController(
+            preferencesRepository: preferences,
+            notificationRepository: notifications,
+            backgroundMonitorScheduler: scheduler,
+          );
+      addTearDown(controller.dispose);
+
+      await controller.setBackgroundMonitoringEligible(true);
+      await controller.initialize();
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: true,
+      );
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: false,
+      );
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: false,
+      );
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: true,
+      );
+
+      expect(
+        notifications.events.map(
+          (DatacenterNotificationEvent event) => event.identifier,
+        ),
+        <String>['connection:pa:1', 'connection:pa:2'],
+      );
+      expect(
+        notifications.events.first.title,
+        'PA Datacenter: Connection unavailable',
+      );
+      expect(notifications.events.last.title, 'PA Datacenter: Reconnected');
+      expect(
+        preferences.value.connectionObservationsByProfile['pa']?.isAvailable,
+        isTrue,
+      );
+      expect(scheduler.enabledStates, <bool>[true]);
+    },
+  );
+
+  test(
+    'clears connection baselines and cancels monitoring when disabled',
+    () async {
+      final _PreferencesRepository preferences = _PreferencesRepository();
+      final _LocalNotifications notifications = _LocalNotifications();
+      final _BackgroundMonitorScheduler scheduler =
+          _BackgroundMonitorScheduler();
+      final DatacenterNotificationsController controller =
+          DatacenterNotificationsController(
+            preferencesRepository: preferences,
+            notificationRepository: notifications,
+            backgroundMonitorScheduler: scheduler,
+          );
+      addTearDown(controller.dispose);
+
+      await controller.setBackgroundMonitoringEligible(true);
+      await controller.initialize();
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: false,
+      );
+      await controller.updateSettings(
+        const DatacenterNotificationSettings(connectionStatusEnabled: false),
+      );
+      await controller.evaluateConnection(
+        'pa',
+        'PA Datacenter',
+        isAvailable: true,
+      );
+
+      expect(preferences.value.connectionObservationsByProfile, isEmpty);
+      expect(scheduler.enabledStates, <bool>[true, false]);
+      expect(notifications.events, isEmpty);
+    },
+  );
 }
 
 class _PreferencesRepository
@@ -107,4 +202,20 @@ class _LocalNotifications implements LocalNotificationRepository {
   @override
   Future<LocalNotificationAuthorization> requestAuthorization() async =>
       LocalNotificationAuthorization.authorized;
+}
+
+class _BackgroundMonitorScheduler
+    implements DatacenterBackgroundMonitorScheduler {
+  final List<bool> enabledStates = <bool>[];
+
+  @override
+  bool get isSupported => true;
+
+  @override
+  Future<void> complete({required bool success}) async {}
+
+  @override
+  Future<void> synchronize({required bool enabled}) async {
+    enabledStates.add(enabled);
+  }
 }

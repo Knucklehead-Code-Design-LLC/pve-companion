@@ -1,4 +1,5 @@
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
@@ -84,6 +85,9 @@ class _NotificationContent extends StatelessWidget {
         authorization != LocalNotificationAuthorization.unsupported;
     final bool authorized =
         authorization == LocalNotificationAuthorization.authorized;
+    final bool backgroundMonitoringAvailable =
+        controller.backgroundMonitoringAvailable;
+    final bool runsOnMacOS = defaultTargetPlatform == TargetPlatform.macOS;
     final DatacenterNotificationSettings settings = controller.settings;
     return ListView(
       controller: scrollController,
@@ -92,7 +96,7 @@ class _NotificationContent extends StatelessWidget {
         Text('Datacenter alerts', style: PveAppleText.title2(context)),
         const SizedBox(height: 6),
         Text(
-          'Alerts are evaluated after PVE Companion refreshes a signed-in datacenter. They are not a replacement for a background monitoring service or Proxmox’s own alerting.',
+          'Incident alerts are evaluated when PVE Companion refreshes a datacenter. Connection alerts use Apple-scheduled background activity and remain an opportunistic signal, not a replacement for Proxmox monitoring.',
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
@@ -119,11 +123,12 @@ class _NotificationContent extends StatelessWidget {
           margin: EdgeInsets.zero,
           header: const Text('WHEN TO ALERT'),
           footer: Text(
-            supported
-                ? authorized
-                      ? 'A new matching incident can create one local alert when this app refreshes the datacenter. Alerts are not continuously monitored in the background.'
-                      : 'You can choose alert types now, but no local alerts are delivered until macOS notifications are allowed.'
-                : 'Notifications are available on iPhone, iPad, and Mac builds of PVE Companion.',
+            _notificationFooter(
+              supported: supported,
+              authorized: authorized,
+              backgroundMonitoringAvailable: backgroundMonitoringAvailable,
+              runsOnMacOS: runsOnMacOS,
+            ),
           ),
           children: <Widget>[
             CupertinoFormRow(
@@ -154,11 +159,52 @@ class _NotificationContent extends StatelessWidget {
                     : null,
               ),
             ),
+            if (backgroundMonitoringAvailable)
+              CupertinoFormRow(
+                prefix: const Text('Connection changes'),
+                helper: Text(_connectionChangesHelper(runsOnMacOS)),
+                child: CupertinoSwitch(
+                  value: settings.connectionStatusEnabled,
+                  onChanged: supported
+                      ? (bool value) => controller.updateSettings(
+                          settings.copyWith(connectionStatusEnabled: value),
+                        )
+                      : null,
+                ),
+              ),
           ],
         ),
       ],
     );
   }
+}
+
+String _notificationFooter({
+  required bool supported,
+  required bool authorized,
+  required bool backgroundMonitoringAvailable,
+  required bool runsOnMacOS,
+}) {
+  if (!supported) {
+    return 'Notifications are available on iPhone, iPad, and Mac builds of PVE Companion.';
+  }
+  if (!authorized) {
+    return 'You can choose alert types now, but no local alerts are delivered until notifications are allowed in Settings.';
+  }
+  if (!backgroundMonitoringAvailable) {
+    return 'A new matching incident can create one local alert after refresh. Background connection checks are available on iPhone, iPad, and Mac.';
+  }
+  if (runsOnMacOS) {
+    return 'A new matching incident can create one local alert after refresh. Connection checks require saved Keychain credentials and PVE Companion to remain running; macOS controls timing, so they are not continuous or real-time.';
+  }
+  return 'A new matching incident can create one local alert after refresh. Connection checks require saved Keychain credentials and Apple-scheduled activity; timing is system-controlled, so they are not continuous or real-time.';
+}
+
+String _connectionChangesHelper(bool runsOnMacOS) {
+  if (runsOnMacOS) {
+    return 'Alert when a macOS background check finds that the selected datacenter is unavailable or reachable again. PVE Companion must remain running.';
+  }
+  return 'Alert when a background check finds that the selected datacenter is unavailable or reachable again.';
 }
 
 class _NotificationPermissionCard extends StatelessWidget {
@@ -244,11 +290,11 @@ String _authorizationDetail(
   LocalNotificationAuthorization authorization,
 ) => switch (authorization) {
   LocalNotificationAuthorization.authorized =>
-    'Local alerts are available when PVE Companion refreshes this datacenter. They do not provide continuous background monitoring.',
+    'Local alerts are available. Apple platforms can also request opportunistic background checks for saved-credential datacenters.',
   LocalNotificationAuthorization.denied =>
-    'Local alerts are blocked. Enable notifications for PVE Companion in System Settings on Mac or Settings on iPhone and iPad to receive alerts after refreshes.',
+    'Local alerts are blocked. Enable notifications for PVE Companion in Settings to receive incident and connection-change alerts.',
   LocalNotificationAuthorization.undetermined =>
-    'Allow local alerts for new matching incidents found during app refreshes.',
+    'Allow local alerts for new matching incidents and connection changes.',
   LocalNotificationAuthorization.unsupported =>
     'This runtime does not support Apple local notifications.',
 };

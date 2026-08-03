@@ -1,6 +1,7 @@
 import 'package:flutter/foundation.dart';
 
 import '../../incidents/domain/datacenter_incident.dart';
+import '../data/datacenter_background_monitor_scheduler.dart';
 import '../data/datacenter_notification_preferences_repository.dart';
 import '../data/local_notification_repository.dart';
 import '../domain/datacenter_notification_preferences.dart';
@@ -9,8 +10,12 @@ class DatacenterNotificationsController extends ChangeNotifier {
   DatacenterNotificationsController({
     required DatacenterNotificationPreferencesRepository preferencesRepository,
     required LocalNotificationRepository notificationRepository,
+    DatacenterBackgroundMonitorScheduler? backgroundMonitorScheduler,
   }) : _preferencesRepository = preferencesRepository,
-       _notificationRepository = notificationRepository;
+       _notificationRepository = notificationRepository,
+       _backgroundMonitorScheduler =
+           backgroundMonitorScheduler ??
+           const UnsupportedDatacenterBackgroundMonitorScheduler();
 
   factory DatacenterNotificationsController.unsupported() =>
       DatacenterNotificationsController(
@@ -21,6 +26,7 @@ class DatacenterNotificationsController extends ChangeNotifier {
 
   final DatacenterNotificationPreferencesRepository _preferencesRepository;
   final LocalNotificationRepository _notificationRepository;
+  final DatacenterBackgroundMonitorScheduler _backgroundMonitorScheduler;
 
   DatacenterNotificationPreferences _preferences =
       const DatacenterNotificationPreferences.defaults();
@@ -28,6 +34,7 @@ class DatacenterNotificationsController extends ChangeNotifier {
       LocalNotificationAuthorization.undetermined;
   bool _isLoading = true;
   bool _isRequestingAuthorization = false;
+  bool _backgroundMonitoringEligible = false;
   String? _errorMessage;
   bool _isDisposed = false;
 
@@ -40,6 +47,21 @@ class DatacenterNotificationsController extends ChangeNotifier {
   bool get isRequestingAuthorization => _isRequestingAuthorization;
 
   String? get errorMessage => _errorMessage;
+
+  bool get backgroundMonitoringAvailable =>
+      _backgroundMonitorScheduler.isSupported;
+
+  /// Enables scheduling only when the selected profile has a Keychain
+  /// credential that can be used without user interaction.
+  Future<void> setBackgroundMonitoringEligible(bool eligible) async {
+    if (_backgroundMonitoringEligible == eligible) {
+      return;
+    }
+    _backgroundMonitoringEligible = eligible;
+    if (!_isLoading) {
+      await _synchronizeBackgroundMonitoring();
+    }
+  }
 
   Future<void> initialize() async {
     try {
@@ -62,19 +84,27 @@ class DatacenterNotificationsController extends ChangeNotifier {
       if (!_isDisposed) {
         _isLoading = false;
         _notify();
+        await _synchronizeBackgroundMonitoring();
       }
     }
   }
 
   Future<void> updateSettings(DatacenterNotificationSettings settings) async {
+    final bool disablesConnectionMonitoring =
+        _preferences.settings.connectionStatusEnabled &&
+        !settings.connectionStatusEnabled;
     final DatacenterNotificationPreferences updated = _preferences.copyWith(
       settings: settings,
+      connectionObservationsByProfile: disablesConnectionMonitoring
+          ? <String, DatacenterConnectionObservation>{}
+          : null,
     );
     _preferences = updated;
     _errorMessage = null;
     _notify();
     try {
       await _preferencesRepository.save(updated);
+      await _synchronizeBackgroundMonitoring();
     } catch (_) {
       if (!_isDisposed) {
         _errorMessage = 'Notification preferences could not be saved.';
@@ -102,15 +132,20 @@ class DatacenterNotificationsController extends ChangeNotifier {
       if (!_isDisposed) {
         _isRequestingAuthorization = false;
         _notify();
+        await _synchronizeBackgroundMonitoring();
       }
     }
   }
 
-  /// Removes local de-duplication state when its corresponding server profile
-  /// is removed. Incident identifiers are not credentials, but retaining them
-  /// after the profile is gone provides no user value.
+  /// Removes local de-duplication and reachability state when its corresponding
+  /// server profile is removed. This state is not a credential, but retaining
+  /// it after the profile is gone provides no user value.
   Future<void> removeProfile(String profileId) async {
-    if (!_preferences.activeIncidentIdsByProfile.containsKey(profileId)) {
+    final bool hasIncidentState = _preferences.activeIncidentIdsByProfile
+        .containsKey(profileId);
+    final bool hasConnectionState = _preferences.connectionObservationsByProfile
+        .containsKey(profileId);
+    if (!hasIncidentState && !hasConnectionState) {
       return;
     }
     final Map<String, List<String>> remaining = <String, List<String>>{};
@@ -120,7 +155,18 @@ class DatacenterNotificationsController extends ChangeNotifier {
         remaining[entry.key] = List<String>.from(entry.value);
       }
     }
-    _preferences = _preferences.copyWith(activeIncidentIdsByProfile: remaining);
+    final Map<String, DatacenterConnectionObservation> remainingObservations =
+        <String, DatacenterConnectionObservation>{};
+    for (final MapEntry<String, DatacenterConnectionObservation> entry
+        in _preferences.connectionObservationsByProfile.entries) {
+      if (entry.key != profileId) {
+        remainingObservations[entry.key] = entry.value;
+      }
+    }
+    _preferences = _preferences.copyWith(
+      activeIncidentIdsByProfile: remaining,
+      connectionObservationsByProfile: remainingObservations,
+    );
     try {
       await _preferencesRepository.save(_preferences);
     } catch (_) {
@@ -131,10 +177,9 @@ class DatacenterNotificationsController extends ChangeNotifier {
     }
   }
 
-  /// Evaluates only a fresh foreground refresh. This is intentionally not
-  /// presented as a background monitoring service: iOS/macOS can deliver an
-  /// alert while the app is active, but the app does not run its own server or
-  /// bypass platform background limits.
+  /// Evaluates incidents after a completed datacenter refresh. This remains
+  /// distinct from the reachability monitor so a data authorization failure is
+  /// never misreported as a disconnected server.
   Future<void> evaluate(
     String profileId,
     String profileName,
@@ -190,6 +235,71 @@ class DatacenterNotificationsController extends ChangeNotifier {
     }
   }
 
+  /// Records an authenticated reachability probe. The first probe for a
+  /// profile establishes a baseline; subsequent transitions can alert the
+  /// user when local notifications are permitted.
+  Future<void> evaluateConnection(
+    String profileId,
+    String profileName, {
+    required bool isAvailable,
+  }) async {
+    if (!settings.connectionStatusEnabled) {
+      return;
+    }
+    final DatacenterConnectionObservation? previous =
+        _preferences.connectionObservationsByProfile[profileId];
+    final bool stateChanged =
+        previous != null && previous.isAvailable != isAvailable;
+    final int transitionCount = stateChanged
+        ? previous.transitionCount + 1
+        : previous?.transitionCount ?? 0;
+    final DatacenterConnectionObservation updated =
+        DatacenterConnectionObservation(
+          isAvailable: isAvailable,
+          transitionCount: transitionCount,
+        );
+    final Map<String, DatacenterConnectionObservation> observations =
+        Map<String, DatacenterConnectionObservation>.from(
+          _preferences.connectionObservationsByProfile,
+        )..[profileId] = updated;
+    _preferences = _preferences.copyWith(
+      connectionObservationsByProfile: observations,
+    );
+    try {
+      await _preferencesRepository.save(_preferences);
+    } catch (_) {
+      if (!_isDisposed) {
+        _errorMessage = 'Connection monitoring state could not be saved.';
+        _notify();
+      }
+      return;
+    }
+    if (!stateChanged ||
+        _authorization != LocalNotificationAuthorization.authorized) {
+      return;
+    }
+    final DatacenterNotificationEvent event = isAvailable
+        ? DatacenterNotificationEvent(
+            identifier: 'connection:$profileId:$transitionCount',
+            title: '$profileName: Reconnected',
+            body: 'PVE Companion can reach this datacenter again.',
+          )
+        : DatacenterNotificationEvent(
+            identifier: 'connection:$profileId:$transitionCount',
+            title: '$profileName: Connection unavailable',
+            body:
+                'PVE Companion could not reach this datacenter during its most recent check.',
+          );
+    try {
+      await _notificationRepository.deliver(event);
+    } catch (_) {
+      if (!_isDisposed) {
+        _errorMessage = 'A datacenter connection alert could not be delivered.';
+        _notify();
+      }
+    }
+  }
+
   bool _matchesEnabledRule(
     DatacenterIncident incident,
   ) => switch (incident.severity) {
@@ -201,6 +311,22 @@ class DatacenterNotificationsController extends ChangeNotifier {
       incident.severity == DatacenterIncidentSeverity.critical
       ? 'Critical alert'
       : 'Attention needed';
+
+  Future<void> _synchronizeBackgroundMonitoring() async {
+    final bool enabled =
+        settings.connectionStatusEnabled &&
+        _authorization == LocalNotificationAuthorization.authorized &&
+        _backgroundMonitoringEligible;
+    try {
+      await _backgroundMonitorScheduler.synchronize(enabled: enabled);
+    } catch (_) {
+      if (!_isDisposed) {
+        _errorMessage =
+            'Background connection monitoring could not be scheduled.';
+        _notify();
+      }
+    }
+  }
 
   void _notify() {
     if (!_isDisposed) {

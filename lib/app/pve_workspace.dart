@@ -1,8 +1,11 @@
+import 'dart:async';
+
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 
 import '../core/api/proxmox_session.dart';
 import '../core/presentation/pve_apple_ui.dart';
+import '../core/presentation/pve_haptics.dart';
 import '../features/cluster_administration/presentation/cluster_administration_sheet.dart';
 import '../features/cluster_overview/application/cluster_overview_controller.dart';
 import '../features/cluster_overview/domain/cluster_overview_snapshot.dart';
@@ -356,8 +359,17 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     Future<ConnectionAttemptResult> Function() attempt,
   ) async {
     final ConnectionAttemptResult result = await attempt();
-    if (!mounted || result.kind == ConnectionAttemptKind.connected) {
+    if (!mounted) {
       return;
+    }
+    if (result.kind == ConnectionAttemptKind.connected) {
+      unawaited(PveHaptics.success());
+      return;
+    }
+    if (result.kind == ConnectionAttemptKind.certificateTrustRequired) {
+      unawaited(PveHaptics.warning());
+    } else if (result.kind == ConnectionAttemptKind.failed) {
+      unawaited(PveHaptics.error());
     }
     await _showConnectionError(_connectionErrorMessage(result));
   }

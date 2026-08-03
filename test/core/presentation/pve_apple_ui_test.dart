@@ -1,6 +1,8 @@
+import 'dart:async';
 import 'dart:ui' show Tristate;
 
 import 'package:flutter/cupertino.dart';
+import 'package:flutter/foundation.dart';
 import 'package:flutter/rendering.dart' show SemanticsNode;
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
@@ -107,6 +109,51 @@ void main() {
     expect(semantics, startsWith('Data refreshed at '));
     expect(find.byTooltip(semantics), findsOneWidget);
     expect(find.textContaining('Data refreshed'), findsOneWidget);
+  });
+
+  testWidgets('pulling down refreshes a mobile primary scroll view', (
+    WidgetTester tester,
+  ) async {
+    debugDefaultTargetPlatformOverride = TargetPlatform.iOS;
+    try {
+      final Completer<void> refreshCompleter = Completer<void>();
+      int refreshCount = 0;
+
+      await tester.pumpWidget(
+        CupertinoApp(
+          home: CupertinoPageScaffold(
+            child: PvePrimaryScrollView(
+              title: 'Datacenter',
+              onRefresh: () {
+                refreshCount += 1;
+                return refreshCompleter.future;
+              },
+              slivers: const <Widget>[
+                SliverToBoxAdapter(child: SizedBox(height: 900)),
+              ],
+            ),
+          ),
+        ),
+      );
+
+      final CustomScrollView scrollView = tester.widget<CustomScrollView>(
+        find.byType(CustomScrollView),
+      );
+      expect(scrollView.physics, isA<BouncingScrollPhysics>());
+
+      await tester.drag(
+        find.byType(CustomScrollView),
+        const Offset(0, 180),
+        touchSlopY: 0,
+      );
+      await tester.pump();
+
+      expect(refreshCount, 1);
+      refreshCompleter.complete();
+      await tester.pumpAndSettle();
+    } finally {
+      debugDefaultTargetPlatformOverride = null;
+    }
   });
 
   testWidgets('selected segmented options announce selection', (

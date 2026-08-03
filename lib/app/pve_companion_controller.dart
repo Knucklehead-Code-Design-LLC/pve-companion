@@ -14,7 +14,9 @@ import '../features/connection_profiles/domain/connection_credentials.dart';
 import '../features/connection_profiles/domain/connection_profile.dart';
 import '../features/fleet/application/fleet_overview_controller.dart';
 import '../features/incidents/domain/datacenter_incident_evaluator.dart';
+import '../features/notifications/application/datacenter_background_monitor.dart';
 import '../features/notifications/application/datacenter_notifications_controller.dart';
+import '../features/notifications/data/datacenter_background_monitor_scheduler.dart';
 import '../features/notifications/data/datacenter_notification_preferences_repository.dart';
 import '../features/notifications/data/local_notification_repository.dart';
 import '../features/system_surfaces/application/system_surfaces_controller.dart';
@@ -61,15 +63,7 @@ class PveCompanionController extends ChangeNotifier {
   static Future<PveCompanionController> create() async {
     final SharedPreferences preferences = await SharedPreferences.getInstance();
     final ConnectionProfilesController connectionProfiles =
-        ConnectionProfilesController(
-          profileRepository: JsonConnectionProfileRepository(
-            SharedPreferencesConnectionProfilePreferences(preferences),
-          ),
-          credentialStore: KeychainConnectionCredentialStore(
-            KeychainSecureValueStore(),
-          ),
-          connectionRepository: HttpProxmoxConnectionRepository(),
-        );
+        _createConnectionProfiles(preferences);
     return PveCompanionController(
       connectionProfiles: connectionProfiles,
       clusterOverview: ClusterOverviewController(
@@ -81,14 +75,47 @@ class PveCompanionController extends ChangeNotifier {
         overviewRepository: ProxmoxClusterOverviewRepository(),
       ),
       notifications: DatacenterNotificationsController(
-        preferencesRepository:
-            SharedPreferencesDatacenterNotificationPreferencesRepository(
-              preferences,
-            ),
+        preferencesRepository: _createNotificationPreferencesRepository(
+          preferences,
+        ),
         notificationRepository: AppleLocalNotificationRepository(),
+        backgroundMonitorScheduler: AppleDatacenterBackgroundMonitorScheduler(),
       ),
     );
   }
+
+  /// Builds the short-lived service graph used for an OS-scheduled background
+  /// reachability pass. It intentionally excludes workspace and system-surface
+  /// state because that work has no UI dependency.
+  static Future<DatacenterBackgroundMonitor> createBackgroundMonitor() async {
+    final SharedPreferences preferences = await SharedPreferences.getInstance();
+    return DatacenterBackgroundMonitor(
+      connectionProfiles: _createConnectionProfiles(preferences),
+      notifications: DatacenterNotificationsController(
+        preferencesRepository: _createNotificationPreferencesRepository(
+          preferences,
+        ),
+        notificationRepository: AppleLocalNotificationRepository(),
+        backgroundMonitorScheduler: AppleDatacenterBackgroundMonitorScheduler(),
+      ),
+    );
+  }
+
+  static ConnectionProfilesController _createConnectionProfiles(
+    SharedPreferences preferences,
+  ) => ConnectionProfilesController(
+    profileRepository: JsonConnectionProfileRepository(
+      SharedPreferencesConnectionProfilePreferences(preferences),
+    ),
+    credentialStore: KeychainConnectionCredentialStore(
+      KeychainSecureValueStore(),
+    ),
+    connectionRepository: HttpProxmoxConnectionRepository(),
+  );
+
+  static SharedPreferencesDatacenterNotificationPreferencesRepository
+  _createNotificationPreferencesRepository(SharedPreferences preferences) =>
+      SharedPreferencesDatacenterNotificationPreferencesRepository(preferences);
 
   final ConnectionProfilesController _connectionProfiles;
   final ClusterOverviewController _clusterOverview;
@@ -97,6 +124,7 @@ class PveCompanionController extends ChangeNotifier {
   final DatacenterNotificationsController _notifications;
   WorkspaceSection _requestedWorkspaceSection = WorkspaceSection.overview;
   int _workspaceNavigationRequestId = 0;
+  Future<void>? _notificationSynchronization;
   bool _isDisposed = false;
 
   ConnectionProfilesController get connectionProfiles => _connectionProfiles;
@@ -117,8 +145,9 @@ class PveCompanionController extends ChangeNotifier {
     await Future.wait<void>(<Future<void>>[
       _connectionProfiles.initialize(),
       _systemSurfaces.initialize(),
-      _notifications.initialize(),
+      _synchronizeNotifications(),
     ]);
+    await _synchronizeBackgroundMonitoringEligibility();
     if (_connectionProfiles.profiles.isEmpty) {
       await _systemSurfaces.clearSnapshot();
     }
@@ -172,6 +201,16 @@ class PveCompanionController extends ChangeNotifier {
   }
 
   Future<void> _activateConnectedWorkspace() async {
+    await _synchronizeNotifications();
+    final ConnectionProfile? profile = _connectionProfiles.selectedProfile;
+    if (profile != null) {
+      await _notifications.evaluateConnection(
+        profile.id,
+        profile.displayName,
+        isAvailable: true,
+      );
+    }
+    await _synchronizeBackgroundMonitoringEligibility();
     _clusterOverview.clear();
     await _systemSurfaces.clearSnapshot();
     await refreshCluster();
@@ -206,6 +245,12 @@ class PveCompanionController extends ChangeNotifier {
     ]);
   }
 
+  /// Reloads persisted notification state after the foreground app resumes.
+  /// A platform-scheduled background refresh can update reachability while this
+  /// controller is inactive, so foreground actions must not overwrite that
+  /// newer baseline.
+  Future<void> refreshNotificationState() => _synchronizeNotifications();
+
   void openWorkspaceSection(WorkspaceSection section) {
     _requestedWorkspaceSection = section;
     _workspaceNavigationRequestId += 1;
@@ -228,9 +273,36 @@ class PveCompanionController extends ChangeNotifier {
       await _systemSurfaces.clearSnapshot();
     }
     if (removed) {
+      await _synchronizeNotifications();
       await _notifications.removeProfile(profileId);
+      await _synchronizeBackgroundMonitoringEligibility();
     }
     return removed;
+  }
+
+  Future<void> _synchronizeNotifications() async {
+    final Future<void>? existing = _notificationSynchronization;
+    if (existing != null) {
+      await existing;
+      return;
+    }
+    final Future<void> synchronization = _notifications.initialize();
+    _notificationSynchronization = synchronization;
+    try {
+      await synchronization;
+    } finally {
+      if (identical(_notificationSynchronization, synchronization)) {
+        _notificationSynchronization = null;
+      }
+    }
+  }
+
+  Future<void> _synchronizeBackgroundMonitoringEligibility() async {
+    final ConnectionProfile? profile = _connectionProfiles.selectedProfile;
+    final bool eligible =
+        profile != null &&
+        await _connectionProfiles.hasStoredCredentials(profile);
+    await _notifications.setBackgroundMonitoringEligible(eligible);
   }
 
   void _notifyFromChild() {

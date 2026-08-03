@@ -12,6 +12,9 @@ class MainFlutterWindow: NSWindow {
     AppleLocalNotificationsPlugin.register(
       binaryMessenger: flutterViewController.engine.binaryMessenger
     )
+    AppleDatacenterBackgroundMonitorPlugin.register(
+      binaryMessenger: flutterViewController.engine.binaryMessenger
+    )
 
     super.awakeFromNib()
   }
