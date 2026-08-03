@@ -4,6 +4,7 @@ import '../../../core/api/proxmox_api_exception.dart';
 import '../../../core/api/proxmox_session.dart';
 import '../data/proxmox_cluster_overview_repository.dart';
 import '../domain/cluster_overview_snapshot.dart';
+import '../domain/datacenter_resource_history.dart';
 
 enum ClusterOverviewLoadState { idle, loading, ready, failed }
 
@@ -18,6 +19,9 @@ class ClusterOverviewController extends ChangeNotifier {
   DateTime? _lastUpdatedAt;
   int _requestEpoch = 0;
   bool _isDisposed = false;
+  static const int _maximumResourceHistorySamples = 24;
+  final List<DatacenterResourceSample> _resourceHistory =
+      <DatacenterResourceSample>[];
 
   ClusterOverviewLoadState get state => _state;
 
@@ -26,6 +30,11 @@ class ClusterOverviewController extends ChangeNotifier {
   String? get errorMessage => _errorMessage;
 
   DateTime? get lastUpdatedAt => _lastUpdatedAt;
+
+  /// Recent samples for this app session only. They are intentionally bounded
+  /// and are never presented as a server-provided or durable history.
+  List<DatacenterResourceSample> get resourceHistory =>
+      List<DatacenterResourceSample>.unmodifiable(_resourceHistory);
 
   Future<ClusterOverviewSnapshot?> refresh(ProxmoxSession session) async {
     final int requestEpoch = ++_requestEpoch;
@@ -39,7 +48,20 @@ class ClusterOverviewController extends ChangeNotifier {
         return null;
       }
       _snapshot = snapshot;
-      _lastUpdatedAt = DateTime.now();
+      final DateTime refreshedAt = DateTime.now();
+      _lastUpdatedAt = refreshedAt;
+      _resourceHistory.add(
+        DatacenterResourceSample.fromSnapshot(
+          snapshot,
+          capturedAt: refreshedAt,
+        ),
+      );
+      if (_resourceHistory.length > _maximumResourceHistorySamples) {
+        _resourceHistory.removeRange(
+          0,
+          _resourceHistory.length - _maximumResourceHistorySamples,
+        );
+      }
       _state = ClusterOverviewLoadState.ready;
       _notify();
       return snapshot;
@@ -61,6 +83,7 @@ class ClusterOverviewController extends ChangeNotifier {
     _snapshot = null;
     _errorMessage = null;
     _lastUpdatedAt = null;
+    _resourceHistory.clear();
     _notify();
   }
 

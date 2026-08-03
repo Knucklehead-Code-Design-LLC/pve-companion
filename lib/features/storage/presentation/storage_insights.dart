@@ -21,7 +21,9 @@ class StorageInsights extends StatelessWidget {
             title: 'Effective capacity',
             subtitle: summary.reportingPoolCount == 0
                 ? 'Capacity telemetry is not available'
-                : '${summary.reportingPoolCount}/${storages.length} pools reporting',
+                : 'Current reported capacity · ${summary.reportingPoolCount}/'
+                      '${storages.length} '
+                      '${storages.length == 1 ? 'pool' : 'pools'} reporting',
             child: summary.capacityBytes == null
                 ? _UnavailableCapacity(poolCount: storages.length)
                 : Row(
@@ -29,7 +31,7 @@ class StorageInsights extends StatelessWidget {
                       PveRingChart(
                         segments: <PveChartSegment>[
                           PveChartSegment(
-                            label: 'Used',
+                            label: 'Used now',
                             value: summary.usedBytes!.toDouble(),
                             color: _capacityColor(
                               context,
@@ -37,7 +39,7 @@ class StorageInsights extends StatelessWidget {
                             ),
                           ),
                           PveChartSegment(
-                            label: 'Available',
+                            label: 'Free now',
                             value: summary.availableBytes!.toDouble(),
                             color: PveAppleColors.separator(context),
                           ),
@@ -69,7 +71,7 @@ class StorageInsights extends StatelessWidget {
                             ),
                             const SizedBox(height: 14),
                             PveChartLegendItem(
-                              label: 'Total',
+                              label: 'Reported total',
                               value: formatPveBytes(summary.capacityBytes),
                               color: PveAppleColors.primary(context),
                             ),
@@ -84,7 +86,9 @@ class StorageInsights extends StatelessWidget {
           key: const ValueKey<String>('storage-topology'),
           child: PveInsightCard(
             title: 'Storage topology',
-            subtitle: '${summary.storageTypeCount} storage types configured',
+            subtitle:
+                '${summary.storageTypeCount} '
+                '${summary.storageTypeCount == 1 ? 'storage type' : 'storage types'} configured',
             child: Row(
               children: <Widget>[
                 PveRingChart(
@@ -126,7 +130,7 @@ class StorageInsights extends StatelessWidget {
                       ),
                       const SizedBox(height: 14),
                       PveChartLegendItem(
-                        label: 'Fully available',
+                        label: 'Availability coverage',
                         value: summary.availabilityReportedPoolCount == 0
                             ? 'Not reported'
                             : '${summary.fullyAvailablePoolCount}/'
@@ -173,7 +177,8 @@ class StorageNodeCoverage extends StatelessWidget {
     }
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool twoColumns = constraints.maxWidth >= 700;
+        final bool twoColumns =
+            constraints.maxWidth >= PveAppleLayout.controlBarStackBreakpoint;
         final double cardWidth = twoColumns
             ? (constraints.maxWidth - 12) / 2
             : constraints.maxWidth;
@@ -259,7 +264,7 @@ class _StorageNodeCard extends StatelessWidget {
           ),
           const SizedBox(height: 14),
           PveResourceMeter(
-            label: 'Visible capacity',
+            label: 'Current visible capacity',
             value: capacityCount == 0
                 ? 'Not reported'
                 : '${formatPveBytes(usedBytes)} / '

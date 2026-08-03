@@ -29,9 +29,14 @@ class TaskActivityInsights extends StatelessWidget {
                       color: PveAppleColors.success(context),
                     ),
                     PveChartSegment(
-                      label: 'Running',
+                      label: 'Active work',
                       value: summary.runningCount.toDouble(),
                       color: PveAppleColors.warning(context),
+                    ),
+                    PveChartSegment(
+                      label: 'Interactive sessions',
+                      value: summary.interactiveSessionCount.toDouble(),
+                      color: PveAppleColors.primary(context),
                     ),
                     PveChartSegment(
                       label: 'Failed',
@@ -50,7 +55,8 @@ class TaskActivityInsights extends StatelessWidget {
                   centerLabel: 'success',
                   semanticLabel:
                       '${summary.successfulCount} successful, '
-                      '${summary.runningCount} running, '
+                      '${summary.runningCount} active operations, '
+                      '${summary.interactiveSessionCount} interactive sessions, '
                       '${summary.failedCount} failed, '
                       '${summary.unknownCount} with unknown status',
                 ),
@@ -66,9 +72,15 @@ class TaskActivityInsights extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
-                        label: 'Running',
+                        label: 'Active work',
                         value: '${summary.runningCount}',
                         color: PveAppleColors.warning(context),
+                      ),
+                      const SizedBox(height: 12),
+                      PveChartLegendItem(
+                        label: 'Interactive sessions',
+                        value: '${summary.interactiveSessionCount}',
+                        color: PveAppleColors.primary(context),
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
@@ -168,6 +180,7 @@ class _ActivityFact extends StatelessWidget {
 class _TaskActivitySummary {
   const _TaskActivitySummary({
     required this.runningCount,
+    required this.interactiveSessionCount,
     required this.successfulCount,
     required this.failedCount,
     required this.unknownCount,
@@ -179,6 +192,7 @@ class _TaskActivitySummary {
 
   factory _TaskActivitySummary.from(List<ClusterTask> tasks) {
     int runningCount = 0;
+    int interactiveSessionCount = 0;
     int successfulCount = 0;
     int failedCount = 0;
     int unknownCount = 0;
@@ -193,7 +207,11 @@ class _TaskActivitySummary {
       typeCounts.update(task.type, (int count) => count + 1, ifAbsent: () => 1);
       switch (task.state) {
         case ClusterTaskState.running:
-          runningCount += 1;
+          if (task.isInteractiveSession) {
+            interactiveSessionCount += 1;
+          } else {
+            runningCount += 1;
+          }
         case ClusterTaskState.successful:
           successfulCount += 1;
         case ClusterTaskState.failed:
@@ -222,6 +240,7 @@ class _TaskActivitySummary {
     }
     return _TaskActivitySummary(
       runningCount: runningCount,
+      interactiveSessionCount: interactiveSessionCount,
       successfulCount: successfulCount,
       failedCount: failedCount,
       unknownCount: unknownCount,
@@ -237,6 +256,7 @@ class _TaskActivitySummary {
   }
 
   final int runningCount;
+  final int interactiveSessionCount;
   final int successfulCount;
   final int failedCount;
   final int unknownCount;

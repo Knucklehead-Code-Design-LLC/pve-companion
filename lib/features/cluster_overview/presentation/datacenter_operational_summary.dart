@@ -25,17 +25,20 @@ class DatacenterOperationalSummary extends StatelessWidget {
   Widget build(BuildContext context) {
     final int stoppedGuests =
         health.workload.totalGuests - health.workload.runningGuests;
-    final int reportingStorageCount = snapshot.storages
-        .where((ClusterStorage storage) => storage.capacityBytes != null)
-        .length;
-    final int storageUsedBytes = snapshot.storages.fold<int>(
+    final List<ClusterStorage> storagesWithCapacity = snapshot.storages
+        .where(
+          (ClusterStorage storage) =>
+              storage.usedBytes != null && storage.capacityBytes != null,
+        )
+        .toList(growable: false);
+    final int reportingStorageCount = storagesWithCapacity.length;
+    final int storageUsedBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) => total + (storage.usedBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.usedBytes!,
     );
-    final int storageCapacityBytes = snapshot.storages.fold<int>(
+    final int storageCapacityBytes = storagesWithCapacity.fold<int>(
       0,
-      (int total, ClusterStorage storage) =>
-          total + (storage.capacityBytes ?? 0),
+      (int total, ClusterStorage storage) => total + storage.capacityBytes!,
     );
 
     return PveAdaptiveCardGrid(
@@ -44,22 +47,23 @@ class DatacenterOperationalSummary extends StatelessWidget {
           key: const ValueKey<String>('dashboard-resource-pressure'),
           child: PveInsightCard(
             title: 'Resource pressure',
-            subtitle: 'Current cluster utilization',
+            subtitle:
+                'Current refresh · peak CPU and combined reported capacity',
             child: Column(
               children: <Widget>[
                 _DashboardPressureMeter(
-                  label: 'Peak CPU',
+                  label: 'Peak CPU now',
                   pressure: health.pressure.cpu,
                   detail: health.pressure.cpu?.representativeNodeName,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Memory',
+                  label: 'Memory allocated now',
                   pressure: health.pressure.memory,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Root disk',
+                  label: 'Root disk allocated now',
                   pressure: health.pressure.rootDisk,
                 ),
               ],
@@ -70,7 +74,9 @@ class DatacenterOperationalSummary extends StatelessWidget {
           key: const ValueKey<String>('dashboard-workload-composition'),
           child: PveInsightCard(
             title: 'Workload composition',
-            subtitle: '${snapshot.storages.length} storage pools configured',
+            subtitle:
+                '${snapshot.storages.length} '
+                '${snapshot.storages.length == 1 ? 'storage pool' : 'storage pools'} configured',
             footer: Row(
               children: <Widget>[
                 Expanded(
@@ -138,7 +144,11 @@ class DatacenterOperationalSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
-                        label: 'Storage used',
+                        label: reportingStorageCount == 0
+                            ? 'Current storage used'
+                            : 'Current storage used '
+                                  '($reportingStorageCount/'
+                                  '${snapshot.storages.length} reporting)',
                         value: reportingStorageCount == 0
                             ? 'Not reported'
                             : '${formatPveBytes(storageUsedBytes)} / '
@@ -176,7 +186,18 @@ class _DashboardPressureMeter extends StatelessWidget {
       value: datacenterPressureValueLabel(pressure),
       progress: pressure?.progressFraction,
       color: dashboardToneColor(context, tone),
-      detail: datacenterPressureReportingLabel(pressure, detail: detail),
+      detail: _pressureDetail(pressure, representativeNode: detail),
     );
+  }
+
+  String _pressureDetail(
+    DatacenterPressureMetric? pressure, {
+    required String? representativeNode,
+  }) {
+    final String scope = datacenterPressureScopeLabel(pressure);
+    if (representativeNode == null) {
+      return scope;
+    }
+    return '$representativeNode · $scope';
   }
 }

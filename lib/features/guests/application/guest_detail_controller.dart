@@ -16,15 +16,18 @@ class GuestDetailController extends ChangeNotifier {
     required ProxmoxSession session,
     required PveGuest guest,
     ProxmoxTaskClient? taskClient,
+    Future<void> Function()? onTaskTerminal,
   }) : _repository = repository,
        _session = session,
        _guest = guest,
-       _taskClient = taskClient ?? const ProxmoxTaskClient();
+       _taskClient = taskClient ?? const ProxmoxTaskClient(),
+       _onTaskTerminal = onTaskTerminal;
 
   final PveGuestRepository _repository;
   final ProxmoxSession _session;
   final PveGuest _guest;
   final ProxmoxTaskClient _taskClient;
+  final Future<void> Function()? _onTaskTerminal;
 
   GuestDetailLoadState _state = GuestDetailLoadState.loading;
   PveGuestDetails? _details;
@@ -219,6 +222,26 @@ class GuestDetailController extends ChangeNotifier {
     _notify();
     if (result.reachedTerminalState) {
       await load();
+      if (_isTaskStale(taskEpoch)) {
+        return;
+      }
+      await _notifyParentOfTerminalTask(taskEpoch);
+    }
+  }
+
+  Future<void> _notifyParentOfTerminalTask(int taskEpoch) async {
+    final Future<void> Function()? onTaskTerminal = _onTaskTerminal;
+    if (onTaskTerminal == null) {
+      return;
+    }
+    try {
+      await onTaskTerminal();
+    } catch (_) {
+      if (_isTaskStale(taskEpoch)) {
+        return;
+      }
+      _errorMessage ??= 'The workspace status could not be refreshed.';
+      _notify();
     }
   }
 

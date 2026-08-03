@@ -28,7 +28,7 @@ class DatacenterRecentActivitySection extends StatelessWidget {
       children: <Widget>[
         DatacenterDashboardSectionHeader(
           title: 'Recent reported activity',
-          actionLabel: 'View all',
+          actionLabel: 'View tasks',
           actionSemanticsLabel: 'View all tasks',
           onAction: onViewTasks,
         ),
@@ -79,9 +79,12 @@ class _DatacenterActivityItem extends StatelessWidget {
         ),
         title: Text('${task.type} on ${task.node}'),
         subtitle: Text('${task.user} · ${formatPveDateTime(task.startedAt)}'),
-        trailing: PveStatusPill(
-          label: statusLabel,
-          color: dashboardToneColor(context, tone),
+        trailing: MediaQuery.withClampedTextScaling(
+          maxScaleFactor: 1.25,
+          child: PveStatusPill(
+            label: statusLabel,
+            color: dashboardToneColor(context, tone),
+          ),
         ),
       ),
     );

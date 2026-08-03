@@ -45,6 +45,21 @@ void main() {
     expect(find.text('Password'), findsWidgets);
     expect(find.text('API Token'), findsOneWidget);
   });
+
+  testWidgets('labels the secret visibility control by its next action', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(const _ConnectionFormHarness());
+
+    expect(find.byTooltip('Show secret'), findsOneWidget);
+    expect(find.bySemanticsLabel('Show secret'), findsOneWidget);
+
+    await tester.tap(find.byTooltip('Show secret'));
+    await tester.pump();
+
+    expect(find.byTooltip('Hide secret'), findsOneWidget);
+    expect(find.bySemanticsLabel('Hide secret'), findsOneWidget);
+  });
 }
 
 class _ConnectionFormHarness extends StatefulWidget {

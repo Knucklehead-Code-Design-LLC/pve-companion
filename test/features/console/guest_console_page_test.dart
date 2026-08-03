@@ -23,6 +23,8 @@ void main() {
     );
     await tester.pump();
     expect(find.text('Connecting to guest console'), findsOneWidget);
+    expect(find.byTooltip('Reconnect guest console'), findsOneWidget);
+    expect(find.bySemanticsLabel('Reconnect guest console'), findsOneWidget);
 
     tester.binding.handleAppLifecycleStateChanged(AppLifecycleState.paused);
     await tester.pump();

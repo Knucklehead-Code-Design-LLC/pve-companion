@@ -62,6 +62,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
       repository: ProxmoxGuestRepository(),
       session: widget.session,
       guest: widget.guest,
+      onTaskTerminal: widget.onGuestPowerAction,
     );
     _controller.load();
   }
@@ -81,16 +82,19 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            CupertinoButton(
-              padding: const EdgeInsets.symmetric(horizontal: 7),
-              minimumSize: const Size(44, 36),
+            PveIconAction(
+              icon: CupertinoIcons.refresh,
+              label: 'Refresh guest details',
               onPressed: _controller.hasRunningTask ? null : _controller.load,
-              child: const Icon(CupertinoIcons.refresh, size: 19),
             ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: () => Navigator.of(context).pop(),
-              child: const Text('Done'),
+            Semantics(
+              button: true,
+              label: 'Close guest details',
+              child: CupertinoButton(
+                padding: EdgeInsets.zero,
+                onPressed: () => Navigator.of(context).pop(),
+                child: const Text('Close'),
+              ),
             ),
           ],
         ),
@@ -102,7 +106,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
           builder: (BuildContext context, Widget? child) {
             return Center(
               child: ConstrainedBox(
-                constraints: const BoxConstraints(maxWidth: 760),
+                constraints: const BoxConstraints(maxWidth: 1120),
                 child: Padding(
                   padding: const EdgeInsets.fromLTRB(20, 12, 20, 0),
                   child: _buildContent(context),
@@ -155,13 +159,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (!approved || !mounted) {
       return;
     }
-    final bool didRequestAction = await _controller.runPowerAction(action);
-    if (!mounted) {
-      return;
-    }
-    if (didRequestAction) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.runPowerAction(action);
   }
 
   Future<void> _createSnapshot() async {
@@ -172,10 +170,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (request == null || !mounted) {
       return;
     }
-    final bool submitted = await _controller.createSnapshot(request: request);
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.createSnapshot(request: request);
   }
 
   Future<void> _handleSnapshotAction(
@@ -186,15 +181,12 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
     if (!approved || !mounted) {
       return;
     }
-    final bool submitted = switch (action) {
+    await switch (action) {
       GuestSnapshotAction.rollback => await _controller.rollbackSnapshot(
         snapshot,
       ),
       GuestSnapshotAction.delete => await _controller.deleteSnapshot(snapshot),
     };
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
   }
 
   Future<void> _runBackup() async {
@@ -214,10 +206,7 @@ class _GuestDetailSheetState extends State<_GuestDetailSheet> {
         return;
       }
     }
-    final bool submitted = await _controller.createBackup(request);
-    if (submitted && mounted) {
-      await widget.onGuestPowerAction();
-    }
+    await _controller.createBackup(request);
   }
 
   Future<void> _editConfiguration() async {

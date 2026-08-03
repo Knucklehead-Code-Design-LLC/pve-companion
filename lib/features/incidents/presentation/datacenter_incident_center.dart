@@ -43,38 +43,7 @@ class DatacenterIncidentHighlights extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    if (snapshot.isEmpty) {
-      return PveInsetGroup(
-        color: PveAppleColors.success(context).withValues(alpha: 0.08),
-        padding: const EdgeInsets.all(16),
-        child: Row(
-          children: <Widget>[
-            Icon(
-              CupertinoIcons.check_mark_circled_solid,
-              color: PveAppleColors.success(context),
-              size: 22,
-            ),
-            const SizedBox(width: 11),
-            Expanded(
-              child: Column(
-                crossAxisAlignment: CrossAxisAlignment.start,
-                children: <Widget>[
-                  Text(
-                    'No active incidents',
-                    style: PveAppleText.title3(context),
-                  ),
-                  const SizedBox(height: 2),
-                  Text(
-                    'Node, storage, and recent task signals are within the configured attention thresholds.',
-                    style: PveAppleText.secondary(context),
-                  ),
-                ],
-              ),
-            ),
-          ],
-        ),
-      );
-    }
+    if (snapshot.isEmpty) return const SizedBox.shrink();
     final List<DatacenterIncident> visible = snapshot.incidents
         .take(3)
         .toList(growable: false);
@@ -271,11 +240,16 @@ class _IncidentRow extends StatelessWidget {
       ),
       title: Text(incident.title),
       subtitle: Text(incident.detail),
-      trailing: PveStatusPill(
-        label: incident.severity == DatacenterIncidentSeverity.critical
-            ? 'Critical'
-            : 'Attention',
-        color: color,
+      trailing: MediaQuery.withClampedTextScaling(
+        // The short status tag stays legible beside the incident title at
+        // very large text sizes; the actionable title and detail still scale.
+        maxScaleFactor: 1.25,
+        child: PveStatusPill(
+          label: incident.severity == DatacenterIncidentSeverity.critical
+              ? 'Critical'
+              : 'Attention',
+          color: color,
+        ),
       ),
       onTap: onTap,
     );

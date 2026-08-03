@@ -5,11 +5,13 @@ import '../../incidents/domain/datacenter_incident_evaluator.dart';
 import '../../incidents/presentation/datacenter_incident_center.dart';
 import '../domain/cluster_overview_snapshot.dart';
 import '../domain/datacenter_health.dart';
+import '../domain/datacenter_resource_history.dart';
 import 'cluster_load_state_view.dart';
 import 'datacenter_activity_section.dart';
 import 'datacenter_health_banner.dart';
 import 'datacenter_nodes_section.dart';
 import 'datacenter_operational_summary.dart';
+import 'datacenter_resource_trends.dart';
 
 class DatacenterDashboard extends StatelessWidget {
   const DatacenterDashboard({
@@ -25,6 +27,7 @@ class DatacenterDashboard extends StatelessWidget {
     required this.onViewStorage,
     required this.onViewTasks,
     this.refreshErrorMessage,
+    this.resourceHistory = const <DatacenterResourceSample>[],
   });
 
   final ClusterOverviewSnapshot snapshot;
@@ -38,12 +41,15 @@ class DatacenterDashboard extends StatelessWidget {
   final VoidCallback onViewStorage;
   final VoidCallback onViewTasks;
   final String? refreshErrorMessage;
+  final List<DatacenterResourceSample> resourceHistory;
 
   @override
   Widget build(BuildContext context) {
     return LayoutBuilder(
       builder: (BuildContext context, BoxConstraints constraints) {
-        final bool wideLayout = constraints.maxWidth >= 760;
+        final bool wideLayout = PveAppleLayout.usesExpandedWidth(
+          constraints.maxWidth,
+        );
         final incidents = DatacenterIncidentEvaluator.evaluate(snapshot);
         final EdgeInsets padding = EdgeInsets.symmetric(
           horizontal: wideLayout ? 28 : 16,
@@ -85,34 +91,35 @@ class DatacenterDashboard extends StatelessWidget {
                           onViewNodes: onViewNodes,
                         ),
                         const SizedBox(height: 28),
-                        PveSectionHeader(
-                          title: 'Incident Center',
-                          actionLabel: incidents.isEmpty ? null : 'View All',
-                          actionSemanticsLabel: 'View all datacenter incidents',
-                          onAction: incidents.isEmpty
-                              ? null
-                              : () => showDatacenterIncidentCenter(
-                                  context,
-                                  snapshot: incidents,
-                                  onViewNodes: onViewNodes,
-                                  onViewStorage: onViewStorage,
-                                  onViewTasks: onViewTasks,
-                                ),
-                        ),
-                        DatacenterIncidentHighlights(
-                          snapshot: incidents,
-                          onViewAll: () => showDatacenterIncidentCenter(
-                            context,
+                        if (!incidents.isEmpty) ...<Widget>[
+                          PveSectionHeader(
+                            title: 'Needs attention',
+                            actionLabel: 'View incidents',
+                            actionSemanticsLabel:
+                                'View all datacenter incidents',
+                            onAction: () => showDatacenterIncidentCenter(
+                              context,
+                              snapshot: incidents,
+                              onViewNodes: onViewNodes,
+                              onViewStorage: onViewStorage,
+                              onViewTasks: onViewTasks,
+                            ),
+                          ),
+                          DatacenterIncidentHighlights(
                             snapshot: incidents,
+                            onViewAll: () => showDatacenterIncidentCenter(
+                              context,
+                              snapshot: incidents,
+                              onViewNodes: onViewNodes,
+                              onViewStorage: onViewStorage,
+                              onViewTasks: onViewTasks,
+                            ),
                             onViewNodes: onViewNodes,
                             onViewStorage: onViewStorage,
                             onViewTasks: onViewTasks,
                           ),
-                          onViewNodes: onViewNodes,
-                          onViewStorage: onViewStorage,
-                          onViewTasks: onViewTasks,
-                        ),
-                        const SizedBox(height: 28),
+                          const SizedBox(height: 28),
+                        ],
                         const PveSectionHeader(title: 'Operational Summary'),
                         DatacenterOperationalSummary(
                           snapshot: snapshot,
@@ -120,6 +127,9 @@ class DatacenterDashboard extends StatelessWidget {
                           onViewGuests: onViewGuests,
                           onViewStorage: onViewStorage,
                         ),
+                        const SizedBox(height: 28),
+                        const PveSectionHeader(title: 'Recent change'),
+                        DatacenterResourceTrends(samples: resourceHistory),
                         const SizedBox(height: 28),
                         DatacenterNodesSection(
                           health: health,

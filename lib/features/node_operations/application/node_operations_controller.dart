@@ -16,15 +16,18 @@ class NodeOperationsController extends ChangeNotifier {
     required ProxmoxSession session,
     required PveNodeDetailsSeed seed,
     ProxmoxTaskClient? taskClient,
+    Future<void> Function()? onTaskTerminal,
   }) : _repository = repository,
        _session = session,
        _seed = seed,
-       _taskClient = taskClient ?? const ProxmoxTaskClient();
+       _taskClient = taskClient ?? const ProxmoxTaskClient(),
+       _onTaskTerminal = onTaskTerminal;
 
   final PveNodeRepository _repository;
   final ProxmoxSession _session;
   final PveNodeDetailsSeed _seed;
   final ProxmoxTaskClient _taskClient;
+  final Future<void> Function()? _onTaskTerminal;
 
   NodeOperationsLoadState _state = NodeOperationsLoadState.loading;
   PveNodeDetails? _details;
@@ -160,6 +163,26 @@ class NodeOperationsController extends ChangeNotifier {
     _notify();
     if (result.reachedTerminalState) {
       await load();
+      if (_isTaskStale(taskEpoch)) {
+        return;
+      }
+      await _notifyParentOfTerminalTask(taskEpoch);
+    }
+  }
+
+  Future<void> _notifyParentOfTerminalTask(int taskEpoch) async {
+    final Future<void> Function()? onTaskTerminal = _onTaskTerminal;
+    if (onTaskTerminal == null) {
+      return;
+    }
+    try {
+      await onTaskTerminal();
+    } catch (_) {
+      if (_isTaskStale(taskEpoch)) {
+        return;
+      }
+      _errorMessage ??= 'The workspace status could not be refreshed.';
+      _notify();
     }
   }
 

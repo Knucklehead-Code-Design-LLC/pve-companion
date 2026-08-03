@@ -20,6 +20,41 @@ void main() {
     expect(encoded.values.join(), isNot(contains('do-not-persist-in-json')));
   });
 
+  test(
+    'persists the last successful local connection separately from edits',
+    () {
+      final DateTime connectedAt = DateTime.utc(2026, 8, 2, 14, 30);
+      final ConnectionProfile profile = ConnectionProfile.password(
+        displayName: 'Lab',
+        endpoint: Uri.parse('https://pve.example.test:8006'),
+        username: 'admin',
+        realm: 'pam',
+      ).withLastConnectedAt(connectedAt);
+
+      final ConnectionProfile decoded = ConnectionProfile.fromJson(
+        profile.toJson(),
+      );
+
+      expect(decoded.lastConnectedAt, connectedAt);
+      expect(decoded.savedAt, profile.savedAt);
+    },
+  );
+
+  test('ignores an invalid optional last-connection timestamp', () {
+    final ConnectionProfile profile = ConnectionProfile.password(
+      displayName: 'Lab',
+      endpoint: Uri.parse('https://pve.example.test:8006'),
+      username: 'admin',
+      realm: 'pam',
+    );
+    final Map<String, Object?> encoded = profile.toJson()
+      ..['lastConnectedAt'] = 'not-a-date';
+
+    final ConnectionProfile decoded = ConnectionProfile.fromJson(encoded);
+
+    expect(decoded.lastConnectedAt, isNull);
+  });
+
   test('rejects non-HTTPS server URLs', () {
     expect(
       () => parseSecureEndpoint('http://pve.example.test:8006'),

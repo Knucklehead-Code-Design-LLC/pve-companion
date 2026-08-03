@@ -5,6 +5,22 @@ class PveBackupDestination {
 
   final ClusterStorage storage;
 
+  /// Whether Proxmox reports this storage as accepting backup content.
+  static bool supportsBackupContent(ClusterStorage storage) => storage.content
+      .toLowerCase()
+      .split(',')
+      .map((String item) => item.trim())
+      .contains('backup');
+
+  /// Whether an on-demand backup can safely offer this destination.
+  ///
+  /// A configured backup storage is not enough: without current availability
+  /// telemetry, the app cannot truthfully offer it as an executable target.
+  static bool isAvailableForExecution(ClusterStorage storage) =>
+      supportsBackupContent(storage) &&
+      storage.hasAvailabilityTelemetry &&
+      storage.isAvailable;
+
   String get name => storage.name;
 
   bool get isAvailable => storage.isAvailable;
@@ -62,14 +78,66 @@ class PveBackupCenterSnapshot {
     required this.schedules,
     required this.records,
     required this.recentTasks,
+    this.scheduleDataState = PveBackupDataState.available,
+    this.recordDataState = PveBackupDataState.available,
   });
 
   final List<PveBackupDestination> destinations;
   final List<PveBackupSchedule> schedules;
   final List<PveBackupRecord> records;
   final List<ClusterTask> recentTasks;
+  final PveBackupDataState scheduleDataState;
+  final PveBackupDataState recordDataState;
 
   int get failedRecentTaskCount => recentTasks
       .where((ClusterTask task) => task.state == ClusterTaskState.failed)
       .length;
+
+  PveBackupReadiness get readiness {
+    if (destinations.isEmpty) return PveBackupReadiness.noDestination;
+    if (scheduleDataState == PveBackupDataState.permissionLimited) {
+      return PveBackupReadiness.configurationUnreadable;
+    }
+    if (scheduleDataState == PveBackupDataState.unavailable ||
+        scheduleDataState == PveBackupDataState.partiallyAvailable) {
+      return PveBackupReadiness.configurationUnavailable;
+    }
+    if (schedules.isEmpty &&
+        scheduleDataState == PveBackupDataState.available) {
+      return PveBackupReadiness.noSchedule;
+    }
+    if (recordDataState == PveBackupDataState.permissionLimited) {
+      return PveBackupReadiness.copiesUnreadable;
+    }
+    if (recordDataState == PveBackupDataState.unavailable) {
+      return PveBackupReadiness.copiesUnavailable;
+    }
+    if (recordDataState == PveBackupDataState.partiallyAvailable) {
+      return PveBackupReadiness.copiesPartiallyReported;
+    }
+    if (records.isNotEmpty) return PveBackupReadiness.copiesReported;
+    return PveBackupReadiness.copiesNotReported;
+  }
+}
+
+enum PveBackupDataState {
+  available,
+  partiallyAvailable,
+  unavailable,
+  permissionLimited,
+  notConfigured,
+}
+
+/// A concise statement of what Backup Center can verify from currently
+/// reported data. It intentionally does not make a restore-readiness claim.
+enum PveBackupReadiness {
+  noDestination,
+  configurationUnreadable,
+  configurationUnavailable,
+  noSchedule,
+  copiesUnreadable,
+  copiesUnavailable,
+  copiesPartiallyReported,
+  copiesReported,
+  copiesNotReported,
 }

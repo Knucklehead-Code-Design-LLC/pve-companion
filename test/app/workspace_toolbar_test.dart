@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/app/workspace/workspace_toolbar.dart';
+import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 import 'package:pve_companion/features/connection_profiles/domain/connection_profile.dart';
 
 void main() {
@@ -48,16 +49,17 @@ void main() {
 
     expect(find.byType(CupertinoNavigationBar), findsOneWidget);
     expect(find.text('Datacenter'), findsOneWidget);
+    expect(find.byTooltip('Workspace actions and settings'), findsOneWidget);
     final int initialPushCount = routeObserver.pushCount;
 
-    await tester.tap(find.bySemanticsLabel('More datacenter actions'));
+    await tester.tap(find.bySemanticsLabel('Workspace actions and settings'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Refresh Datacenter'), findsOneWidget);
-    expect(find.text('Manage Servers'), findsOneWidget);
-    expect(find.text('Datacenter Portfolio'), findsOneWidget);
-    expect(find.text('Notifications'), findsOneWidget);
-    expect(find.text('Cluster Administration'), findsOneWidget);
+    expect(find.text('Refresh data'), findsOneWidget);
+    expect(find.text('Manage servers'), findsOneWidget);
+    expect(find.text('Datacenter portfolio'), findsOneWidget);
+    expect(find.text('Notification settings'), findsOneWidget);
+    expect(find.text('Cluster administration'), findsOneWidget);
     expect(find.byType(CupertinoActionSheet), findsNothing);
     expect(routeObserver.pushCount, initialPushCount);
 
@@ -68,12 +70,89 @@ void main() {
     expect(menuRect.height, lessThan(500));
     expect(menuRect.bottom, lessThanOrEqualTo(844));
 
-    await tester.tap(find.text('Refresh Datacenter'));
+    await tester.tap(find.text('Refresh data'));
     await tester.pump();
 
     expect(refreshed, isTrue);
-    expect(find.text('Refresh Datacenter'), findsNothing);
+    expect(find.text('Refresh data'), findsNothing);
     expect(routeObserver.pushCount, initialPushCount);
+  });
+
+  testWidgets('exposes notification and server management on macOS', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+
+    bool openedNotifications = false;
+    bool openedServerManagement = false;
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: CupertinoPageScaffold(
+          navigationBar: WorkspaceToolbar(
+            profiles: const <ConnectionProfile>[],
+            selectedProfile: null,
+            title: 'Datacenter',
+            connected: true,
+            onConnectToProfile: (_) {},
+            onRefresh: () {},
+            onDisconnect: () {},
+            onManageServers: () => openedServerManagement = true,
+            onAbout: () {},
+            onManageNotifications: () => openedNotifications = true,
+            desktopWorkspaceCommandsEnabled: true,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('Manage Servers'), findsOneWidget);
+
+    await tester.tap(find.text('Notifications'));
+    await tester.tap(find.text('Manage Servers'));
+
+    expect(openedNotifications, isTrue);
+    expect(openedServerManagement, isTrue);
+  });
+
+  testWidgets('keeps a desktop page title and freshness together on the left', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1280, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    final DateTime refreshedAt = DateTime.now().subtract(
+      const Duration(minutes: 2),
+    );
+
+    await tester.pumpWidget(
+      MaterialApp(
+        theme: PveCompanionTheme.light(),
+        home: CupertinoPageScaffold(
+          navigationBar: WorkspaceToolbar(
+            profiles: const <ConnectionProfile>[],
+            selectedProfile: null,
+            title: 'Datacenter',
+            connected: true,
+            showServerMenu: false,
+            lastUpdatedAt: refreshedAt,
+            onConnectToProfile: (_) {},
+            onRefresh: () {},
+            onDisconnect: () {},
+            onManageServers: () {},
+            onAbout: () {},
+            desktopWorkspaceCommandsEnabled: true,
+          ),
+          child: const SizedBox.expand(),
+        ),
+      ),
+    );
+
+    expect(find.text('Data refreshed 2m ago'), findsOneWidget);
+    expect(find.byType(PveFreshnessLabel), findsOneWidget);
+    expect(tester.getTopLeft(find.text('Datacenter')).dx, lessThan(300));
   });
 }
 
