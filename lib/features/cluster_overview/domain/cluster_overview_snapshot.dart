@@ -213,10 +213,12 @@ class ClusterTask {
 
   /// A running non-interactive operation is surfaced more prominently after
   /// this age. Interactive console sessions are deliberately excluded.
-  bool get isLongRunning {
+  bool get isLongRunning => isLongRunningAt(DateTime.now());
+
+  bool isLongRunningAt(DateTime now) {
     final DateTime? startedAt = this.startedAt;
     if (!isRunning || isInteractiveSession || startedAt == null) return false;
-    return DateTime.now().difference(startedAt) >= const Duration(minutes: 30);
+    return now.difference(startedAt) >= const Duration(minutes: 30);
   }
 
   /// Proxmox reports interactive connections as long-running tasks. They are

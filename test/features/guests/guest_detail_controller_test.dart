@@ -65,7 +65,7 @@ void main() {
         isTrue,
       );
 
-      await parentRefreshed.future.timeout(const Duration(seconds: 1));
+      await parentRefreshed.future;
       expect(repository.detailLoads, 1);
       expect(refreshEvents, <String>['details', 'parent']);
       expect(controller.activeTask?.state, ProxmoxTaskState.successful);

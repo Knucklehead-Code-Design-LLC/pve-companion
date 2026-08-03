@@ -3,6 +3,40 @@ import 'package:pve_companion/features/backups/domain/pve_backup_center.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 
 void main() {
+  test('only reported available backup storage is executable', () {
+    const ClusterStorage unavailableTelemetry = ClusterStorage(
+      name: 'backup-unknown',
+      type: 'dir',
+      content: 'backup,iso',
+      shared: false,
+      resources: <ClusterStorageResource>[
+        ClusterStorageResource(node: 'pve-01', status: ''),
+      ],
+    );
+    const ClusterStorage availableStorage = ClusterStorage(
+      name: 'backup-ready',
+      type: 'dir',
+      content: 'backup',
+      shared: false,
+      resources: <ClusterStorageResource>[
+        ClusterStorageResource(node: 'pve-01', status: 'available'),
+      ],
+    );
+
+    expect(
+      PveBackupDestination.supportsBackupContent(unavailableTelemetry),
+      isTrue,
+    );
+    expect(
+      PveBackupDestination.isAvailableForExecution(unavailableTelemetry),
+      isFalse,
+    );
+    expect(
+      PveBackupDestination.isAvailableForExecution(availableStorage),
+      isTrue,
+    );
+  });
+
   test(
     'backup readiness distinguishes setup, access, scheduling, and copies',
     () {

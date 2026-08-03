@@ -3,6 +3,7 @@ import 'package:flutter/cupertino.dart';
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_value_format.dart';
+import '../../backups/domain/pve_backup_center.dart';
 import '../../backups/presentation/backup_center_sheet.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
@@ -102,14 +103,20 @@ class _StoragePageState extends State<StoragePage> {
       (int total, ClusterStorage storage) => total + storage.availableBytes!,
     );
     final List<ClusterStorage> backupDestinations = storages
-        .where(_supportsBackup)
+        .where(PveBackupDestination.supportsBackupContent)
         .toList(growable: false);
     final List<ClusterStorage> availableBackupDestinations = backupDestinations
-        .where(_isAvailableBackupDestination)
+        .where(PveBackupDestination.isAvailableForExecution)
         .toList(growable: false);
     final int backupDestinationsWithUnknownAvailability = backupDestinations
         .where((ClusterStorage storage) => !storage.hasAvailabilityTelemetry)
         .length;
+    final PveMetricStripItem availabilityCoverageMetric =
+        _availabilityCoverageMetric(
+          context,
+          fullyAvailableCount: fullyAvailableCount,
+          availabilityReportedCount: availabilityReportedCount,
+        );
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
       key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
@@ -156,21 +163,7 @@ class _StoragePageState extends State<StoragePage> {
               icon: CupertinoIcons.tray_full_fill,
               scope: 'Reported by this server',
             ),
-            PveMetricStripItem(
-              label: 'Availability coverage',
-              value: availabilityReportedCount == 0
-                  ? '—'
-                  : '$fullyAvailableCount/$availabilityReportedCount',
-              icon: CupertinoIcons.check_mark_circled_solid,
-              color: availabilityReportedCount == 0
-                  ? PveAppleColors.secondaryLabel(context)
-                  : fullyAvailableCount == availabilityReportedCount
-                  ? PveAppleColors.success(context)
-                  : PveAppleColors.warning(context),
-              scope: availabilityReportedCount == 0
-                  ? 'No pool status reported'
-                  : 'Fully available now',
-            ),
+            availabilityCoverageMetric,
             PveMetricStripItem(
               label: 'Capacity used now',
               value: hasCapacityTelemetry
@@ -340,17 +333,6 @@ class _StoragePageState extends State<StoragePage> {
     _StorageFilter.local => !storage.shared,
   };
 
-  bool _supportsBackup(ClusterStorage storage) => storage.content
-      .toLowerCase()
-      .split(',')
-      .map((String item) => item.trim())
-      .contains('backup');
-
-  bool _isAvailableBackupDestination(ClusterStorage storage) =>
-      _supportsBackup(storage) &&
-      storage.hasAvailabilityTelemetry &&
-      storage.isAvailable;
-
   int _compareStorageRisk(ClusterStorage left, ClusterStorage right) {
     final int riskComparison = _storageRiskRank(
       left,
@@ -377,6 +359,38 @@ class _StoragePageState extends State<StoragePage> {
   }
 }
 
+PveMetricStripItem _availabilityCoverageMetric(
+  BuildContext context, {
+  required int fullyAvailableCount,
+  required int availabilityReportedCount,
+}) {
+  if (availabilityReportedCount == 0) {
+    return PveMetricStripItem(
+      label: 'Availability coverage',
+      value: '—',
+      icon: CupertinoIcons.check_mark_circled_solid,
+      color: PveAppleColors.secondaryLabel(context),
+      scope: 'No pool status reported',
+    );
+  }
+  if (fullyAvailableCount == availabilityReportedCount) {
+    return PveMetricStripItem(
+      label: 'Availability coverage',
+      value: '$fullyAvailableCount/$availabilityReportedCount',
+      icon: CupertinoIcons.check_mark_circled_solid,
+      color: PveAppleColors.success(context),
+      scope: 'Fully available now',
+    );
+  }
+  return PveMetricStripItem(
+    label: 'Availability coverage',
+    value: '$fullyAvailableCount/$availabilityReportedCount',
+    icon: CupertinoIcons.check_mark_circled_solid,
+    color: PveAppleColors.warning(context),
+    scope: 'Fully available now',
+  );
+}
+
 class _BackupDestinationReadiness extends StatelessWidget {
   const _BackupDestinationReadiness({
     required this.configuredDestinations,
@@ -390,38 +404,74 @@ class _BackupDestinationReadiness extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final bool hasAvailableDestination = availableDestinations > 0;
-    final bool hasConfiguredDestination = configuredDestinations > 0;
-    final bool hasUnknownAvailability = unknownAvailabilityDestinations > 0;
-    final String label = hasAvailableDestination
-        ? 'Destination ready'
-        : hasUnknownAvailability
-        ? 'Availability not reported'
-        : hasConfiguredDestination
-        ? 'Destination needs attention'
-        : 'Backup setup needed';
-    final Color color = hasAvailableDestination
-        ? PveAppleColors.success(context)
-        : hasUnknownAvailability
-        ? PveAppleColors.secondaryLabel(context)
-        : hasConfiguredDestination
-        ? PveAppleColors.warning(context)
-        : PveAppleColors.destructive(context);
-    final String detail = hasAvailableDestination
-        ? '$availableDestinations ${availableDestinations == 1 ? 'available destination' : 'available destinations'} reported.'
-        : hasUnknownAvailability
-        ? '$unknownAvailabilityDestinations ${unknownAvailabilityDestinations == 1 ? 'configured destination does' : 'configured destinations do'} not report availability.'
-        : hasConfiguredDestination
-        ? '$configuredDestinations ${configuredDestinations == 1 ? 'configured destination is' : 'configured destinations are'} not currently reported available.'
-        : 'No storage reports backup content.';
+    final _BackupDestinationReadinessPresentation presentation = _presentation(
+      context,
+    );
     return Row(
       children: <Widget>[
-        PveStatusPill(label: label, color: color),
+        PveStatusPill(label: presentation.label, color: presentation.color),
         const SizedBox(width: 8),
-        Expanded(child: Text(detail, style: PveAppleText.caption(context))),
+        Expanded(
+          child: Text(
+            presentation.detail,
+            style: PveAppleText.caption(context),
+          ),
+        ),
       ],
     );
   }
+
+  _BackupDestinationReadinessPresentation _presentation(BuildContext context) {
+    if (availableDestinations > 0) {
+      final String noun = availableDestinations == 1
+          ? 'available destination'
+          : 'available destinations';
+      return _BackupDestinationReadinessPresentation(
+        label: 'Destination ready',
+        detail: '$availableDestinations $noun reported.',
+        color: PveAppleColors.success(context),
+      );
+    }
+    if (unknownAvailabilityDestinations > 0) {
+      final String verb = unknownAvailabilityDestinations == 1
+          ? 'configured destination does'
+          : 'configured destinations do';
+      return _BackupDestinationReadinessPresentation(
+        label: 'Availability not reported',
+        detail:
+            '$unknownAvailabilityDestinations $verb not report availability.',
+        color: PveAppleColors.secondaryLabel(context),
+      );
+    }
+    if (configuredDestinations > 0) {
+      final String verb = configuredDestinations == 1
+          ? 'configured destination is'
+          : 'configured destinations are';
+      return _BackupDestinationReadinessPresentation(
+        label: 'Destination needs attention',
+        detail:
+            '$configuredDestinations $verb not currently reported available.',
+        color: PveAppleColors.warning(context),
+      );
+    }
+    return _BackupDestinationReadinessPresentation(
+      label: 'Backup setup needed',
+      detail: 'No storage reports backup content.',
+      color: PveAppleColors.destructive(context),
+    );
+  }
+}
+
+class _BackupDestinationReadinessPresentation {
+  const _BackupDestinationReadinessPresentation({
+    required this.label,
+    required this.detail,
+    required this.color,
+  });
+
+  final String label;
+  final String detail;
+  final Color color;
 }
 
 class _StorageCard extends StatelessWidget {
@@ -432,16 +482,9 @@ class _StorageCard extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final double? usageFraction = storage.usageFraction;
-    final bool hasAvailability = storage.hasAvailabilityTelemetry;
-    final Color accent = hasAvailability && !storage.isAvailable
-        ? PveAppleColors.destructive(context)
-        : storage.isPartiallyAvailable
-        ? PveAppleColors.warning(context)
-        : usageFraction != null && usageFraction >= 0.9
-        ? PveAppleColors.destructive(context)
-        : usageFraction != null && usageFraction >= 0.75
-        ? PveAppleColors.warning(context)
-        : PveAppleColors.primary(context);
+    final Color accent = _storageAccent(context, storage, usageFraction);
+    final _StorageAvailabilityPresentation availability =
+        _storageAvailabilityPresentation(context, storage);
     return PveInsetGroup(
       key: ValueKey<String>('ipad-storage-card-${storage.name}'),
       padding: const EdgeInsets.all(16),
@@ -479,20 +522,8 @@ class _StorageCard extends StatelessWidget {
                 ),
               ),
               PveStatusPill(
-                label: !hasAvailability
-                    ? 'Not reported'
-                    : storage.isFullyAvailable
-                    ? 'Available'
-                    : storage.isPartiallyAvailable
-                    ? 'Partially available'
-                    : 'Unavailable',
-                color: !hasAvailability
-                    ? PveAppleColors.secondaryLabel(context)
-                    : storage.isFullyAvailable
-                    ? PveAppleColors.success(context)
-                    : storage.isPartiallyAvailable
-                    ? PveAppleColors.warning(context)
-                    : PveAppleColors.destructive(context),
+                label: availability.label,
+                color: availability.color,
               ),
             ],
           ),
@@ -533,6 +564,64 @@ class _StorageCard extends StatelessWidget {
 }
 
 enum _StorageFilter { all, shared, local }
+
+Color _storageAccent(
+  BuildContext context,
+  ClusterStorage storage,
+  double? usageFraction,
+) {
+  if (storage.hasAvailabilityTelemetry && !storage.isAvailable) {
+    return PveAppleColors.destructive(context);
+  }
+  if (storage.isPartiallyAvailable) {
+    return PveAppleColors.warning(context);
+  }
+  if (usageFraction != null && usageFraction >= 0.9) {
+    return PveAppleColors.destructive(context);
+  }
+  if (usageFraction != null && usageFraction >= 0.75) {
+    return PveAppleColors.warning(context);
+  }
+  return PveAppleColors.primary(context);
+}
+
+_StorageAvailabilityPresentation _storageAvailabilityPresentation(
+  BuildContext context,
+  ClusterStorage storage,
+) {
+  if (!storage.hasAvailabilityTelemetry) {
+    return _StorageAvailabilityPresentation(
+      label: 'Not reported',
+      color: PveAppleColors.secondaryLabel(context),
+    );
+  }
+  if (storage.isFullyAvailable) {
+    return _StorageAvailabilityPresentation(
+      label: 'Available',
+      color: PveAppleColors.success(context),
+    );
+  }
+  if (storage.isPartiallyAvailable) {
+    return _StorageAvailabilityPresentation(
+      label: 'Partially available',
+      color: PveAppleColors.warning(context),
+    );
+  }
+  return _StorageAvailabilityPresentation(
+    label: 'Unavailable',
+    color: PveAppleColors.destructive(context),
+  );
+}
+
+class _StorageAvailabilityPresentation {
+  const _StorageAvailabilityPresentation({
+    required this.label,
+    required this.color,
+  });
+
+  final String label;
+  final Color color;
+}
 
 int _storageRiskRank(ClusterStorage storage) {
   if (storage.hasAvailabilityTelemetry && !storage.isAvailable) {

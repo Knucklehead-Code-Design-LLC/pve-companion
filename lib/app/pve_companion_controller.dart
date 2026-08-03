@@ -136,8 +136,7 @@ class PveCompanionController extends ChangeNotifier {
           persistCredentials: persistCredentials,
         );
     if (result.kind == ConnectionAttemptKind.connected) {
-      await _systemSurfaces.clearSnapshot();
-      await refreshCluster();
+      await _activateConnectedWorkspace();
     }
     return result;
   }
@@ -155,25 +154,27 @@ class PveCompanionController extends ChangeNotifier {
         'The selected server no longer exists.',
       );
     }
-    _clusterOverview.clear();
     final ConnectionAttemptResult result = await _connectionProfiles
         .connectProfile(profile);
     if (result.kind == ConnectionAttemptKind.connected) {
-      await _systemSurfaces.clearSnapshot();
-      await refreshCluster();
+      await _activateConnectedWorkspace();
     }
     return result;
   }
 
   Future<ConnectionAttemptResult> connectSelectedProfile() async {
-    _clusterOverview.clear();
     final ConnectionAttemptResult result = await _connectionProfiles
         .connectSelectedProfile();
     if (result.kind == ConnectionAttemptKind.connected) {
-      await _systemSurfaces.clearSnapshot();
-      await refreshCluster();
+      await _activateConnectedWorkspace();
     }
     return result;
+  }
+
+  Future<void> _activateConnectedWorkspace() async {
+    _clusterOverview.clear();
+    await _systemSurfaces.clearSnapshot();
+    await refreshCluster();
   }
 
   Future<void> refreshCluster() async {

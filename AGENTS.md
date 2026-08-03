@@ -40,6 +40,28 @@ Optimize for code that is easy to understand on first read.
 Do not create vague `helpers`, `common`, `misc`, or catch-all `utils` modules.
 A utility's name and location must explain the behavior it owns.
 
+## State, Telemetry, And Responsive Presentation
+
+- Keep externally reported state truthful. Model `unknown`, `unreported`,
+  `unavailable`, and `available` as distinct states; do not infer an executable
+  action or healthy value from configuration alone.
+- Centralize a business predicate where it governs both what the UI says and
+  what an operation may do. Reuse that predicate at every display, validation,
+  and execution boundary rather than recreating similar checks in each screen.
+- Preserve the current usable UI state while an asynchronous context change is
+  pending. Replace or clear it only after the replacement context has
+  successfully connected or loaded.
+- A reset action must reset both the presentation model and every visible input
+  that represents it. Use a controller or another single source of truth when
+  an input must be cleared or restored programmatically.
+- Keep filtering, sorting, ranking, and status-to-presentation policy outside
+  large widgets in immutable, domain-named models or functions. Capture one
+  clock value for a complete filtering or ordering pass when time affects the
+  result.
+- Make macOS, iPad, and compact layout choices explicit at their shared owner.
+  Do not let one platform's table, inspector, or navigation assumptions leak
+  into another platform's presentation.
+
 ## Data Models And Contracts
 
 - Do not use coercion, casting, unchecked conversion, or suppression to make
@@ -103,6 +125,13 @@ isolation, failure handling, and concurrency or ordering risks.
 
 Prefer realistic builders and focused fakes over broad permissive mocks.
 Unexpected calls in shared fakes should fail clearly.
+
+- Make asynchronous and time-sensitive tests deterministic. Prefer controlled
+  completers, fakes, and injected or captured clocks over short wall-clock
+  delays or timeout-based synchronization.
+- Test user-visible error classifications separately when they lead to
+  different recovery actions, such as retryable failures, authorization limits,
+  and unavailable resources.
 
 ## Enforce Objective Rules
 

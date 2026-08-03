@@ -5,6 +5,7 @@ import 'package:flutter/services.dart';
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_value_format.dart';
+import '../../backups/domain/pve_backup_center.dart';
 import '../../cluster_overview/application/cluster_overview_controller.dart';
 import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_load_state_view.dart';
@@ -318,7 +319,7 @@ class _GuestListPageState extends State<GuestListPage> {
         .overviewController
         .snapshot!
         .storages
-        .where((ClusterStorage storage) => _isAvailableBackupStorage(storage))
+        .where(PveBackupDestination.isAvailableForExecution)
         .map((ClusterStorage storage) => storage.name)
         .toList(growable: false);
     showGuestDetailSheet(
@@ -393,16 +394,6 @@ class _GuestListPageState extends State<GuestListPage> {
     if (sort != null && mounted) {
       setState(() => _sort = sort);
     }
-  }
-
-  bool _isAvailableBackupStorage(ClusterStorage storage) {
-    final bool supportsBackup = storage.content
-        .toLowerCase()
-        .split(',')
-        .map((String item) => item.trim())
-        .contains('backup');
-    return supportsBackup &&
-        (!storage.hasAvailabilityTelemetry || storage.isAvailable);
   }
 
   bool _matchesSearch(PveGuest guest) {

@@ -17,7 +17,7 @@ class ProxmoxBackupRepository implements PveBackupRepository {
     ClusterOverviewSnapshot overview,
   ) async {
     final List<PveBackupDestination> destinations = overview.storages
-        .where(_isBackupStorage)
+        .where(PveBackupDestination.supportsBackupContent)
         .map((ClusterStorage storage) => PveBackupDestination(storage: storage))
         .toList(growable: false);
     final Future<_OptionalBackupData> schedulesRequest = _loadOptional(
@@ -83,12 +83,6 @@ class ProxmoxBackupRepository implements PveBackupRepository {
       ),
     );
   }
-
-  bool _isBackupStorage(ClusterStorage storage) => storage.content
-      .toLowerCase()
-      .split(',')
-      .map((String item) => item.trim())
-      .contains('backup');
 
   List<_BackupContentRoute> _contentRoutes(
     ClusterOverviewSnapshot overview,

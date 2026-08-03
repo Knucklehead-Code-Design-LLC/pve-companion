@@ -29,11 +29,43 @@ void main() {
 
     expect(await controller.shutdownNode(), isTrue);
 
-    await parentRefreshed.future.timeout(const Duration(seconds: 1));
+    await parentRefreshed.future;
     expect(repository.detailLoads, 1);
     expect(refreshEvents, <String>['details', 'parent']);
     expect(controller.activeTask?.state, ProxmoxTaskState.failed);
   });
+
+  test(
+    'prevents duplicate node power requests while an action is in flight',
+    () async {
+      final _ControlledNodeRepository repository = _ControlledNodeRepository();
+      final Completer<void> terminalTask = Completer<void>();
+      final NodeOperationsController controller = NodeOperationsController(
+        repository: repository,
+        session: const _SuccessfulTaskSession(),
+        seed: _seed,
+        onTaskTerminal: () {
+          terminalTask.complete();
+          return Future<void>.value();
+        },
+      );
+      addTearDown(controller.dispose);
+
+      final Future<bool> firstAction = controller.shutdownNode();
+      final bool secondAction = await controller.shutdownNode();
+
+      expect(secondAction, isFalse);
+      expect(repository.powerRequests, 1);
+
+      repository.powerActionCompleter.complete(_taskReference);
+
+      expect(await firstAction, isTrue);
+      await terminalTask.future;
+      expect(repository.detailLoads, 1);
+      expect(controller.operationInFlight, isFalse);
+      expect(controller.activeTask?.state, ProxmoxTaskState.successful);
+    },
+  );
 }
 
 const PveNodeDetailsSeed _seed = PveNodeDetailsSeed(
@@ -77,6 +109,45 @@ class _TerminalNodeRepository implements PveNodeRepository {
   ) => throw UnimplementedError();
 }
 
+class _ControlledNodeRepository implements PveNodeRepository {
+  final Completer<ProxmoxTaskReference> powerActionCompleter =
+      Completer<ProxmoxTaskReference>();
+  int powerRequests = 0;
+  int detailLoads = 0;
+
+  @override
+  Future<PveNodeDetails> loadDetails(
+    ProxmoxSession session,
+    PveNodeDetailsSeed seed,
+  ) async {
+    detailLoads += 1;
+    return PveNodeDetails(node: seed.node);
+  }
+
+  @override
+  Future<ProxmoxTaskReference> runPowerAction(
+    ProxmoxSession session,
+    PveNodeDetailsSeed seed,
+    PveNodePowerAction action,
+  ) {
+    powerRequests += 1;
+    return powerActionCompleter.future;
+  }
+
+  @override
+  Future<ProxmoxTaskReference> refreshPackageIndex(
+    ProxmoxSession session,
+    PveNodeDetailsSeed seed,
+  ) => throw UnimplementedError();
+
+  @override
+  Future<ProxmoxTaskReference> restartService(
+    ProxmoxSession session,
+    PveNodeDetailsSeed seed,
+    PveNodeService service,
+  ) => throw UnimplementedError();
+}
+
 final ProxmoxTaskReference _taskReference = ProxmoxTaskReference(
   upid: 'UPID:node-a:002',
   node: 'node-a',
@@ -98,6 +169,25 @@ class _FailedTaskSession implements ProxmoxSession {
     'status': 'stopped',
     'exitstatus': 'TASK ERROR: shutdown failed',
   };
+
+  @override
+  Future<Object?> postForm(
+    String resource, {
+    required Map<String, String> fields,
+  }) async => null;
+}
+
+class _SuccessfulTaskSession implements ProxmoxSession {
+  const _SuccessfulTaskSession();
+
+  @override
+  void close() {}
+
+  @override
+  Future<Object?> getData(
+    String resource, {
+    Map<String, String> query = const <String, String>{},
+  }) async => <String, Object?>{'status': 'stopped', 'exitstatus': 'OK'};
 
   @override
   Future<Object?> postForm(

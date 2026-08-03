@@ -346,32 +346,27 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     }
   }
 
-  Future<void> _connectToProfile(String profileId) async {
-    final ConnectionAttemptResult result = await widget.controller
-        .connectProfile(profileId);
+  Future<void> _connectToProfile(String profileId) =>
+      _runConnectionAttempt(() => widget.controller.connectProfile(profileId));
+
+  Future<void> _connectSelectedProfile() =>
+      _runConnectionAttempt(widget.controller.connectSelectedProfile);
+
+  Future<void> _runConnectionAttempt(
+    Future<ConnectionAttemptResult> Function() attempt,
+  ) async {
+    final ConnectionAttemptResult result = await attempt();
     if (!mounted || result.kind == ConnectionAttemptKind.connected) {
       return;
     }
-    final String message =
-        result.kind == ConnectionAttemptKind.certificateTrustRequired
-        ? 'The server certificate changed. Remove and add this server again '
-              'after verifying its new fingerprint.'
-        : result.message ?? 'Connection was not completed.';
-    await _showConnectionError(message);
+    await _showConnectionError(_connectionErrorMessage(result));
   }
 
-  Future<void> _connectSelectedProfile() async {
-    final ConnectionAttemptResult result = await widget.controller
-        .connectSelectedProfile();
-    if (!mounted || result.kind == ConnectionAttemptKind.connected) {
-      return;
-    }
-    final String message =
-        result.kind == ConnectionAttemptKind.certificateTrustRequired
+  String _connectionErrorMessage(ConnectionAttemptResult result) {
+    return result.kind == ConnectionAttemptKind.certificateTrustRequired
         ? 'The server certificate changed. Remove and add this server again '
               'after verifying its new fingerprint.'
         : result.message ?? 'Connection was not completed.';
-    await _showConnectionError(message);
   }
 
   Future<void> _showConnectionError(String message) {

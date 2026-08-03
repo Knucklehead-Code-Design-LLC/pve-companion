@@ -174,13 +174,9 @@ class ProxmoxRfbClient {
       );
     }
     final int serverMinorVersion = int.parse(match.group(1)!);
-    final int selectedMinorVersion = serverMinorVersion >= 8
-        ? 8
-        : serverMinorVersion >= 7
-        ? 7
-        : serverMinorVersion == 3
-        ? 3
-        : 0;
+    final int selectedMinorVersion = _selectProtocolMinorVersion(
+      serverMinorVersion,
+    );
     if (selectedMinorVersion == 0) {
       throw const PveConsoleProtocolException(
         'The guest console requires an unsupported RFB version.',
@@ -194,29 +190,26 @@ class ProxmoxRfbClient {
     return selectedMinorVersion;
   }
 
+  int _selectProtocolMinorVersion(int serverMinorVersion) {
+    if (serverMinorVersion >= 8) {
+      return 8;
+    }
+    if (serverMinorVersion >= 7) {
+      return 7;
+    }
+    if (serverMinorVersion == 3) {
+      return 3;
+    }
+    return 0;
+  }
+
   Future<void> _negotiateSecurity(int protocolMinorVersion) async {
     try {
-      final List<int> securityTypes;
-      if (protocolMinorVersion == 3) {
-        final int securityType = await _reader.readUint32();
-        if (securityType == 0) {
-          throw PveConsoleProtocolException(await _readFailureReason());
-        }
-        securityTypes = <int>[securityType];
-      } else {
-        final int count = await _reader.readUint8();
-        if (count == 0) {
-          throw PveConsoleProtocolException(await _readFailureReason());
-        }
-        securityTypes = (await _reader.read(count)).toList(growable: false);
-      }
+      final List<int> securityTypes = await _readSecurityTypes(
+        protocolMinorVersion,
+      );
 
-      final int selectedSecurityType =
-          securityTypes.contains(_securityVncAuthentication)
-          ? _securityVncAuthentication
-          : securityTypes.contains(_securityNone)
-          ? _securityNone
-          : 0;
+      final int selectedSecurityType = _selectSecurityType(securityTypes);
       if (selectedSecurityType == 0) {
         throw const PveConsoleProtocolException(
           'The guest console requires an unsupported authentication method.',
@@ -236,15 +229,47 @@ class ProxmoxRfbClient {
         return;
       }
       final int result = await _reader.readUint32();
-      if (result != 0) {
-        final String reason = protocolMinorVersion >= 8
-            ? await _readFailureReason()
-            : 'The guest console rejected its authentication ticket.';
+      if (result == 0) {
+        return;
+      }
+      if (protocolMinorVersion >= 8) {
+        final String reason = await _readFailureReason();
         throw PveConsoleProtocolException(reason);
       }
+      throw const PveConsoleProtocolException(
+        'The guest console rejected its authentication ticket.',
+      );
     } finally {
       _transport.discardVncTicket();
     }
+  }
+
+  Future<List<int>> _readSecurityTypes(int protocolMinorVersion) async {
+    if (protocolMinorVersion == 3) {
+      final int securityType = await _reader.readUint32();
+      if (securityType != 0) {
+        return <int>[securityType];
+      }
+      final String reason = await _readFailureReason();
+      throw PveConsoleProtocolException(reason);
+    }
+
+    final int count = await _reader.readUint8();
+    if (count != 0) {
+      return (await _reader.read(count)).toList(growable: false);
+    }
+    final String reason = await _readFailureReason();
+    throw PveConsoleProtocolException(reason);
+  }
+
+  int _selectSecurityType(List<int> securityTypes) {
+    if (securityTypes.contains(_securityVncAuthentication)) {
+      return _securityVncAuthentication;
+    }
+    if (securityTypes.contains(_securityNone)) {
+      return _securityNone;
+    }
+    return 0;
   }
 
   Future<void> _readServerInit() async {
@@ -470,7 +495,8 @@ class _RfbByteReader {
       );
     }
     while (_pending.length - _pendingOffset < length) {
-      if (!await _iterator.moveNext()) {
+      final bool hasNextChunk = await _iterator.moveNext();
+      if (!hasNextChunk) {
         throw const PveConsoleProtocolException(
           'The guest console disconnected.',
         );

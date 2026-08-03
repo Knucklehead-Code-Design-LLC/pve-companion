@@ -1,6 +1,5 @@
 import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter/services.dart';
 
 import '../../../core/api/proxmox_session.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
@@ -11,10 +10,9 @@ import '../../cluster_overview/domain/cluster_overview_snapshot.dart';
 import '../../cluster_overview/presentation/cluster_load_state_view.dart';
 import '../../cluster_overview/presentation/datacenter_dashboard_visuals.dart';
 import '../../guests/domain/pve_guest.dart';
-import '../application/task_log_controller.dart';
-import '../data/proxmox_task_log_repository.dart';
-import '../domain/pve_task_log.dart';
 import 'task_activity_insights.dart';
+import 'task_inspector.dart';
+import 'task_query.dart';
 
 class TasksPage extends StatefulWidget {
   const TasksPage({
@@ -39,14 +37,15 @@ class TasksPage extends StatefulWidget {
 }
 
 class _TasksPageState extends State<TasksPage> {
-  _TaskFilter _filter = _TaskFilter.all;
-  _TaskDateFilter _dateFilter = _TaskDateFilter.all;
-  _TaskSort _sort = _TaskSort.attention;
-  String _query = '';
-  String? _node;
-  String? _operator;
-  int? _guestVmid;
+  TaskQuery _taskQuery = TaskQuery.all;
+  final TextEditingController _searchController = TextEditingController();
   String? _selectedTaskUpid;
+
+  @override
+  void dispose() {
+    _searchController.dispose();
+    super.dispose();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -98,14 +97,14 @@ class _TasksPageState extends State<TasksPage> {
     required bool usesDesktopInspector,
   }) {
     final List<ClusterTask> tasks = snapshot.tasks;
-    final List<ClusterTask> orderedTasks = List<ClusterTask>.of(tasks)
-      ..sort(_compareTasks);
-    final List<ClusterTask> visibleTasks = orderedTasks
-        .where(_matchesFilter)
-        .where(_matchesDate)
-        .where(_matchesQuery)
-        .where(_matchesGuest)
-        .toList(growable: false);
+    final DateTime filterNow = DateTime.now();
+    final List<ClusterTask> orderedTasks = TaskQuery(
+      sort: _taskQuery.sort,
+    ).apply(tasks, now: filterNow);
+    final List<ClusterTask> visibleTasks = _taskQuery.apply(
+      tasks,
+      now: filterNow,
+    );
     final List<ClusterTask> visibleSessions = visibleTasks
         .where(
           (ClusterTask task) =>
@@ -140,30 +139,30 @@ class _TasksPageState extends State<TasksPage> {
     final int successfulCount = tasks
         .where((ClusterTask task) => task.state == ClusterTaskState.successful)
         .length;
-    final Widget filter = PveSlidingSegmentedControl<_TaskFilter>(
+    final Widget filter = PveSlidingSegmentedControl<TaskStateFilter>(
       key: const ValueKey<String>('task-state-filter'),
-      groupValue: _filter,
-      children: const <_TaskFilter, Widget>{
-        _TaskFilter.all: Padding(
+      groupValue: _taskQuery.state,
+      children: const <TaskStateFilter, Widget>{
+        TaskStateFilter.all: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text('All'),
         ),
-        _TaskFilter.running: Padding(
+        TaskStateFilter.running: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text('Running'),
         ),
-        _TaskFilter.failed: Padding(
+        TaskStateFilter.failed: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text('Failed'),
         ),
-        _TaskFilter.unknown: Padding(
+        TaskStateFilter.unknown: Padding(
           padding: EdgeInsets.symmetric(horizontal: 8),
           child: Text('Unknown'),
         ),
       },
-      onValueChanged: (_TaskFilter? value) {
+      onValueChanged: (TaskStateFilter? value) {
         if (value != null) {
-          setState(() => _filter = value);
+          setState(() => _taskQuery = _taskQuery.copyWith(state: value));
         }
       },
     );
@@ -237,24 +236,28 @@ class _TasksPageState extends State<TasksPage> {
         const SizedBox(height: 12),
         CupertinoSearchTextField(
           key: const ValueKey<String>('task-search'),
+          controller: _searchController,
           placeholder: 'Search operation, node, or operator',
-          onChanged: (String value) => setState(() => _query = value),
+          onChanged: (String value) =>
+              setState(() => _taskQuery = _taskQuery.copyWith(query: value)),
         ),
         const SizedBox(height: 10),
         _TaskFilterControls(
-          dateFilter: _dateFilter,
-          node: _node,
-          operatorName: _operator,
-          guestVmid: _guestVmid,
+          dateFilter: _taskQuery.period,
+          node: _taskQuery.node,
+          operatorName: _taskQuery.operatorName,
+          guestVmid: _taskQuery.guestVmid,
           nodes: tasks.map((ClusterTask task) => task.node).toSet(),
           operators: tasks.map((ClusterTask task) => task.user).toSet(),
           guests: _knownTaskGuests(snapshot),
-          onDateFilterChanged: (_TaskDateFilter value) =>
-              setState(() => _dateFilter = value),
-          onNodeChanged: (String? value) => setState(() => _node = value),
+          onDateFilterChanged: (TaskPeriodFilter value) =>
+              setState(() => _taskQuery = _taskQuery.copyWith(period: value)),
+          onNodeChanged: (String? value) =>
+              setState(() => _taskQuery = _taskQuery.withNode(value)),
           onOperatorChanged: (String? value) =>
-              setState(() => _operator = value),
-          onGuestChanged: (int? value) => setState(() => _guestVmid = value),
+              setState(() => _taskQuery = _taskQuery.withOperatorName(value)),
+          onGuestChanged: (int? value) =>
+              setState(() => _taskQuery = _taskQuery.withGuestVmid(value)),
         ),
         const SizedBox(height: 16),
         if (tasks.isEmpty)
@@ -285,10 +288,7 @@ class _TasksPageState extends State<TasksPage> {
                 const SizedBox(height: 8),
                 CupertinoButton(
                   padding: EdgeInsets.zero,
-                  onPressed: () => setState(() {
-                    _filter = _TaskFilter.all;
-                    _query = '';
-                  }),
+                  onPressed: _clearFilters,
                   child: const Text('Clear filters'),
                 ),
               ],
@@ -358,8 +358,9 @@ class _TasksPageState extends State<TasksPage> {
           _DesktopTaskTable(
             tasks: visibleOperations,
             selectedUpid: selectedTask?.upid,
-            sort: _sort,
-            onSortChanged: (_TaskSort value) => setState(() => _sort = value),
+            sort: _taskQuery.sort,
+            onSortChanged: (TaskSort value) =>
+                setState(() => _taskQuery = _taskQuery.copyWith(sort: value)),
             onInspect: onInspect,
           )
         else if (usesExpandedPresentation)
@@ -405,8 +406,8 @@ class _TasksPageState extends State<TasksPage> {
     return PveInspectorLayout(
       primary: activity,
       inspector: selectedTask == null
-          ? const _TaskInspectorPlaceholder()
-          : _TaskInspector(
+          ? const TaskInspectorPlaceholder()
+          : TaskInspector(
               key: ValueKey<String>(
                 'desktop-task-inspector-${selectedTask.upid}',
               ),
@@ -426,44 +427,10 @@ class _TasksPageState extends State<TasksPage> {
     return null;
   }
 
-  bool _matchesFilter(ClusterTask task) => switch (_filter) {
-    _TaskFilter.all => true,
-    _TaskFilter.running => task.state == ClusterTaskState.running,
-    _TaskFilter.failed => task.state == ClusterTaskState.failed,
-    _TaskFilter.unknown => task.state == ClusterTaskState.unknown,
-  };
-
-  bool _matchesDate(ClusterTask task) {
-    final DateTime? startedAt = task.startedAt;
-    final Duration? maximumAge = switch (_dateFilter) {
-      _TaskDateFilter.all => null,
-      _TaskDateFilter.day => const Duration(days: 1),
-      _TaskDateFilter.week => const Duration(days: 7),
-    };
-    if (maximumAge == null || startedAt == null) return true;
-    return !DateTime.now().difference(startedAt).isNegative &&
-        DateTime.now().difference(startedAt) <= maximumAge;
+  void _clearFilters() {
+    _searchController.clear();
+    setState(() => _taskQuery = _taskQuery.clearFilters());
   }
-
-  bool _matchesQuery(ClusterTask task) {
-    final String query = _query.trim().toLowerCase();
-    final bool matchesText =
-        query.isEmpty ||
-        task.type.toLowerCase().contains(query) ||
-        task.node.toLowerCase().contains(query) ||
-        task.user.toLowerCase().contains(query);
-    return matchesText &&
-        (_node == null || task.node == _node) &&
-        (_operator == null || task.user == _operator);
-  }
-
-  int _compareTasks(ClusterTask left, ClusterTask right) => switch (_sort) {
-    _TaskSort.attention => _compareTasksForAttention(left, right),
-    _TaskSort.started => compareClusterTasksByRecency(left, right),
-    _TaskSort.node => left.node.compareTo(right.node),
-    _TaskSort.operation => left.type.compareTo(right.type),
-    _TaskSort.operatorName => left.user.compareTo(right.user),
-  };
 
   List<PveGuest> _knownTaskGuests(ClusterOverviewSnapshot snapshot) {
     final Set<int> taskGuestIds = snapshot.tasks
@@ -478,13 +445,10 @@ class _TasksPageState extends State<TasksPage> {
       );
   }
 
-  bool _matchesGuest(ClusterTask task) =>
-      _guestVmid == null || task.guestVmid == _guestVmid;
-
   Future<void> _showTaskInspector(ClusterTask task) => showPveModalSheet<void>(
     context: context,
     scrollableBuilder: (BuildContext context, ScrollController controller) =>
-        _TaskInspector(
+        TaskInspector(
           task: task,
           session: widget.session,
           scrollController: controller,
@@ -515,7 +479,7 @@ class _TaskRow extends StatelessWidget {
       title: Text('${task.type} on ${task.node}'),
       subtitle: Text(
         '${task.user} · ${formatPveDateTime(task.startedAt)} · '
-        '${_taskDurationLabel(task)}',
+        '${taskDurationLabel(task)}',
       ),
       additionalInfo: Text(
         dashboardTaskStateLabel(task),
@@ -647,7 +611,7 @@ class _TaskCard extends StatelessWidget {
                   Text(task.user, style: PveAppleText.caption(context)),
                   const SizedBox(height: 2),
                   Text(
-                    '${formatPveDateTime(task.startedAt)} · ${_taskDurationLabel(task)}',
+                    '${formatPveDateTime(task.startedAt)} · ${taskDurationLabel(task)}',
                     style: PveAppleText.caption(context),
                   ),
                 ],
@@ -683,14 +647,14 @@ class _TaskFilterControls extends StatelessWidget {
     required this.onGuestChanged,
   });
 
-  final _TaskDateFilter dateFilter;
+  final TaskPeriodFilter dateFilter;
   final String? node;
   final String? operatorName;
   final int? guestVmid;
   final Set<String> nodes;
   final Set<String> operators;
   final List<PveGuest> guests;
-  final ValueChanged<_TaskDateFilter> onDateFilterChanged;
+  final ValueChanged<TaskPeriodFilter> onDateFilterChanged;
   final ValueChanged<String?> onNodeChanged;
   final ValueChanged<String?> onOperatorChanged;
   final ValueChanged<int?> onGuestChanged;
@@ -704,29 +668,29 @@ class _TaskFilterControls extends StatelessWidget {
       runSpacing: 8,
       crossAxisAlignment: WrapCrossAlignment.center,
       children: <Widget>[
-        PveSlidingSegmentedControl<_TaskDateFilter>(
+        PveSlidingSegmentedControl<TaskPeriodFilter>(
           groupValue: dateFilter,
-          children: const <_TaskDateFilter, Widget>{
-            _TaskDateFilter.all: Padding(
+          children: const <TaskPeriodFilter, Widget>{
+            TaskPeriodFilter.all: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text('Any time'),
             ),
-            _TaskDateFilter.day: Padding(
+            TaskPeriodFilter.day: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text('24h'),
             ),
-            _TaskDateFilter.week: Padding(
+            TaskPeriodFilter.week: Padding(
               padding: EdgeInsets.symmetric(horizontal: 8),
               child: Text('7d'),
             ),
           },
-          onValueChanged: (_TaskDateFilter? value) {
+          onValueChanged: (TaskPeriodFilter? value) {
             if (value != null) onDateFilterChanged(value);
           },
-          semanticLabels: const <_TaskDateFilter, String>{
-            _TaskDateFilter.all: 'Tasks from any time',
-            _TaskDateFilter.day: 'Tasks from the last 24 hours',
-            _TaskDateFilter.week: 'Tasks from the last 7 days',
+          semanticLabels: const <TaskPeriodFilter, String>{
+            TaskPeriodFilter.all: 'Tasks from any time',
+            TaskPeriodFilter.day: 'Tasks from the last 24 hours',
+            TaskPeriodFilter.week: 'Tasks from the last 7 days',
           },
         ),
         _TaskChoiceMenu(
@@ -881,8 +845,8 @@ class _DesktopTaskTable extends StatelessWidget {
 
   final List<ClusterTask> tasks;
   final String? selectedUpid;
-  final _TaskSort sort;
-  final ValueChanged<_TaskSort> onSortChanged;
+  final TaskSort sort;
+  final ValueChanged<TaskSort> onSortChanged;
   final ValueChanged<ClusterTask> onInspect;
 
   @override
@@ -910,8 +874,8 @@ class _DesktopTaskTable extends StatelessWidget {
 class _TaskTableHeader extends StatelessWidget {
   const _TaskTableHeader({required this.sort, required this.onSortChanged});
 
-  final _TaskSort sort;
-  final ValueChanged<_TaskSort> onSortChanged;
+  final TaskSort sort;
+  final ValueChanged<TaskSort> onSortChanged;
 
   @override
   Widget build(BuildContext context) {
@@ -921,35 +885,35 @@ class _TaskTableHeader extends StatelessWidget {
         children: <Widget>[
           _TaskHeaderButton(
             label: 'Status',
-            value: _TaskSort.attention,
+            value: TaskSort.attention,
             sort: sort,
             onChanged: onSortChanged,
             width: 102,
           ),
           _TaskHeaderButton(
             label: 'Operation',
-            value: _TaskSort.operation,
+            value: TaskSort.operation,
             sort: sort,
             onChanged: onSortChanged,
             flex: 3,
           ),
           _TaskHeaderButton(
             label: 'Node',
-            value: _TaskSort.node,
+            value: TaskSort.node,
             sort: sort,
             onChanged: onSortChanged,
             flex: 2,
           ),
           _TaskHeaderButton(
             label: 'Operator',
-            value: _TaskSort.operatorName,
+            value: TaskSort.operatorName,
             sort: sort,
             onChanged: onSortChanged,
             flex: 2,
           ),
           _TaskHeaderButton(
             label: 'Started',
-            value: _TaskSort.started,
+            value: TaskSort.started,
             sort: sort,
             onChanged: onSortChanged,
             width: 154,
@@ -970,9 +934,9 @@ class _TaskHeaderButton extends StatelessWidget {
     this.width,
   });
   final String label;
-  final _TaskSort value;
-  final _TaskSort sort;
-  final ValueChanged<_TaskSort> onChanged;
+  final TaskSort value;
+  final TaskSort sort;
+  final ValueChanged<TaskSort> onChanged;
   final int? flex;
   final double? width;
   @override
@@ -1071,302 +1035,6 @@ class _DesktopTaskRow extends StatelessWidget {
       ),
     );
   }
-}
-
-class _TaskInspector extends StatefulWidget {
-  const _TaskInspector({
-    super.key,
-    required this.task,
-    required this.session,
-    this.scrollController,
-    this.inline = false,
-  });
-  final ClusterTask task;
-  final ProxmoxSession? session;
-  final ScrollController? scrollController;
-  final bool inline;
-
-  @override
-  State<_TaskInspector> createState() => _TaskInspectorState();
-}
-
-class _TaskInspectorState extends State<_TaskInspector> {
-  late final TaskLogController _logController = TaskLogController(
-    repository: const ProxmoxTaskLogRepository(),
-    session: widget.session,
-    task: widget.task,
-  );
-  bool _copiedTaskId = false;
-
-  @override
-  void dispose() {
-    _logController.dispose();
-    super.dispose();
-  }
-
-  Future<void> _copyTaskId() async {
-    await Clipboard.setData(ClipboardData(text: widget.task.upid));
-    if (!mounted) return;
-    setState(() => _copiedTaskId = true);
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    final ClusterTask task = widget.task;
-    final List<Widget> details = <Widget>[
-      if (widget.inline) ...<Widget>[
-        Text('Task details', style: PveAppleText.title3(context)),
-        const SizedBox(height: 6),
-      ] else ...<Widget>[
-        Text(task.type, style: PveAppleText.largeTitle(context)),
-        const SizedBox(height: 6),
-      ],
-      Text(
-        'Read-only details from the latest task list refresh. Load the server task log only when you need it.',
-        style: PveAppleText.secondary(context),
-      ),
-      const SizedBox(height: 18),
-      CupertinoListSection.insetGrouped(
-        margin: EdgeInsets.zero,
-        children: <Widget>[
-          _InspectorRow(label: 'Status', value: dashboardTaskStateLabel(task)),
-          _InspectorRow(label: 'Node', value: task.node),
-          _InspectorRow(label: 'Operator', value: task.user),
-          _InspectorRow(
-            label: 'Started',
-            value: formatPveDateTime(task.startedAt),
-          ),
-          _InspectorRow(
-            label: 'Finished',
-            value: formatPveDateTime(task.endedAt),
-          ),
-          _InspectorRow(label: 'Duration', value: _taskDurationLabel(task)),
-          CupertinoContextMenu(
-            actions: <Widget>[
-              CupertinoContextMenuAction(
-                onPressed: () {
-                  Navigator.of(context).pop();
-                  _copyTaskId();
-                },
-                child: const Text('Copy task ID'),
-              ),
-            ],
-            child: _InspectorRow(label: 'Task ID', value: task.upid),
-          ),
-        ],
-      ),
-      CupertinoButton(
-        padding: EdgeInsets.zero,
-        alignment: Alignment.centerLeft,
-        onPressed: _copyTaskId,
-        child: Text(_copiedTaskId ? 'Task ID copied' : 'Copy task ID'),
-      ),
-      const SizedBox(height: 18),
-      _TaskLogSection(controller: _logController),
-    ];
-    if (widget.inline) {
-      return PveInsetGroup(
-        key: const ValueKey<String>('desktop-task-inspector'),
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: details,
-        ),
-      );
-    }
-    return CupertinoPageScaffold(
-      navigationBar: CupertinoNavigationBar(
-        middle: const Text('Task details'),
-        trailing: CupertinoButton(
-          padding: EdgeInsets.zero,
-          onPressed: () => Navigator.of(context).pop(),
-          child: const Text(PveActionLabels.close),
-        ),
-      ),
-      child: SafeArea(
-        child: ListView(
-          controller: widget.scrollController,
-          padding: const EdgeInsets.all(16),
-          children: details,
-        ),
-      ),
-    );
-  }
-}
-
-class _TaskInspectorPlaceholder extends StatelessWidget {
-  const _TaskInspectorPlaceholder();
-
-  @override
-  Widget build(BuildContext context) => PveInsetGroup(
-    key: const ValueKey<String>('desktop-task-inspector-placeholder'),
-    padding: const EdgeInsets.all(18),
-    child: Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text('Task details', style: PveAppleText.title3(context)),
-        const SizedBox(height: 8),
-        Text(
-          'Select a task or interactive session to inspect its reported details and request its server log.',
-          style: PveAppleText.secondary(context),
-        ),
-      ],
-    ),
-  );
-}
-
-class _TaskLogSection extends StatelessWidget {
-  const _TaskLogSection({required this.controller});
-
-  final TaskLogController controller;
-
-  @override
-  Widget build(BuildContext context) => ListenableBuilder(
-    listenable: controller,
-    builder: (BuildContext context, Widget? child) {
-      final PveTaskLogResult? result = controller.result;
-      final Widget content;
-      if (controller.isLoading) {
-        content = const Center(child: CupertinoActivityIndicator());
-      } else if (result == null) {
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(
-              controller.canLoad
-                  ? 'The log stays on the server until you request it.'
-                  : 'Reconnect to this server to request its task log.',
-              style: PveAppleText.secondary(context),
-            ),
-            const SizedBox(height: 10),
-            CupertinoButton.filled(
-              key: const ValueKey<String>('load-task-log'),
-              onPressed: controller.canLoad ? controller.load : null,
-              child: const Text('Load server log'),
-            ),
-          ],
-        );
-      } else if (result.state == PveTaskLogState.available) {
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.stretch,
-          children: <Widget>[
-            for (final PveTaskLogLine line in result.lines)
-              Padding(
-                padding: const EdgeInsets.only(bottom: 8),
-                child: Text(
-                  '${line.sequence == null ? '' : '${line.sequence}: '}${line.text}',
-                  style: PveAppleText.caption(context),
-                ),
-              ),
-            CupertinoButton(
-              padding: EdgeInsets.zero,
-              onPressed: controller.load,
-              child: const Text('Reload log'),
-            ),
-          ],
-        );
-      } else {
-        final String label = switch (result.state) {
-          PveTaskLogState.empty =>
-            'No server log lines were reported for this task.',
-          PveTaskLogState.permissionLimited =>
-            'This account cannot read this task log.',
-          PveTaskLogState.unavailable =>
-            'This server does not make this task log available.',
-          PveTaskLogState.failed =>
-            result.message ?? 'The task log could not be loaded.',
-          _ => 'The task log is unavailable.',
-        };
-        content = Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text(label, style: PveAppleText.secondary(context)),
-            if (result.state == PveTaskLogState.failed) ...<Widget>[
-              const SizedBox(height: 10),
-              CupertinoButton(
-                padding: EdgeInsets.zero,
-                onPressed: controller.load,
-                child: const Text('Try again'),
-              ),
-            ],
-          ],
-        );
-      }
-      return PveInsetGroup(
-        padding: const EdgeInsets.all(16),
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: <Widget>[
-            Text('Server log', style: PveAppleText.title3(context)),
-            const SizedBox(height: 8),
-            content,
-          ],
-        ),
-      );
-    },
-  );
-}
-
-class _InspectorRow extends StatelessWidget {
-  const _InspectorRow({required this.label, required this.value});
-  final String label;
-  final String value;
-  @override
-  Widget build(BuildContext context) => CupertinoListTile(
-    title: Text(label),
-    additionalInfo: SizedBox(
-      width: 200,
-      child: Text(
-        value,
-        textAlign: TextAlign.end,
-        overflow: TextOverflow.ellipsis,
-      ),
-    ),
-  );
-}
-
-enum _TaskFilter { all, running, failed, unknown }
-
-enum _TaskDateFilter { all, day, week }
-
-enum _TaskSort { attention, started, node, operation, operatorName }
-
-int _compareTasksForAttention(ClusterTask left, ClusterTask right) {
-  final int priorityComparison = _taskAttentionPriority(
-    left,
-  ).compareTo(_taskAttentionPriority(right));
-  if (priorityComparison != 0) return priorityComparison;
-  return compareClusterTasksByRecency(left, right);
-}
-
-int _taskAttentionPriority(ClusterTask task) {
-  if (task.state == ClusterTaskState.failed) return 0;
-  if (task.isLongRunning) return 1;
-  if (task.state == ClusterTaskState.running && !task.isInteractiveSession) {
-    return 2;
-  }
-  if (task.state == ClusterTaskState.unknown) return 3;
-  if (task.isInteractiveSession) return 4;
-  return 5;
-}
-
-String _taskDurationLabel(ClusterTask task) {
-  final DateTime? startedAt = task.startedAt;
-  final DateTime? endedAt = task.endedAt;
-  if (endedAt == null) {
-    return task.isRunning ? 'In progress' : 'Duration unavailable';
-  }
-  if (startedAt == null || endedAt.isBefore(startedAt)) {
-    return 'Duration unavailable';
-  }
-  final Duration duration = endedAt.difference(startedAt);
-  if (duration.inHours > 0) {
-    return '${duration.inHours}h ${duration.inMinutes.remainder(60)}m';
-  }
-  if (duration.inMinutes > 0) {
-    return '${duration.inMinutes}m ${duration.inSeconds.remainder(60)}s';
-  }
-  return '${duration.inSeconds}s';
 }
 
 String _taskAgeLabel(ClusterTask task) {

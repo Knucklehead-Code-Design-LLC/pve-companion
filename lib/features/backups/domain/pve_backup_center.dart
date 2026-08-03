@@ -5,6 +5,22 @@ class PveBackupDestination {
 
   final ClusterStorage storage;
 
+  /// Whether Proxmox reports this storage as accepting backup content.
+  static bool supportsBackupContent(ClusterStorage storage) => storage.content
+      .toLowerCase()
+      .split(',')
+      .map((String item) => item.trim())
+      .contains('backup');
+
+  /// Whether an on-demand backup can safely offer this destination.
+  ///
+  /// A configured backup storage is not enough: without current availability
+  /// telemetry, the app cannot truthfully offer it as an executable target.
+  static bool isAvailableForExecution(ClusterStorage storage) =>
+      supportsBackupContent(storage) &&
+      storage.hasAvailabilityTelemetry &&
+      storage.isAvailable;
+
   String get name => storage.name;
 
   bool get isAvailable => storage.isAvailable;
