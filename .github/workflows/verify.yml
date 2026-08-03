@@ -15,11 +15,32 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     steps:
-      - uses: actions/checkout@v7
-      - uses: subosito/flutter-action@v2
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
         with:
-          channel: stable
-          cache: true
+          persist-credentials: false
+      - name: Cache Flutter SDK
+        uses: actions/cache@caa296126883cff596d87d8935842f9db880ef25 # v5.1.0
+        with:
+          path: ${{ runner.temp }}/flutter
+          key: flutter-${{ runner.os }}-3.44.8-058e0af2c2b57e369d905a03ac9748b0ebf543c6
+      - name: Set up Flutter
+        env:
+          FLUTTER_ROOT: ${{ runner.temp }}/flutter
+          FLUTTER_VERSION: 3.44.8
+          FLUTTER_REVISION: 058e0af2c2b57e369d905a03ac9748b0ebf543c6
+        run: |
+          if [ -x "$FLUTTER_ROOT/bin/flutter" ]; then
+            test "$(git -C "$FLUTTER_ROOT" rev-parse HEAD)" = "$FLUTTER_REVISION"
+          else
+            git init "$FLUTTER_ROOT"
+            git -C "$FLUTTER_ROOT" remote add origin https://github.com/flutter/flutter.git
+            git -C "$FLUTTER_ROOT" fetch --depth=1 origin \
+              "refs/tags/$FLUTTER_VERSION:refs/tags/$FLUTTER_VERSION"
+            git -C "$FLUTTER_ROOT" checkout --detach "refs/tags/$FLUTTER_VERSION"
+            test "$(git -C "$FLUTTER_ROOT" rev-parse HEAD)" = "$FLUTTER_REVISION"
+          fi
+          echo "$FLUTTER_ROOT/bin" >> "$GITHUB_PATH"
+          "$FLUTTER_ROOT/bin/flutter" --version
       - run: flutter pub get
       - run: dart format --output=none --set-exit-if-changed lib test tool
       - run: flutter analyze

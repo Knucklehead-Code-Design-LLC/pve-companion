@@ -16,12 +16,17 @@ class ProxmoxApiService
     required ProxmoxAuthentication authentication,
     String? trustedCertificateSha256,
     HttpClient Function()? httpClientFactory,
+    SecurityContext Function({bool withTrustedRoots})? securityContextFactory,
   }) : _endpoint = endpoint,
        _authentication = authentication,
        _trustedCertificateSha256 = _normaliseFingerprint(
          trustedCertificateSha256,
        ),
-       _httpClient = (httpClientFactory ?? HttpClient.new)() {
+       _httpClient = _createHttpClient(
+         trustedCertificateSha256,
+         httpClientFactory,
+         securityContextFactory,
+       ) {
     _httpClient.connectionTimeout = const Duration(seconds: 15);
     _httpClient.idleTimeout = const Duration(seconds: 20);
     _httpClient.userAgent = 'PVE Companion/0.1';
@@ -359,6 +364,29 @@ class ProxmoxApiService
   }
 
   int get _endpointPort => _endpoint.hasPort ? _endpoint.port : 443;
+
+  static HttpClient _createHttpClient(
+    String? trustedCertificateSha256,
+    HttpClient Function()? httpClientFactory,
+    SecurityContext Function({bool withTrustedRoots})? securityContextFactory,
+  ) {
+    if (httpClientFactory != null) {
+      return httpClientFactory();
+    }
+
+    final String? fingerprint = _normaliseFingerprint(trustedCertificateSha256);
+    if (fingerprint == null) {
+      return HttpClient();
+    }
+
+    // A saved fingerprint is a certificate pin. Do not let a different
+    // certificate bypass that pin solely because a platform root trusts it.
+    final SecurityContext context =
+        (securityContextFactory ?? SecurityContext.new)(
+          withTrustedRoots: false,
+        );
+    return HttpClient(context: context);
+  }
 
   void _ensureOpen() {
     if (_closed) {

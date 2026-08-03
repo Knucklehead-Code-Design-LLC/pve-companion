@@ -9,6 +9,44 @@ import 'package:pve_companion/core/api/proxmox_api_service.dart';
 import 'package:pve_companion/core/api/proxmox_authentication.dart';
 
 void main() {
+  test('uses certificate pinning instead of platform root trust', () {
+    bool? useTrustedRoots;
+    final ProxmoxApiService service = ProxmoxApiService(
+      endpoint: Uri(scheme: 'https', host: 'pve.example'),
+      authentication: const ProxmoxApiTokenAuthentication(
+        tokenId: 'root@pam!mobile',
+        secret: 'token-secret',
+      ),
+      trustedCertificateSha256:
+          'AAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAAA',
+      securityContextFactory: ({bool withTrustedRoots = true}) {
+        useTrustedRoots = withTrustedRoots;
+        return SecurityContext(withTrustedRoots: withTrustedRoots);
+      },
+    );
+    addTearDown(service.close);
+
+    expect(useTrustedRoots, isFalse);
+  });
+
+  test('uses platform root trust when no certificate fingerprint is saved', () {
+    bool createdSecurityContext = false;
+    final ProxmoxApiService service = ProxmoxApiService(
+      endpoint: Uri(scheme: 'https', host: 'pve.example'),
+      authentication: const ProxmoxApiTokenAuthentication(
+        tokenId: 'root@pam!mobile',
+        secret: 'token-secret',
+      ),
+      securityContextFactory: ({bool withTrustedRoots = true}) {
+        createdSecurityContext = true;
+        return SecurityContext(withTrustedRoots: withTrustedRoots);
+      },
+    );
+    addTearDown(service.close);
+
+    expect(createdSecurityContext, isFalse);
+  });
+
   test('uses a Content-Length form body for password authentication', () async {
     final HttpServer server = await HttpServer.bind(
       InternetAddress.loopbackIPv4,
