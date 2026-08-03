@@ -1,18 +1,34 @@
 # App Store screenshots
 
-The checked-in English (U.S.) screenshots are rendered by the production
-widgets using deterministic, local-only fixture data. They never contact a
-server and contain no real hostnames, IP addresses, users, or credentials.
+The English (U.S.) App Store images pair a polished PVE Companion treatment
+with production-widget captures. The interface shown in every image is
+rendered from deterministic, local-only fixture data: it never contacts a
+server and contains no real hostnames, IP addresses, users, or credentials.
 
-| Folder | Required canvas | Current files |
-| --- | --- | --- |
-| `en-US/iphone-6.9` | 1320 × 2868 | Overview, guests, nodes, storage, tasks |
-| `en-US/ipad-13` | 2064 × 2752 | Overview, guests, nodes, storage, tasks |
-| `en-US/mac` | 1280 × 800 | Overview, guests, nodes, storage, tasks |
+| Source capture | Upload-ready image | Required canvas | Current scenes |
+| --- | --- | --- | --- |
+| `source/en-US/iphone-6.9` | `en-US/iphone-6.9` | 1320 × 2868 | Overview, guests, nodes, storage, tasks |
+| `source/en-US/ipad-13` | `en-US/ipad-13` | 2064 × 2752 | Overview, guests, nodes, storage, tasks |
+| `source/en-US/mac` | `en-US/mac` | 1280 × 800 | Overview, guests, nodes, storage, tasks |
 
-All submitted files are JPEGs without alpha. The preview fixture must reflect
-real shipping behavior; do not add controls or claims that are unavailable in
-the application.
+The `source` folders hold the literal app captures. The `en-US` folders are
+the only upload-ready assets: they add the app mark, a feature-specific
+headline, and a restrained network backdrop around the real screen. This
+keeps the storefront presentation intentional without manufacturing UI or
+making feature claims the shipping app cannot support.
+
+All submitted files are JPEGs without alpha. Apple accepts one to 10
+screenshots per family; this release uses five in a consistent order.
+
+Validate the checked-in assets before upload or App Store submission:
+
+```sh
+tool/verify_app_store_submission.sh
+```
+
+Apple updates accepted device sizes independently of this repository. Check
+the current [App Store Connect screenshot specifications](https://developer.apple.com/help/app-store-connect/reference/app-information/screenshot-specifications)
+before recapturing or adding a platform.
 
 ## iPhone and iPad capture
 
@@ -26,8 +42,9 @@ tool/capture_ios_store_screenshots.sh \
 
 The helper clean-boots each simulator to reset stale rotation, launches
 `tool/store_screenshot_preview.dart` once per scene, and waits for the first
-stable frame before using `simctl` to capture JPEG output.
-Use `sips` to verify pixel dimensions and the absence of alpha before upload.
+stable frame before using `simctl` to capture raw JPEG source images. It then
+renders the App Store treatment automatically. Use `sips` or the validator to
+verify pixel dimensions and the absence of alpha before upload.
 
 ## Mac capture
 
@@ -37,6 +54,19 @@ Render the same production-widget preview at the exact 1280 × 800 canvas:
 tool/capture_macos_store_screenshots.sh
 ```
 
-The helper uses Flutter's deterministic golden renderer and converts the
-results to App Store-ready JPEGs. It needs no signing identity and does not
-change project signing settings.
+The helper uses Flutter's deterministic golden renderer, converts the results
+to raw JPEG source images, and renders the App Store treatment automatically.
+It needs no signing identity and does not change project signing settings.
+
+## Re-rendering the treatment
+
+After reviewing or recapturing the source images, re-render all platform
+assets with:
+
+```sh
+swift tool/render_app_store_marketing_screenshots.swift
+tool/verify_app_store_submission.sh
+```
+
+The renderer is intentionally macOS-native so it can use the installed system
+font and needs no image-processing dependency or generated placeholder art.
