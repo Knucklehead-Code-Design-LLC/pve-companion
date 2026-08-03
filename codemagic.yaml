@@ -129,10 +129,19 @@ workflows:
             --create
       - name: Fetch the Mac Installer Distribution certificate
         script: |
-          app-store-connect certificates list --type MAC_INSTALLER_DISTRIBUTION --save || \
+          app-store-connect certificates list --type MAC_INSTALLER_DISTRIBUTION --save
+      - name: Add or create Mac signing certificates in the keychain
+        script: |
+          set -euo pipefail
+          keychain add-certificates
+          has_installer_certificate="$(
+            keychain list-certificates |
+              jq -r '[.[] | .common_name | select(test("Mac (Installer Distribution|Developer Installer)"; "i"))] | length > 0'
+          )"
+          if [ "$has_installer_certificate" != "true" ]; then
             app-store-connect certificates create --type MAC_INSTALLER_DISTRIBUTION --save
-      - name: Add Mac signing certificates to the keychain
-        script: keychain add-certificates
+            keychain add-certificates
+          fi
       - name: Apply the Mac App Store profile to the Xcode project
         script: xcode-project use-profiles --project macos/Runner.xcodeproj
       - name: Build the signed macOS app with the next App Store build number
@@ -303,10 +312,19 @@ workflows:
             --create
       - name: Fetch the Mac Installer Distribution certificate
         script: |
-          app-store-connect certificates list --type MAC_INSTALLER_DISTRIBUTION --save || \
+          app-store-connect certificates list --type MAC_INSTALLER_DISTRIBUTION --save
+      - name: Add or create Mac signing certificates in the keychain
+        script: |
+          set -euo pipefail
+          keychain add-certificates
+          has_installer_certificate="$(
+            keychain list-certificates |
+              jq -r '[.[] | .common_name | select(test("Mac (Installer Distribution|Developer Installer)"; "i"))] | length > 0'
+          )"
+          if [ "$has_installer_certificate" != "true" ]; then
             app-store-connect certificates create --type MAC_INSTALLER_DISTRIBUTION --save
-      - name: Add Mac signing certificates to the keychain
-        script: keychain add-certificates
+            keychain add-certificates
+          fi
       - name: Apply the Mac App Store profile to the Xcode project
         script: xcode-project use-profiles --project macos/Runner.xcodeproj
       - name: Build the signed macOS app with the next App Store build number
