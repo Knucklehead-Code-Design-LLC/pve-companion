@@ -181,8 +181,9 @@ xcodebuild -workspace macos/Runner.xcworkspace -scheme Runner \
 See [Apple build and release notes](docs/release/apple-builds.md) for signing,
 simulator, distribution, App Store metadata, and TestFlight guidance. GitHub
 Actions runs the low-cost Ubuntu verification path; Codemagic compiles iOS pull
-requests without credentials, uploads signed `main` builds to internal
-TestFlight, and submits version-tagged releases to App Store review.
+requests without credentials, uploads signed iOS/iPadOS and macOS `main`
+builds to TestFlight, and submits the platform-specific artifacts for
+version-tagged releases to App Store review.
 
 ## Project design
 

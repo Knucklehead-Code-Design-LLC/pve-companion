@@ -1,6 +1,6 @@
 # App Store metadata
 
-This is the reviewed English (U.S.) metadata baseline for version 0.1.0. Keep
+This is the reviewed English (U.S.) metadata baseline for version 1.0.0. Keep
 the live App Store Connect record synchronized when product behavior changes.
 
 | Field | Value |
@@ -11,7 +11,9 @@ the live App Store Connect record synchronized when product behavior changes.
 | Secondary category | Utilities |
 | Bundle ID | `com.knuckleheadcodedesign.pvecompanion` |
 | SKU | `pve-companion-ios` |
-| Initial TestFlight platforms | iOS and iPadOS |
+| Supported product-page platforms | iOS, iPadOS, and macOS |
+| Existing App Store Connect platforms | iOS, iPadOS, and macOS; each has a prepared 1.0.0 version |
+| macOS Xcode category | `public.app-category.developer-tools` |
 | Copyright | 2026 Knucklehead Code & Design LLC |
 | Privacy policy URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/blob/main/PRIVACY.md` |
 | Support URL | `https://github.com/Knucklehead-Code-Design-LLC/pve-companion/issues` |
@@ -33,7 +35,7 @@ and optionally keep credentials in Apple Keychain. Self-signed certificates
 require explicit SHA-256 fingerprint confirmation and are pinned only to the
 server you approve.
 
-Core version 0.1 features:
+Core features:
 
 - Datacenter health, capacity, workload, nodes, and recent task activity
 - VM and LXC inventory with focused details
@@ -41,9 +43,10 @@ Core version 0.1 features:
 - Read-only storage and task views
 - Apple-native tabs, sidebar, sheets, and adaptive layouts for iPhone, iPad,
   and Mac
-- Small, medium, and large Home Screen widgets for last-known datacenter
-  health, workload, activity, and aggregate resource pressure
-- Optional four-hour Datacenter Watch on the Lock Screen and Dynamic Island
+- Small, medium, and large iPhone and iPad Home Screen widgets for last-known
+  datacenter health, workload, activity, and aggregate resource pressure
+- Optional four-hour iPhone Datacenter Watch on the Lock Screen and Dynamic
+  Island
 - No ads, analytics, tracking, or developer-operated cloud service
 
 PVE Companion connects directly to the Proxmox VE server you configure. Use a
@@ -55,16 +58,44 @@ by, or sponsored by Proxmox Server Solutions GmbH. Proxmox and Proxmox VE are
 used only to describe compatibility and may be trademarks of their respective
 owners.
 
+## Platform-local product-page content
+
+Use the promotional text, description, keywords, URLs, and release notes above
+for both the iOS/iPadOS and macOS platform versions. When macOS is added to an
+existing App Store Connect record, Apple transfers most shared metadata but
+not the platform promotional text, description, or screenshots. Keep those
+Mac fields synchronized deliberately rather than assuming they copied.
+
+The Mac App Store category must remain **Developer Tools**, matching the
+`LSApplicationCategoryType` declared by the macOS target. Keep **Utilities**
+as the secondary category unless the product meaningfully changes.
+
 ## Keywords
 
 `proxmox,virtualization,homelab,server,vm,lxc,datacenter,monitoring,sysadmin`
 
-## Version 0.1.0 release notes
+## Version 1.0.0 release notes
 
-Initial TestFlight release with secure server profiles, an Apple-first
-datacenter command center, guest inventory and power actions, node health,
-storage inventory, recent task activity, Home and Lock Screen widgets, and an
-optional Datacenter Watch Live Activity across iPhone, iPad, and Mac.
+Initial release across iPhone, iPad, and Mac with secure server profiles, an
+Apple-first datacenter command center, guest inventory and power actions, node
+health, storage inventory, and recent task activity. iPhone and iPad also
+include Home and Lock Screen widgets plus an optional Datacenter Watch Live
+Activity.
+
+## Screenshot order
+
+Upload the five files from each platform folder in this order:
+
+1. `01-datacenter-overview.jpg` — Health, at a glance.
+2. `02-guest-inventory.jpg` — Every guest, in clear view.
+3. `03-node-health.jpg` — Know which nodes need attention.
+4. `04-storage-inventory.jpg` — Capacity, made clear.
+5. `05-recent-tasks.jpg` — Every task, in one place.
+
+The files are generated from the real production-widget views and live in
+[`docs/app-store/screenshots`](../app-store/screenshots/README.md). Do not
+reorder a single platform independently without reviewing its product-page
+preview.
 
 ## App privacy answer baseline
 

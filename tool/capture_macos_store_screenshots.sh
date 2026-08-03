@@ -2,11 +2,14 @@
 
 set -eu
 
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repository_root"
+
 generated_directory="tool/mac_store_screenshots"
-output_directory="docs/app-store/screenshots/en-US/mac"
+source_directory="docs/app-store/screenshots/source/en-US/mac"
 
 flutter test --update-goldens tool/capture_macos_store_screenshots_test.dart
-mkdir -p "$output_directory"
+mkdir -p "$source_directory"
 
 for filename in \
   01-datacenter-overview \
@@ -18,7 +21,7 @@ do
   sips \
     -s format jpeg \
     "$generated_directory/$filename.png" \
-    --out "$output_directory/$filename.jpg" >/dev/null
+    --out "$source_directory/$filename.jpg" >/dev/null
 done
 
 rm \
@@ -28,3 +31,5 @@ rm \
   "$generated_directory/04-storage-inventory.png" \
   "$generated_directory/05-recent-tasks.png"
 rmdir "$generated_directory"
+
+swift tool/render_app_store_marketing_screenshots.swift

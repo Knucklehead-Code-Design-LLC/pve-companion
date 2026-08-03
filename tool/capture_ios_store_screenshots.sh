@@ -2,6 +2,9 @@
 
 set -eu
 
+repository_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+cd "$repository_root"
+
 if [ "$#" -ne 2 ]; then
   echo "usage: $0 <iphone-6.9-udid> <ipad-13-udid>" >&2
   exit 64
@@ -63,6 +66,8 @@ capture_scene() {
 }
 
 capture_device "$iphone_udid" \
-  docs/app-store/screenshots/en-US/iphone-6.9 0
+  docs/app-store/screenshots/source/en-US/iphone-6.9 0
 capture_device "$ipad_udid" \
-  docs/app-store/screenshots/en-US/ipad-13 0
+  docs/app-store/screenshots/source/en-US/ipad-13 0
+
+swift tool/render_app_store_marketing_screenshots.swift
