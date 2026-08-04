@@ -18,7 +18,8 @@ claiming parity before it exists.
 - [x] Cupertino search, status filters, and operational sorting across guest
       and node inventories, plus focused storage and task filters.
 - [x] Current-state resource, workload, availability, storage, and task-outcome
-      visualizations without a charting dependency or implied historical data.
+      visualizations, plus explicit Proxmox RRD-backed node performance history
+      when server telemetry and permissions are available.
 - [x] Storage configuration merged with reported per-node capacity telemetry,
       including shared-capacity de-duplication and node coverage.
 - [x] Small, medium, and large Home Screen layouts plus Lock Screen status

@@ -183,15 +183,17 @@ class _TasksPageState extends State<TasksPage> {
           const SizedBox(height: 12),
         ],
         PveMetricStrip(
+          showsItemScopes: false,
+          footer: 'Latest server-reported activity.',
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Recent operations',
+              label: 'Recent',
               value: '${tasks.length}',
               icon: CupertinoIcons.clock_fill,
               scope: 'Latest server response',
             ),
             PveMetricStripItem(
-              label: 'Active work',
+              label: 'Running',
               value: '$runningCount',
               icon: CupertinoIcons.arrow_2_circlepath,
               scope: 'Reported running operations',
@@ -221,42 +223,41 @@ class _TasksPageState extends State<TasksPage> {
             ),
           ],
         ),
-        if (usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 16),
-          TaskActivityInsights(tasks: orderedTasks),
-          const SizedBox(height: 24),
-        ] else
-          const SizedBox(height: 20),
-        PveWideControlBar(
-          primary: const PveSectionTitle(title: 'Recent activity'),
-          secondary: filter,
+        const SizedBox(height: 20),
+        PveInventoryToolbar(
+          title: const PveSectionTitle(title: 'Recent activity'),
+          search: CupertinoSearchTextField(
+            key: const ValueKey<String>('task-search'),
+            controller: _searchController,
+            placeholder: 'Search tasks',
+            onChanged: (String value) =>
+                setState(() => _taskQuery = _taskQuery.copyWith(query: value)),
+          ),
+          primaryControls: filter,
+          trailingControls: <Widget>[
+            PveInventoryMenuButton(
+              key: const ValueKey<String>('task-refine-filters'),
+              label: _taskRefinementLabel,
+              semanticLabel: 'Refine task activity filters',
+              icon: CupertinoIcons.line_horizontal_3_decrease_circle,
+              onPressed: () => _showTaskRefinementPicker(snapshot),
+            ),
+            PveInventoryMenuButton(
+              key: const ValueKey<String>('task-sort'),
+              label: 'Sort: ${_taskSortLabel(_taskQuery.sort)}',
+              semanticLabel: 'Change task activity sort order',
+              icon: CupertinoIcons.arrow_up_arrow_down,
+              onPressed: () => _showTaskSortPicker(context),
+            ),
+          ],
         ),
-        const SizedBox(height: 12),
-        CupertinoSearchTextField(
-          key: const ValueKey<String>('task-search'),
-          controller: _searchController,
-          placeholder: 'Search operation, node, or operator',
-          onChanged: (String value) =>
-              setState(() => _taskQuery = _taskQuery.copyWith(query: value)),
-        ),
-        const SizedBox(height: 10),
-        _TaskFilterControls(
-          dateFilter: _taskQuery.period,
-          node: _taskQuery.node,
-          operatorName: _taskQuery.operatorName,
-          guestVmid: _taskQuery.guestVmid,
-          nodes: tasks.map((ClusterTask task) => task.node).toSet(),
-          operators: tasks.map((ClusterTask task) => task.user).toSet(),
-          guests: _knownTaskGuests(snapshot),
-          onDateFilterChanged: (TaskPeriodFilter value) =>
-              setState(() => _taskQuery = _taskQuery.copyWith(period: value)),
-          onNodeChanged: (String? value) =>
-              setState(() => _taskQuery = _taskQuery.withNode(value)),
-          onOperatorChanged: (String? value) =>
-              setState(() => _taskQuery = _taskQuery.withOperatorName(value)),
-          onGuestChanged: (int? value) =>
-              setState(() => _taskQuery = _taskQuery.withGuestVmid(value)),
-        ),
+        const SizedBox(height: 8),
+        if (tasks.isNotEmpty)
+          Text(
+            'Showing ${visibleTasks.length} of ${tasks.length} recent ${tasks.length == 1 ? 'task' : 'tasks'}',
+            key: const ValueKey<String>('task-result-count'),
+            style: PveAppleText.secondary(context),
+          ),
         const SizedBox(height: 16),
         if (tasks.isEmpty)
           PveInsetGroup(
@@ -303,20 +304,10 @@ class _TasksPageState extends State<TasksPage> {
             usesDesktopInspector: usesDesktopInspector,
             onInspect: inspectTask,
           ),
-        if (!usesExpandedPresentation) ...<Widget>[
-          const SizedBox(height: 24),
-          const PveSectionTitle(title: 'Activity analysis'),
-          const SizedBox(height: 12),
-          TaskActivityInsights(tasks: orderedTasks),
-        ],
-        if (tasks.isNotEmpty) ...<Widget>[
-          const SizedBox(height: 12),
-          Text(
-            'Showing ${visibleTasks.length} of ${tasks.length} recent ${tasks.length == 1 ? 'task' : 'tasks'}',
-            textAlign: TextAlign.center,
-            style: PveAppleText.caption(context),
-          ),
-        ],
+        const SizedBox(height: 24),
+        const PveSectionTitle(title: 'Activity analysis'),
+        const SizedBox(height: 12),
+        TaskActivityInsights(tasks: orderedTasks),
       ],
     );
   }
@@ -425,6 +416,261 @@ class _TasksPageState extends State<TasksPage> {
   void _clearFilters() {
     _searchController.clear();
     setState(() => _taskQuery = _taskQuery.clearFilters());
+  }
+
+  String get _taskRefinementLabel {
+    final count = _taskRefinementCount;
+    return count == 0 ? 'Filters' : 'Filters ($count)';
+  }
+
+  int get _taskRefinementCount {
+    var count = 0;
+    if (_taskQuery.period != TaskPeriodFilter.all) {
+      count += 1;
+    }
+    if (_taskQuery.node != null) {
+      count += 1;
+    }
+    if (_taskQuery.operatorName != null) {
+      count += 1;
+    }
+    if (_taskQuery.guestVmid != null) {
+      count += 1;
+    }
+    return count;
+  }
+
+  Future<void> _showTaskRefinementPicker(
+    ClusterOverviewSnapshot snapshot,
+  ) async {
+    final guests = _knownTaskGuests(snapshot);
+    final selectedGuest = _guestWithVmid(guests, _taskQuery.guestVmid);
+    final selection = await showCupertinoModalPopup<_TaskRefinement>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Refine activity'),
+        actions: <Widget>[
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_TaskRefinement.period),
+            child: Text('Time · ${_taskPeriodLabel(_taskQuery.period)}'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_TaskRefinement.node),
+            child: Text('Node · ${_taskQuery.node ?? 'All nodes'}'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_TaskRefinement.operatorName),
+            child: Text(
+              'Operator · ${_taskQuery.operatorName ?? 'All operators'}',
+            ),
+          ),
+          if (guests.isNotEmpty)
+            CupertinoActionSheetAction(
+              onPressed: () =>
+                  Navigator.of(popupContext).pop(_TaskRefinement.guest),
+              child: Text('Guest · ${selectedGuest?.title ?? 'All guests'}'),
+            ),
+          if (_taskRefinementCount > 0)
+            CupertinoActionSheetAction(
+              isDestructiveAction: true,
+              onPressed: () =>
+                  Navigator.of(popupContext).pop(_TaskRefinement.clear),
+              child: const Text('Clear refinements'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (!mounted || selection == null) {
+      return;
+    }
+    await _openTaskRefinement(selection, snapshot, guests);
+  }
+
+  Future<void> _openTaskRefinement(
+    _TaskRefinement selection,
+    ClusterOverviewSnapshot snapshot,
+    List<PveGuest> guests,
+  ) async {
+    switch (selection) {
+      case _TaskRefinement.period:
+        await _showTaskPeriodPicker(context);
+        return;
+      case _TaskRefinement.node:
+        await _showTaskTextFilterPicker(
+          context,
+          title: 'Node',
+          allLabel: 'All nodes',
+          choices: snapshot.tasks.map((ClusterTask task) => task.node),
+          onSelected: (String? value) {
+            setState(() => _taskQuery = _taskQuery.withNode(value));
+          },
+        );
+        return;
+      case _TaskRefinement.operatorName:
+        await _showTaskTextFilterPicker(
+          context,
+          title: 'Operator',
+          allLabel: 'All operators',
+          choices: snapshot.tasks.map((ClusterTask task) => task.user),
+          onSelected: (String? value) {
+            setState(() => _taskQuery = _taskQuery.withOperatorName(value));
+          },
+        );
+        return;
+      case _TaskRefinement.guest:
+        await _showTaskGuestFilterPicker(context, guests);
+        return;
+      case _TaskRefinement.clear:
+        setState(
+          () => _taskQuery = _taskQuery
+              .copyWith(period: TaskPeriodFilter.all)
+              .withNode(null)
+              .withOperatorName(null)
+              .withGuestVmid(null),
+        );
+        return;
+    }
+  }
+
+  Future<void> _showTaskPeriodPicker(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Time'),
+        actions: <Widget>[
+          for (final TaskPeriodFilter value in TaskPeriodFilter.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _taskQuery.period,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(
+                    () => _taskQuery = _taskQuery.copyWith(period: value),
+                  );
+                }
+              },
+              child: Text(_taskPeriodLabel(value)),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTaskTextFilterPicker(
+    BuildContext context, {
+    required String title,
+    required String allLabel,
+    required Iterable<String> choices,
+    required ValueChanged<String?> onSelected,
+  }) async {
+    final orderedChoices = choices.toSet().toList()..sort();
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: Text(title),
+        actions: <Widget>[
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(popupContext).pop();
+              if (mounted) {
+                onSelected(null);
+              }
+            },
+            child: Text(allLabel),
+          ),
+          for (final choice in orderedChoices)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  onSelected(choice);
+                }
+              },
+              child: Text(choice),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTaskGuestFilterPicker(
+    BuildContext context,
+    List<PveGuest> guests,
+  ) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Guest'),
+        actions: <Widget>[
+          CupertinoActionSheetAction(
+            onPressed: () {
+              Navigator.of(popupContext).pop();
+              if (mounted) {
+                setState(() => _taskQuery = _taskQuery.withGuestVmid(null));
+              }
+            },
+            child: const Text('All guests'),
+          ),
+          for (final guest in guests)
+            CupertinoActionSheetAction(
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(
+                    () => _taskQuery = _taskQuery.withGuestVmid(guest.vmid),
+                  );
+                }
+              },
+              child: Text('${guest.title} (${guest.vmid})'),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTaskSortPicker(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Sort activity'),
+        actions: <Widget>[
+          for (final TaskSort value in TaskSort.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _taskQuery.sort,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _taskQuery = _taskQuery.copyWith(sort: value));
+                }
+              },
+              child: Text(_taskSortLabel(value)),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
   }
 
   List<PveGuest> _knownTaskGuests(ClusterOverviewSnapshot snapshot) {
@@ -627,147 +873,6 @@ class _TaskCard extends StatelessWidget {
   }
 }
 
-class _TaskFilterControls extends StatelessWidget {
-  const _TaskFilterControls({
-    required this.dateFilter,
-    required this.node,
-    required this.operatorName,
-    required this.guestVmid,
-    required this.nodes,
-    required this.operators,
-    required this.guests,
-    required this.onDateFilterChanged,
-    required this.onNodeChanged,
-    required this.onOperatorChanged,
-    required this.onGuestChanged,
-  });
-
-  final TaskPeriodFilter dateFilter;
-  final String? node;
-  final String? operatorName;
-  final int? guestVmid;
-  final Set<String> nodes;
-  final Set<String> operators;
-  final List<PveGuest> guests;
-  final ValueChanged<TaskPeriodFilter> onDateFilterChanged;
-  final ValueChanged<String?> onNodeChanged;
-  final ValueChanged<String?> onOperatorChanged;
-  final ValueChanged<int?> onGuestChanged;
-
-  @override
-  Widget build(BuildContext context) {
-    final orderedNodes = nodes.toList()..sort();
-    final orderedOperators = operators.toList()..sort();
-    return Wrap(
-      spacing: 8,
-      runSpacing: 8,
-      crossAxisAlignment: WrapCrossAlignment.center,
-      children: <Widget>[
-        PveSlidingSegmentedControl<TaskPeriodFilter>(
-          groupValue: dateFilter,
-          children: const <TaskPeriodFilter, Widget>{
-            TaskPeriodFilter.all: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('Any time'),
-            ),
-            TaskPeriodFilter.day: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('24h'),
-            ),
-            TaskPeriodFilter.week: Padding(
-              padding: EdgeInsets.symmetric(horizontal: 8),
-              child: Text('7d'),
-            ),
-          },
-          onValueChanged: (TaskPeriodFilter? value) {
-            if (value != null) onDateFilterChanged(value);
-          },
-          semanticLabels: const <TaskPeriodFilter, String>{
-            TaskPeriodFilter.all: 'Tasks from any time',
-            TaskPeriodFilter.day: 'Tasks from the last 24 hours',
-            TaskPeriodFilter.week: 'Tasks from the last 7 days',
-          },
-        ),
-        _TaskChoiceMenu(
-          label: node == null ? 'All nodes' : node!,
-          choices: orderedNodes,
-          onSelected: onNodeChanged,
-        ),
-        _TaskChoiceMenu(
-          label: operatorName == null ? 'All operators' : operatorName!,
-          choices: orderedOperators,
-          onSelected: onOperatorChanged,
-        ),
-        if (guests.isNotEmpty)
-          _TaskGuestChoiceMenu(
-            selectedVmid: guestVmid,
-            guests: guests,
-            onSelected: onGuestChanged,
-          )
-        else
-          const Text('Guest filtering is unavailable for these task records.'),
-      ],
-    );
-  }
-}
-
-class _TaskGuestChoiceMenu extends StatelessWidget {
-  const _TaskGuestChoiceMenu({
-    required this.selectedVmid,
-    required this.guests,
-    required this.onSelected,
-  });
-
-  final int? selectedVmid;
-  final List<PveGuest> guests;
-  final ValueChanged<int?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    final selected = _guestWithVmid(guests, selectedVmid);
-    return CupertinoButton(
-      key: const ValueKey<String>('task-guest-filter'),
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
-      onPressed: () => showCupertinoModalPopup<void>(
-        context: context,
-        builder: (BuildContext popupContext) => CupertinoActionSheet(
-          title: const Text('Guest'),
-          actions: <Widget>[
-            CupertinoActionSheetAction(
-              onPressed: () {
-                Navigator.of(popupContext).pop();
-                onSelected(null);
-              },
-              child: const Text('All guests'),
-            ),
-            for (final guest in guests)
-              CupertinoActionSheetAction(
-                onPressed: () {
-                  Navigator.of(popupContext).pop();
-                  onSelected(guest.vmid);
-                },
-                child: Text('${guest.title} (${guest.vmid})'),
-              ),
-          ],
-          cancelButton: CupertinoActionSheetAction(
-            onPressed: () => Navigator.of(popupContext).pop(),
-            child: const Text('Cancel'),
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(selected == null ? 'All guests' : selected.title),
-          const SizedBox(width: 4),
-          const Icon(CupertinoIcons.chevron_down, size: 13),
-        ],
-      ),
-    );
-  }
-}
-
 PveGuest? _guestWithVmid(List<PveGuest> guests, int? vmid) {
   for (final guest in guests) {
     if (guest.vmid == vmid) {
@@ -775,62 +880,6 @@ PveGuest? _guestWithVmid(List<PveGuest> guests, int? vmid) {
     }
   }
   return null;
-}
-
-class _TaskChoiceMenu extends StatelessWidget {
-  const _TaskChoiceMenu({
-    required this.label,
-    required this.choices,
-    required this.onSelected,
-  });
-
-  final String label;
-  final List<String> choices;
-  final ValueChanged<String?> onSelected;
-
-  @override
-  Widget build(BuildContext context) {
-    return CupertinoButton(
-      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
-      color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
-      onPressed: () => showCupertinoModalPopup<void>(
-        context: context,
-        builder: (BuildContext popupContext) => CupertinoActionSheet(
-          title: Text(label.startsWith('All ') ? label.substring(4) : label),
-          actions: <Widget>[
-            CupertinoActionSheetAction(
-              onPressed: () {
-                Navigator.of(popupContext).pop();
-                onSelected(null);
-              },
-              child: const Text('All'),
-            ),
-            for (final choice in choices)
-              CupertinoActionSheetAction(
-                onPressed: () {
-                  Navigator.of(popupContext).pop();
-                  onSelected(choice);
-                },
-                child: Text(choice),
-              ),
-          ],
-          cancelButton: CupertinoActionSheetAction(
-            isDefaultAction: true,
-            onPressed: () => Navigator.of(popupContext).pop(),
-            child: const Text('Cancel'),
-          ),
-        ),
-      ),
-      child: Row(
-        mainAxisSize: MainAxisSize.min,
-        children: <Widget>[
-          Text(label),
-          const SizedBox(width: 4),
-          const Icon(CupertinoIcons.chevron_down, size: 13),
-        ],
-      ),
-    );
-  }
 }
 
 class _DesktopTaskTable extends StatelessWidget {
@@ -1047,3 +1096,19 @@ String _taskAgeLabel(ClusterTask task) {
   if (age.inMinutes > 0) return 'Active ${age.inMinutes}m';
   return 'Active just now';
 }
+
+enum _TaskRefinement { period, node, operatorName, guest, clear }
+
+String _taskPeriodLabel(TaskPeriodFilter value) => switch (value) {
+  TaskPeriodFilter.all => 'Any time',
+  TaskPeriodFilter.day => 'Last 24 hours',
+  TaskPeriodFilter.week => 'Last 7 days',
+};
+
+String _taskSortLabel(TaskSort value) => switch (value) {
+  TaskSort.attention => 'Attention',
+  TaskSort.started => 'Newest',
+  TaskSort.node => 'Node',
+  TaskSort.operation => 'Operation',
+  TaskSort.operatorName => 'Operator',
+};

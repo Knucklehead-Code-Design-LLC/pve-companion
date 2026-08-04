@@ -22,7 +22,7 @@ class DatacenterNodesSection extends StatelessWidget {
       children: <Widget>[
         DatacenterDashboardSectionHeader(
           title: 'Nodes',
-          actionLabel: 'View nodes',
+          actionLabel: 'View Nodes',
           actionSemanticsLabel: 'View all nodes',
           onAction: onViewNodes,
         ),
@@ -151,7 +151,7 @@ class _DatacenterNodeCard extends StatelessWidget {
             const SizedBox(height: 14),
             _NodePressureRow(label: 'Memory', pressure: node.memory),
             const SizedBox(height: 14),
-            _NodePressureRow(label: 'Root disk', pressure: node.rootDisk),
+            _NodePressureRow(label: 'Disk', pressure: node.rootDisk),
           ],
         ),
       ),

@@ -146,6 +146,7 @@ class _GuestListPageState extends State<GuestListPage> {
       },
     );
     final Widget search = CupertinoSearchTextField(
+      key: const ValueKey<String>('guest-search'),
       controller: _searchController,
       placeholder: 'Search guests',
       onChanged: (_) => setState(() {}),
@@ -163,6 +164,8 @@ class _GuestListPageState extends State<GuestListPage> {
           const SizedBox(height: 12),
         ],
         PveMetricStrip(
+          showsItemScopes: false,
+          footer: 'Current non-template guest inventory.',
           items: <PveMetricStripItem>[
             PveMetricStripItem(
               label: 'Workloads',
@@ -192,17 +195,19 @@ class _GuestListPageState extends State<GuestListPage> {
           ],
         ),
         const SizedBox(height: 20),
-        const PveSectionTitle(title: 'Guest inventory'),
-        const SizedBox(height: 12),
-        PveWideControlBar(primary: search, secondary: filter),
-        Align(
-          alignment: Alignment.centerRight,
-          child: CupertinoButton(
-            key: const ValueKey<String>('guest-inventory-sort'),
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            onPressed: () => _showSortPicker(context),
-            child: Text('Sort: ${_sort.label}'),
-          ),
+        PveInventoryToolbar(
+          title: const PveSectionTitle(title: 'Guest inventory'),
+          search: search,
+          primaryControls: filter,
+          trailingControls: <Widget>[
+            PveInventoryMenuButton(
+              key: const ValueKey<String>('guest-inventory-sort'),
+              label: 'Sort: ${_sort.label}',
+              semanticLabel: 'Change guest inventory sort order',
+              icon: CupertinoIcons.arrow_up_arrow_down,
+              onPressed: () => _showSortPicker(context),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         Text(

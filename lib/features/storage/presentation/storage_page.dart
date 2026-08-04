@@ -117,6 +117,12 @@ class _StoragePageState extends State<StoragePage> {
       fullyAvailableCount: fullyAvailableCount,
       availabilityReportedCount: availabilityReportedCount,
     );
+    final storageMetricFooter = _storageMetricFooter(
+      fullyAvailableCount: fullyAvailableCount,
+      availabilityReportedCount: availabilityReportedCount,
+      capacityReportingCount: storagesWithCapacity.length,
+      storageCount: storages.length,
+    );
     final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
       key: const ValueKey<String>('storage-locality-filter'),
       groupValue: _filter,
@@ -156,16 +162,18 @@ class _StoragePageState extends State<StoragePage> {
           const SizedBox(height: 12),
         ],
         PveMetricStrip(
+          showsItemScopes: false,
+          footer: storageMetricFooter,
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Configured pools',
+              label: 'Configured',
               value: '${storages.length}',
               icon: CupertinoIcons.tray_full_fill,
               scope: 'Reported by this server',
             ),
             availabilityCoverageMetric,
             PveMetricStripItem(
-              label: 'Capacity used now',
+              label: 'Used',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateUsedBytes)
                   : '—',
@@ -176,7 +184,7 @@ class _StoragePageState extends State<StoragePage> {
               ),
             ),
             PveMetricStripItem(
-              label: 'Capacity free now',
+              label: 'Free',
               value: hasCapacityTelemetry
                   ? formatPveBytes(aggregateAvailableBytes)
                   : '—',
@@ -237,7 +245,7 @@ class _StoragePageState extends State<StoragePage> {
                       ),
                       const SizedBox(height: 6),
                       Text(
-                        'Destination availability is based on the latest storage report. Open Backup Center to review schedules, copies, and backup activity.',
+                        'Review backup schedules, copies, and recent activity.',
                         style: PveAppleText.secondary(context),
                       ),
                     ],
@@ -365,7 +373,7 @@ PveMetricStripItem _availabilityCoverageMetric(
 }) {
   if (availabilityReportedCount == 0) {
     return PveMetricStripItem(
-      label: 'Availability coverage',
+      label: 'Available',
       value: '—',
       icon: CupertinoIcons.check_mark_circled_solid,
       color: PveAppleColors.secondaryLabel(context),
@@ -374,7 +382,7 @@ PveMetricStripItem _availabilityCoverageMetric(
   }
   if (fullyAvailableCount == availabilityReportedCount) {
     return PveMetricStripItem(
-      label: 'Availability coverage',
+      label: 'Available',
       value: '$fullyAvailableCount/$availabilityReportedCount',
       icon: CupertinoIcons.check_mark_circled_solid,
       color: PveAppleColors.success(context),
@@ -382,12 +390,27 @@ PveMetricStripItem _availabilityCoverageMetric(
     );
   }
   return PveMetricStripItem(
-    label: 'Availability coverage',
+    label: 'Available',
     value: '$fullyAvailableCount/$availabilityReportedCount',
     icon: CupertinoIcons.check_mark_circled_solid,
     color: PveAppleColors.warning(context),
     scope: 'Fully available now',
   );
+}
+
+String _storageMetricFooter({
+  required int fullyAvailableCount,
+  required int availabilityReportedCount,
+  required int capacityReportingCount,
+  required int storageCount,
+}) {
+  final capacity =
+      '$capacityReportingCount/$storageCount pools report capacity';
+  if (availabilityReportedCount == 0) {
+    return 'Latest storage report · $capacity · availability not reported.';
+  }
+  return 'Latest storage report · $capacity · '
+      '$fullyAvailableCount/$availabilityReportedCount available.';
 }
 
 class _BackupDestinationReadiness extends StatelessWidget {

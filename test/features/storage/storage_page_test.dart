@@ -30,11 +30,16 @@ void main() {
       find.text('Showing all 2 storage pools · highest risk first'),
       findsOneWidget,
     );
-    expect(find.text('Configured pools'), findsOneWidget);
-    expect(find.text('Availability coverage'), findsNWidgets(2));
-    expect(find.text('Capacity used now'), findsNWidgets(3));
-    expect(find.text('Capacity free now'), findsOneWidget);
-    expect(find.text('2 of 2 pools report capacity'), findsNWidgets(2));
+    expect(find.text('Configured'), findsOneWidget);
+    expect(find.text('Available'), findsWidgets);
+    expect(find.text('Used'), findsWidgets);
+    expect(find.text('Free'), findsOneWidget);
+    expect(
+      find.text(
+        'Latest storage report · 2/2 pools report capacity · 2/2 available.',
+      ),
+      findsOneWidget,
+    );
 
     await tester.tap(find.text('Shared').first);
     await tester.pump();
@@ -137,7 +142,7 @@ void main() {
       findsOneWidget,
     );
     expect(
-      find.textContaining('schedules, copies, and backup activity'),
+      find.text('Review backup schedules, copies, and recent activity.'),
       findsOneWidget,
     );
   });
