@@ -22,7 +22,7 @@ void main() {
       ),
     );
     await tester.pump();
-    expect(find.text('Connecting to guest console'), findsOneWidget);
+    expect(find.text('Connecting to console'), findsOneWidget);
     expect(find.byTooltip('Reconnect guest console'), findsOneWidget);
     expect(find.bySemanticsLabel('Reconnect guest console'), findsOneWidget);
 
@@ -60,7 +60,7 @@ void main() {
     await tester.pump();
     await tester.pump();
 
-    await tester.tap(find.text('Keyboard'));
+    await tester.tap(find.text('Type'));
     await tester.pump();
     final textInput = find.byType(CupertinoTextField);
     expect(textInput, findsOneWidget);

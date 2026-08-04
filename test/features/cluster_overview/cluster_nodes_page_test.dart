@@ -42,12 +42,12 @@ void main() {
     );
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    final attentionFilter = find.descendant(
-      of: find.byKey(const ValueKey<String>('node-status-filter')),
-      matching: find.text('Attention'),
+    await tester.tap(
+      find.byKey(const ValueKey<String>('node-inventory-refine')),
     );
-    await tester.tap(attentionFilter);
-    await tester.pump();
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Needs attention'));
+    await tester.pumpAndSettle();
 
     expect(find.text('No nodes need attention'), findsOneWidget);
     expect(find.text('Showing 0 of 2 nodes'), findsOneWidget);
@@ -143,12 +143,14 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey<String>('node-inventory-sort')));
+    await tester.tap(
+      find.byKey(const ValueKey<String>('node-inventory-refine')),
+    );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sort node inventory'), findsOneWidget);
-    expect(find.text('Uptime'), findsOneWidget);
-    expect(find.text('Resource use'), findsOneWidget);
+    expect(find.text('Refine nodes'), findsOneWidget);
+    expect(find.text('Sort: Uptime'), findsOneWidget);
+    expect(find.text('Sort: Resource use'), findsOneWidget);
   });
 
   testWidgets('keeps node selection in a desktop inspector', (
@@ -234,7 +236,7 @@ void main() {
       ),
     );
 
-    expect(find.text('CPU cores'), findsOneWidget);
+    expect(find.text('Cores'), findsOneWidget);
     expect(
       find.text(
         'Latest reported node state. CPU core capacity is not reported.',

@@ -63,6 +63,7 @@ class _GuestFormPage extends StatelessWidget {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: Text(title),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -399,19 +400,55 @@ class _GuestConfigurationFormState extends State<_GuestConfigurationForm> {
             margin: EdgeInsets.zero,
             header: const Text('Resources'),
             children: <Widget>[
-              CupertinoTextFormFieldRow(
-                prefix: const Text('CPU cores'),
-                placeholder: 'Not reported',
-                controller: _coresController,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
+              CupertinoFormRow(
+                prefix: const _ResourceInputLabel(
+                  title: 'CPU cores',
+                  detail: '1 core steps',
+                ),
+                child: _ResourceStepper(
+                  controller: _coresController,
+                  placeholder: '—',
+                  decrementLabel: 'Decrease CPU cores',
+                  incrementLabel: 'Increase CPU cores',
+                  onDecrement: () => _adjustResource(
+                    _coresController,
+                    step: 1,
+                    fallback: 1,
+                    increases: false,
+                  ),
+                  onIncrement: () => _adjustResource(
+                    _coresController,
+                    step: 1,
+                    fallback: 1,
+                    increases: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
-              CupertinoTextFormFieldRow(
-                prefix: const Text('Memory'),
-                placeholder: 'MiB',
-                controller: _memoryController,
-                keyboardType: TextInputType.number,
-                onChanged: (_) => setState(() {}),
+              CupertinoFormRow(
+                prefix: const _ResourceInputLabel(
+                  title: 'Memory',
+                  detail: 'MiB · 256 MiB steps',
+                ),
+                child: _ResourceStepper(
+                  controller: _memoryController,
+                  placeholder: '—',
+                  decrementLabel: 'Decrease memory',
+                  incrementLabel: 'Increase memory',
+                  onDecrement: () => _adjustResource(
+                    _memoryController,
+                    step: 256,
+                    fallback: 512,
+                    increases: false,
+                  ),
+                  onIncrement: () => _adjustResource(
+                    _memoryController,
+                    step: 256,
+                    fallback: 512,
+                    increases: true,
+                  ),
+                  onChanged: (_) => setState(() {}),
+                ),
               ),
             ],
           ),
@@ -495,4 +532,99 @@ class _GuestConfigurationFormState extends State<_GuestConfigurationForm> {
     '0' || 'false' || 'no' => false,
     _ => null,
   };
+
+  void _adjustResource(
+    TextEditingController controller, {
+    required int step,
+    required int fallback,
+    required bool increases,
+  }) {
+    final current = _positiveInteger(controller.text) ?? fallback;
+    final next = increases
+        ? current + step
+        : current > step
+        ? current - step
+        : 1;
+    controller.value = TextEditingValue(
+      text: '$next',
+      selection: TextSelection.collapsed(offset: '$next'.length),
+    );
+    setState(() {});
+  }
+}
+
+class _ResourceInputLabel extends StatelessWidget {
+  const _ResourceInputLabel({required this.title, required this.detail});
+
+  final String title;
+  final String detail;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.start,
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Text(title),
+      const SizedBox(height: 2),
+      Text(detail, style: PveAppleText.caption(context)),
+    ],
+  );
+}
+
+class _ResourceStepper extends StatelessWidget {
+  const _ResourceStepper({
+    required this.controller,
+    required this.placeholder,
+    required this.decrementLabel,
+    required this.incrementLabel,
+    required this.onDecrement,
+    required this.onIncrement,
+    required this.onChanged,
+  });
+
+  final TextEditingController controller;
+  final String placeholder;
+  final String decrementLabel;
+  final String incrementLabel;
+  final VoidCallback onDecrement;
+  final VoidCallback onIncrement;
+  final ValueChanged<String> onChanged;
+
+  @override
+  Widget build(BuildContext context) => Row(
+    mainAxisSize: MainAxisSize.min,
+    children: <Widget>[
+      Semantics(
+        button: true,
+        label: decrementLabel,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(36, 36),
+          onPressed: onDecrement,
+          child: const Icon(CupertinoIcons.minus_circle),
+        ),
+      ),
+      SizedBox(
+        width: 62,
+        child: CupertinoTextField(
+          controller: controller,
+          placeholder: placeholder,
+          keyboardType: TextInputType.number,
+          textAlign: TextAlign.center,
+          padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 8),
+          onChanged: onChanged,
+        ),
+      ),
+      Semantics(
+        button: true,
+        label: incrementLabel,
+        child: CupertinoButton(
+          padding: EdgeInsets.zero,
+          minimumSize: const Size(36, 36),
+          onPressed: onIncrement,
+          child: const Icon(CupertinoIcons.plus_circle),
+        ),
+      ),
+    ],
+  );
 }

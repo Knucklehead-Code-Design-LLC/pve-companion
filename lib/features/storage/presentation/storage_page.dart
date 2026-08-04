@@ -123,33 +123,12 @@ class _StoragePageState extends State<StoragePage> {
       capacityReportingCount: storagesWithCapacity.length,
       storageCount: storages.length,
     );
-    final Widget filter = PveSlidingSegmentedControl<_StorageFilter>(
-      key: const ValueKey<String>('storage-locality-filter'),
-      groupValue: _filter,
-      semanticLabels: const <_StorageFilter, String>{
-        _StorageFilter.all: 'All storage pools',
-        _StorageFilter.shared: 'Shared storage pools',
-        _StorageFilter.local: 'Local storage pools',
-      },
-      children: const <_StorageFilter, Widget>{
-        _StorageFilter.all: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('All'),
-        ),
-        _StorageFilter.shared: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Shared'),
-        ),
-        _StorageFilter.local: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Local'),
-        ),
-      },
-      onValueChanged: (_StorageFilter? value) {
-        if (value != null) {
-          setState(() => _filter = value);
-        }
-      },
+    final Widget filter = PveInventoryMenuButton(
+      key: const ValueKey<String>('storage-refine'),
+      label: 'Filter: ${_filter.label}',
+      semanticLabel: 'Filter storage pools',
+      icon: CupertinoIcons.line_horizontal_3_decrease_circle,
+      onPressed: () => _showStorageFilter(context),
     );
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
@@ -198,12 +177,8 @@ class _StoragePageState extends State<StoragePage> {
         ),
         if (widget.session != null) ...<Widget>[
           const SizedBox(height: 24),
-          PveSectionHeader(
-            title: 'Data protection',
-            actionLabel: 'Open Backup Center',
-            actionSemanticsLabel: 'Open Backup Center',
-            onAction: _showBackupCenter,
-          ),
+          const PveSectionTitle(title: 'Data protection'),
+          const SizedBox(height: 8),
           PveInsetGroup(
             onTap: _showBackupCenter,
             padding: const EdgeInsets.all(16),
@@ -363,6 +338,33 @@ class _StoragePageState extends State<StoragePage> {
       return;
     }
     await showBackupCenterSheet(context, session: session, overview: overview);
+  }
+
+  Future<void> _showStorageFilter(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Filter storage'),
+        message: Text('Showing ${_filter.label.toLowerCase()}'),
+        actions: <Widget>[
+          for (final value in _StorageFilter.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _filter,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _filter = value);
+                }
+              },
+              child: Text(value.label),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
   }
 }
 
@@ -582,7 +584,15 @@ class _StorageCard extends StatelessWidget {
   }
 }
 
-enum _StorageFilter { all, shared, local }
+enum _StorageFilter {
+  all('All pools'),
+  shared('Shared pools'),
+  local('Local pools');
+
+  const _StorageFilter(this.label);
+
+  final String label;
+}
 
 Color _storageAccent(
   BuildContext context,

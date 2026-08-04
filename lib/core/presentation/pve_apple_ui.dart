@@ -423,14 +423,14 @@ class PveInventoryToolbar extends StatelessWidget {
     super.key,
     required this.title,
     required this.search,
-    required this.primaryControls,
+    this.primaryControls,
     this.trailingControls = const <Widget>[],
     this.searchWidth = 320,
   });
 
   final Widget title;
   final Widget search;
-  final Widget primaryControls;
+  final Widget? primaryControls;
   final List<Widget> trailingControls;
   final double searchWidth;
 
@@ -451,8 +451,10 @@ class PveInventoryToolbar extends StatelessWidget {
               title,
               const SizedBox(height: 12),
               search,
-              const SizedBox(height: 10),
-              primaryControls,
+              if (primaryControls != null) ...<Widget>[
+                const SizedBox(height: 10),
+                primaryControls!,
+              ],
               if (trailingControls.isNotEmpty) ...<Widget>[
                 const SizedBox(height: 8),
                 Align(alignment: Alignment.centerRight, child: trailing),
@@ -470,17 +472,20 @@ class PveInventoryToolbar extends StatelessWidget {
                 SizedBox(width: searchWidth, child: search),
               ],
             ),
-            const SizedBox(height: 10),
-            Wrap(
-              spacing: 12,
-              runSpacing: 8,
-              alignment: WrapAlignment.spaceBetween,
-              crossAxisAlignment: WrapCrossAlignment.center,
-              children: <Widget>[
-                primaryControls,
-                if (trailingControls.isNotEmpty) trailing,
-              ],
-            ),
+            if (primaryControls != null ||
+                trailingControls.isNotEmpty) ...<Widget>[
+              const SizedBox(height: 10),
+              Wrap(
+                spacing: 12,
+                runSpacing: 8,
+                alignment: WrapAlignment.spaceBetween,
+                crossAxisAlignment: WrapCrossAlignment.center,
+                children: <Widget>[
+                  ?primaryControls,
+                  if (trailingControls.isNotEmpty) trailing,
+                ],
+              ),
+            ],
           ],
         );
       },
@@ -533,7 +538,9 @@ class PveInventoryMenuButton extends StatelessWidget {
         child: Row(
           mainAxisSize: MainAxisSize.min,
           children: <Widget>[
-            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            Flexible(
+              child: Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            ),
             const SizedBox(width: 5),
             Icon(icon, size: 13),
           ],

@@ -117,9 +117,7 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
               title: _section.navigationTitle,
               connected: true,
               showServerMenu: false,
-              includeRefreshMenuAction: false,
               onConnectToProfile: (_) {},
-              onRefresh: () {},
               onDisconnect: () {},
               onManageServers: () {},
               onAbout: () {},
@@ -192,7 +190,6 @@ class _StoreScreenshotAppState extends State<StoreScreenshotApp> {
   Widget _compactTrailing() {
     return WorkspaceActionsMenu(
       connected: true,
-      onRefresh: () {},
       onDisconnect: () {},
       onManageServers: () {},
       onAbout: () {},

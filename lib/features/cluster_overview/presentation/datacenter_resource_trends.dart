@@ -35,15 +35,25 @@ class _AvailableResourceHistory extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
-        Text('Past 24 hours', style: PveAppleText.title3(context)),
+        Row(
+          children: <Widget>[
+            Icon(
+              CupertinoIcons.chart_bar,
+              size: 18,
+              color: PveAppleColors.primary(context),
+            ),
+            const SizedBox(width: 8),
+            Text('24-hour utilization', style: PveAppleText.title3(context)),
+          ],
+        ),
         const SizedBox(height: 3),
         Text(
-          _historyCoverageLabel(history),
+          'Last 24 hours · ${_historyCoverageLabel(history)}',
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 14),
         _ResourceHistoryRow(
-          label: 'CPU',
+          label: 'CPU use',
           values: samples
               .map((DatacenterResourceSample sample) => sample.cpuFraction)
               .toList(growable: false),
@@ -51,7 +61,7 @@ class _AvailableResourceHistory extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _ResourceHistoryRow(
-          label: 'Memory',
+          label: 'Memory use',
           values: samples
               .map((DatacenterResourceSample sample) => sample.memoryFraction)
               .toList(growable: false),
@@ -59,7 +69,7 @@ class _AvailableResourceHistory extends StatelessWidget {
         ),
         const SizedBox(height: 14),
         _ResourceHistoryRow(
-          label: 'Disk',
+          label: 'Disk use',
           values: samples
               .map((DatacenterResourceSample sample) => sample.diskFraction)
               .toList(growable: false),
@@ -70,11 +80,11 @@ class _AvailableResourceHistory extends StatelessWidget {
           mainAxisAlignment: MainAxisAlignment.spaceBetween,
           children: <Widget>[
             Text(
-              _timeLabel(samples.first.recordedAt),
+              'Start ${_timeLabel(samples.first.recordedAt)}',
               style: PveAppleText.caption(context),
             ),
             Text(
-              _timeLabel(samples.last.recordedAt),
+              'Latest ${_timeLabel(samples.last.recordedAt)}',
               style: PveAppleText.caption(context),
             ),
           ],
@@ -138,7 +148,7 @@ class _UnavailableResourceHistory extends StatelessWidget {
   Widget build(BuildContext context) => Column(
     crossAxisAlignment: CrossAxisAlignment.stretch,
     children: <Widget>[
-      Text('Past 24 hours', style: PveAppleText.title3(context)),
+      Text('24-hour utilization', style: PveAppleText.title3(context)),
       const SizedBox(height: 3),
       Text(
         _unavailableHistoryMessage(reason),
@@ -162,11 +172,10 @@ String _historyCoverageLabel(DatacenterResourceHistory history) {
   final reportingNodeCount = history.reportingNodeCount;
   final requestedNodeCount = history.requestedNodeCount;
   if (reportingNodeCount == requestedNodeCount) {
-    return 'Server-recorded node utilization · '
-        '$reportingNodeCount ${reportingNodeCount == 1 ? 'node' : 'nodes'} reporting';
+    return '$reportingNodeCount '
+        '${reportingNodeCount == 1 ? 'node' : 'nodes'} reporting';
   }
-  return 'Server-recorded node utilization · '
-      '$reportingNodeCount/$requestedNodeCount nodes reporting';
+  return '$reportingNodeCount/$requestedNodeCount nodes reporting';
 }
 
 String _unavailableHistoryMessage(

@@ -34,6 +34,8 @@ class DatacenterNotificationsController extends ChangeNotifier {
       LocalNotificationAuthorization.undetermined;
   bool _isLoading = true;
   bool _isRequestingAuthorization = false;
+  bool _isSendingTestAlert = false;
+  bool _testAlertRequested = false;
   bool _backgroundMonitoringEligible = false;
   String? _errorMessage;
   bool _isDisposed = false;
@@ -45,6 +47,13 @@ class DatacenterNotificationsController extends ChangeNotifier {
   bool get isLoading => _isLoading;
 
   bool get isRequestingAuthorization => _isRequestingAuthorization;
+
+  bool get isSendingTestAlert => _isSendingTestAlert;
+
+  /// Whether this app session has successfully handed a test alert to the
+  /// operating system. Focus modes and notification summaries can still
+  /// control when the device presents it.
+  bool get testAlertRequested => _testAlertRequested;
 
   String? get errorMessage => _errorMessage;
 
@@ -133,6 +142,36 @@ class DatacenterNotificationsController extends ChangeNotifier {
         _isRequestingAuthorization = false;
         _notify();
         await _synchronizeBackgroundMonitoring();
+      }
+    }
+  }
+
+  /// Requests one local alert without altering alert rules or incident state.
+  /// This gives the operator a direct device-level notification check.
+  Future<void> sendTestAlert() async {
+    if (_authorization != LocalNotificationAuthorization.authorized ||
+        _isSendingTestAlert) {
+      return;
+    }
+    _isSendingTestAlert = true;
+    _testAlertRequested = false;
+    _errorMessage = null;
+    _notify();
+    try {
+      await _notificationRepository.deliver(
+        DatacenterNotificationEvent(
+          identifier: 'test:${DateTime.now().microsecondsSinceEpoch}',
+          title: 'PVE Companion',
+          body: 'This test alert was requested by PVE Companion.',
+        ),
+      );
+      _testAlertRequested = true;
+    } catch (_) {
+      _errorMessage = 'A test alert could not be delivered.';
+    } finally {
+      if (!_isDisposed) {
+        _isSendingTestAlert = false;
+        _notify();
       }
     }
   }

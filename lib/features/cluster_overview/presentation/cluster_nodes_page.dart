@@ -134,30 +134,6 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
       onChanged: (_) => setState(() {}),
       onSubmitted: (_) => setState(() {}),
     );
-    final Widget filter = PveSlidingSegmentedControl<_NodeFilter>(
-      key: const ValueKey<String>('node-status-filter'),
-      groupValue: _filter,
-      semanticLabels: const <_NodeFilter, String>{
-        _NodeFilter.all: 'All nodes',
-        _NodeFilter.attention: 'Nodes needing attention',
-      },
-      children: const <_NodeFilter, Widget>{
-        _NodeFilter.all: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('All'),
-        ),
-        _NodeFilter.attention: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 12),
-          child: Text('Attention'),
-        ),
-      },
-      onValueChanged: (_NodeFilter? value) {
-        if (value != null) {
-          setState(() => _filter = value);
-        }
-      },
-    );
-
     return Column(
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
@@ -198,7 +174,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               scope: 'Derived from the latest health report',
             ),
             PveMetricStripItem(
-              label: 'CPU cores',
+              label: 'Cores',
               value: totalCores == null ? '—' : '$totalCores',
               icon: CupertinoIcons.speedometer,
               color: totalCores == null
@@ -214,14 +190,13 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
         PveInventoryToolbar(
           title: const PveSectionTitle(title: 'Node inventory'),
           search: search,
-          primaryControls: filter,
           trailingControls: <Widget>[
             PveInventoryMenuButton(
-              key: const ValueKey<String>('node-inventory-sort'),
-              label: 'Sort: ${_sort.label}',
-              semanticLabel: 'Change node inventory sort order',
-              icon: CupertinoIcons.arrow_up_arrow_down,
-              onPressed: () => _showSortPicker(context),
+              key: const ValueKey<String>('node-inventory-refine'),
+              label: 'Refine',
+              semanticLabel: 'Filter and sort node inventory',
+              icon: CupertinoIcons.line_horizontal_3_decrease_circle,
+              onPressed: () => _showNodeControls(context),
             ),
           ],
         ),
@@ -401,17 +376,34 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
   double _nodeResourceUse(DatacenterNodeHealth node) =>
       node.cpu?.progressFraction ?? node.memory?.progressFraction ?? -1;
 
-  Future<void> _showSortPicker(BuildContext context) async {
-    final sort = await showCupertinoModalPopup<_NodeInventorySort>(
+  Future<void> _showNodeControls(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
-        title: const Text('Sort node inventory'),
+        title: const Text('Refine nodes'),
+        message: Text('Filter: ${_filter.label} · Sort: ${_sort.label}'),
         actions: <Widget>[
+          for (final value in _NodeFilter.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _filter,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _filter = value);
+                }
+              },
+              child: Text(value.label),
+            ),
           for (final value in _NodeInventorySort.values)
             CupertinoActionSheetAction(
               isDefaultAction: value == _sort,
-              onPressed: () => Navigator.of(popupContext).pop(value),
-              child: Text(value.label),
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _sort = value);
+                }
+              },
+              child: Text('Sort: ${value.label}'),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -420,9 +412,6 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
         ),
       ),
     );
-    if (sort != null && mounted) {
-      setState(() => _sort = sort);
-    }
   }
 }
 
@@ -702,7 +691,14 @@ class _PressureRow extends StatelessWidget {
   }
 }
 
-enum _NodeFilter { all, attention }
+enum _NodeFilter {
+  all('All nodes'),
+  attention('Needs attention');
+
+  const _NodeFilter(this.label);
+
+  final String label;
+}
 
 enum _NodeInventorySort {
   attention('Attention'),

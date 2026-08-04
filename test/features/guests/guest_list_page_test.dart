@@ -45,9 +45,17 @@ void main() {
     expect(find.text('Showing 1 of 4 guests'), findsOneWidget);
 
     await tester.enterText(find.byType(CupertinoSearchTextField), '');
-    final stoppedFilter = find.text('Stopped').first;
-    await tester.tap(stoppedFilter);
-    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('guest-inventory-refine')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(CupertinoActionSheet),
+        matching: find.text('Stopped'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('app-prod-01'), findsNothing);
     expect(find.text('gh-runner-01'), findsOneWidget);
@@ -91,24 +99,39 @@ void main() {
       ),
     );
 
-    expect(find.text('Templates'), findsWidgets);
+    expect(
+      find.byKey(const ValueKey<String>('guest-inventory-refine')),
+      findsOneWidget,
+    );
     expect(find.text('Showing all 5 guests'), findsOneWidget);
 
-    final stoppedFilter = find.text('Stopped').first;
-    await tester.tap(stoppedFilter);
-    await tester.pump();
+    await tester.tap(
+      find.byKey(const ValueKey<String>('guest-inventory-refine')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(CupertinoActionSheet),
+        matching: find.text('Stopped'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('gh-runner-01'), findsOneWidget);
     expect(find.text('ubuntu-template'), findsNothing);
     expect(find.text('Showing 1 of 5 guests'), findsOneWidget);
 
     await tester.tap(
+      find.byKey(const ValueKey<String>('guest-inventory-refine')),
+    );
+    await tester.pumpAndSettle();
+    await tester.tap(
       find.descendant(
-        of: find.byKey(const ValueKey<String>('guest-status-filter')),
+        of: find.byType(CupertinoActionSheet),
         matching: find.text('Templates'),
       ),
     );
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('gh-runner-01'), findsNothing);
     expect(find.text('ubuntu-template'), findsOneWidget);
@@ -224,13 +247,13 @@ void main() {
     );
 
     await tester.tap(
-      find.byKey(const ValueKey<String>('guest-inventory-sort')),
+      find.byKey(const ValueKey<String>('guest-inventory-refine')),
     );
     await tester.pumpAndSettle();
 
-    expect(find.text('Sort guest inventory'), findsOneWidget);
-    expect(find.text('Host'), findsOneWidget);
-    expect(find.text('Resource use'), findsOneWidget);
+    expect(find.text('Refine guests'), findsOneWidget);
+    expect(find.text('Sort: Host'), findsOneWidget);
+    expect(find.text('Sort: Resource use'), findsOneWidget);
   });
 
   testWidgets('uses a persistent desktop inspector while iPad keeps cards', (

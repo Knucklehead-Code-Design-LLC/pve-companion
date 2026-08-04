@@ -18,42 +18,44 @@ class GuestInventoryInsights extends StatelessWidget {
         KeyedSubtree(
           key: const ValueKey<String>('guest-resource-footprint'),
           child: PveInsightCard(
-            title: 'Resource footprint',
-            subtitle: 'Current use across reported workloads',
+            title: 'Resource use',
+            subtitle: 'Current reporting across workloads',
             child: Column(
               children: <Widget>[
                 PveResourceMeter(
-                  label: 'Average active CPU',
+                  label: 'Average CPU (running)',
                   value: formatPvePercent(summary.averageRunningCpu),
                   progress: summary.averageRunningCpu,
                   color: _pressureColor(context, summary.averageRunningCpu),
-                  detail: _cpuReportingDetail(summary, guests.length),
+                  detail: _cpuReportingDetail(summary),
                 ),
                 const SizedBox(height: 16),
                 PveResourceMeter(
-                  label: 'Memory',
+                  label: 'Memory in use',
                   value: _usedCapacityLabel(
                     summary.memoryUsedBytes,
                     summary.memoryCapacityBytes,
                   ),
                   progress: summary.memoryFraction,
                   color: _pressureColor(context, summary.memoryFraction),
-                  detail:
-                      '${summary.memoryReportingCount}/${guests.length} '
-                      'workloads reporting',
+                  detail: _reportingDetail(
+                    summary.memoryReportingCount,
+                    guests.length,
+                  ),
                 ),
                 const SizedBox(height: 16),
                 PveResourceMeter(
-                  label: 'Disk',
+                  label: 'Disk in use',
                   value: _usedCapacityLabel(
                     summary.diskUsedBytes,
                     summary.diskCapacityBytes,
                   ),
                   progress: summary.diskFraction,
                   color: _pressureColor(context, summary.diskFraction),
-                  detail:
-                      '${summary.diskReportingCount}/${guests.length} '
-                      'workloads reporting',
+                  detail: _reportingDetail(
+                    summary.diskReportingCount,
+                    guests.length,
+                  ),
                 ),
               ],
             ),
@@ -126,17 +128,19 @@ class GuestInventoryInsights extends StatelessWidget {
     );
   }
 
-  String _cpuReportingDetail(_GuestResourceSummary summary, int workloadCount) {
+  String _cpuReportingDetail(_GuestResourceSummary summary) {
     final currentUse = summary.runningCount == 0
-        ? 'No workloads are currently reported running'
+        ? 'No running workloads reported'
         : '${summary.runningCpuReportingCount}/${summary.runningCount} '
               'running workloads report CPU';
     final allocation = summary.cpuCores == null
         ? 'vCPU allocation not reported'
-        : '${summary.cpuCores} vCPU assigned across '
-              '${summary.cpuCoreReportingCount}/$workloadCount workloads';
+        : '${summary.cpuCores} vCPU assigned';
     return '$currentUse · $allocation';
   }
+
+  String _reportingDetail(int reportingCount, int workloadCount) =>
+      '$reportingCount of $workloadCount workloads reporting';
 }
 
 class _GuestResourceSummary {

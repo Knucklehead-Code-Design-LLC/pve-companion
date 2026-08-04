@@ -74,6 +74,7 @@ class _AddConnectionProfileSheetState extends State<AddConnectionProfileSheet> {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         // An opaque bar tells CupertinoPageScaffold to reserve its height for
         // the form. The default translucent bar lets the first child scroll
         // beneath it, which clipped the connection security mark on iPhone.

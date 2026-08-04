@@ -71,6 +71,7 @@ class _NodeDetailSheetState extends State<_NodeDetailSheet> {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: Text(widget.seed.node.name),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -269,7 +270,7 @@ class _NodeDetailColumns extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     final primarySections = <Widget>[
-      _NodeStatusCard(details: details, seed: seed),
+      _NodePerformanceSection(details: details, seed: seed),
       if (controller.activeTask != null)
         ProxmoxTaskStatusCard(task: controller.activeTask!),
       if (controller.errorMessage != null)
@@ -351,19 +352,25 @@ class _NodePowerSection extends StatelessWidget {
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
-        const PveSectionTitle(title: 'Danger zone'),
+        const PveSectionTitle(title: 'Power controls'),
         const SizedBox(height: 8),
-        _NodePowerControls(enabled: enabled, onAction: onAction),
-        if (!isOnline) ...<Widget>[
-          const SizedBox(height: 8),
-          Text(
-            'Power controls are unavailable because Proxmox reports this node offline.',
-            style: PveAppleText.secondary(context),
+        PveInsetGroup(
+          padding: const EdgeInsets.all(16),
+          color: PveAppleColors.warning(context).withValues(alpha: 0.06),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: <Widget>[
+              _NodePowerControls(enabled: enabled, onAction: onAction),
+              const SizedBox(height: 10),
+              Text(
+                !isOnline
+                    ? 'Power controls are unavailable because Proxmox reports this node offline.'
+                    : _impactMessage(seed),
+                style: PveAppleText.secondary(context),
+              ),
+            ],
           ),
-        ] else ...<Widget>[
-          const SizedBox(height: 8),
-          Text(_impactMessage(seed), style: PveAppleText.secondary(context)),
-        ],
+        ),
       ],
     );
   }
@@ -392,6 +399,11 @@ class _NodeSystemInformationSection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.stretch,
       children: <Widget>[
         const PveSectionTitle(title: 'System information'),
+        const SizedBox(height: 3),
+        Text(
+          'Reported software, hardware, and load details.',
+          style: PveAppleText.secondary(context),
+        ),
         const SizedBox(height: 8),
         _NodeSystemInformationCard(details: details),
       ],
@@ -492,6 +504,23 @@ class _NodeInlineError extends StatelessWidget {
   }
 }
 
+class _NodePerformanceSection extends StatelessWidget {
+  const _NodePerformanceSection({required this.details, required this.seed});
+
+  final PveNodeDetails details;
+  final PveNodeDetailsSeed seed;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      const PveSectionTitle(title: 'Current performance'),
+      const SizedBox(height: 8),
+      _NodeStatusCard(details: details, seed: seed),
+    ],
+  );
+}
+
 class _NodeStatusCard extends StatelessWidget {
   const _NodeStatusCard({required this.details, required this.seed});
 
@@ -575,7 +604,7 @@ class _NodeStatusCard extends StatelessWidget {
                   ),
                   _NodeMetric(
                     width: metricWidth,
-                    label: 'Root disk',
+                    label: 'Disk',
                     value:
                         '${formatPveBytes(details.node.diskBytes)} / '
                         '${formatPveBytes(details.node.diskLimitBytes)}',

@@ -71,6 +71,7 @@ class _ClusterAdministrationSheetState
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: const Text('Cluster Administration'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -157,10 +158,10 @@ class _ClusterAdministrationContent extends StatelessWidget {
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
       children: <Widget>[
-        Text('Cluster posture', style: PveAppleText.title2(context)),
+        Text('Cluster overview', style: PveAppleText.title2(context)),
         const SizedBox(height: 6),
         Text(
-          'Audit quorum, membership, HA state, and safe configuration context. Destructive cluster topology and network changes remain in Proxmox’s full administration UI.',
+          'Review quorum, membership, HA, and safe datacenter options.',
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
@@ -226,7 +227,8 @@ class _ClusterAdministrationContent extends StatelessWidget {
               const SizedBox(width: 10),
               Expanded(
                 child: Text(
-                  'For safety, PVE Companion does not alter cluster membership, quorum, storage definitions, or network topology. Use the guarded node and guest controls for day-to-day operations, and use Proxmox for topology changes.',
+                  'Cluster membership, storage, and network topology stay in '
+                  'Proxmox. PVE Companion only offers guarded day-to-day controls.',
                   style: PveAppleText.secondary(context),
                 ),
               ),

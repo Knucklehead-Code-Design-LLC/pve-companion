@@ -156,8 +156,8 @@ class _GuestConsolePageState extends State<GuestConsolePage>
       case GuestConsoleConnectionState.connecting:
         return const _ConsoleStatus(
           icon: CupertinoIcons.ellipsis,
-          title: 'Connecting to guest console',
-          message: 'Requesting a short-lived connection ticket.',
+          title: 'Connecting to console',
+          message: 'Establishing a secure guest session.',
           loading: true,
         );
       case GuestConsoleConnectionState.connected:
@@ -165,7 +165,7 @@ class _GuestConsolePageState extends State<GuestConsolePage>
           return const _ConsoleStatus(
             icon: CupertinoIcons.desktopcomputer,
             title: 'Preparing guest display',
-            message: 'Waiting for the guest’s first framebuffer update.',
+            message: 'Waiting for the first screen update.',
             loading: true,
           );
         }
@@ -212,7 +212,9 @@ class _GuestConsolePageState extends State<GuestConsolePage>
           _textInputFocusNode.requestFocus();
         }
       });
+      return;
     }
+    _textInputFocusNode.unfocus();
   }
 
   void _sendTypedText(String currentText) {
@@ -329,7 +331,9 @@ class _ConsoleStatus extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: <Widget>[
                 if (loading)
-                  const CupertinoActivityIndicator(color: CupertinoColors.white)
+                  const CupertinoActivityIndicator(
+                    color: CupertinoColors.systemGrey2,
+                  )
                 else
                   Icon(icon, size: 32, color: CupertinoColors.white),
                 const SizedBox(height: 16),
@@ -397,7 +401,15 @@ class _ConsoleControlBar extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return DecoratedBox(
-      decoration: const BoxDecoration(color: CupertinoColors.black),
+      decoration: BoxDecoration(
+        color: PveAppleColors.page(context),
+        border: Border(
+          top: BorderSide(
+            color: PveAppleColors.separator(context).withValues(alpha: 0.5),
+            width: 0.5,
+          ),
+        ),
+      ),
       child: SafeArea(
         top: false,
         child: Padding(
@@ -433,45 +445,61 @@ class _ConsoleControlBar extends StatelessWidget {
                 scrollDirection: Axis.horizontal,
                 child: Row(
                   children: <Widget>[
-                    _ConsoleCommandButton(
-                      icon: CupertinoIcons.keyboard,
-                      label: showsTextInput ? 'Hide Keyboard' : 'Keyboard',
-                      enabled: connected,
-                      onPressed: onToggleTextInput,
+                    _ConsoleToolbarGroup(
+                      children: <Widget>[
+                        _ConsoleCommandButton(
+                          icon: CupertinoIcons.keyboard,
+                          label: showsTextInput ? 'Hide' : 'Type',
+                          enabled: connected,
+                          onPressed: onToggleTextInput,
+                        ),
+                        _ConsoleCommandButton(
+                          icon: CupertinoIcons.doc_on_clipboard,
+                          label: 'Paste',
+                          enabled: connected,
+                          onPressed: () => unawaited(onPaste()),
+                        ),
+                      ],
                     ),
-                    _ConsoleCommandButton(
-                      label: 'Esc',
-                      enabled: connected,
-                      onPressed: () => onKeyStroke(0xff1b),
-                    ),
-                    _ConsoleCommandButton(
-                      label: 'Tab',
-                      enabled: connected,
-                      onPressed: () => onKeyStroke(0xff09),
-                    ),
-                    _ConsoleCommandButton(
-                      icon: CupertinoIcons.arrow_up,
-                      label: 'Up',
-                      enabled: connected,
-                      onPressed: () => onKeyStroke(0xff52),
-                    ),
-                    _ConsoleCommandButton(
-                      icon: CupertinoIcons.arrow_down,
-                      label: 'Down',
-                      enabled: connected,
-                      onPressed: () => onKeyStroke(0xff54),
-                    ),
-                    _ConsoleCommandButton(
-                      icon: CupertinoIcons.doc_on_clipboard,
-                      label: 'Paste',
-                      enabled: connected,
-                      onPressed: () => unawaited(onPaste()),
+                    const SizedBox(width: 8),
+                    _ConsoleToolbarGroup(
+                      children: <Widget>[
+                        _ConsoleCommandButton(
+                          label: 'Esc',
+                          enabled: connected,
+                          onPressed: () => onKeyStroke(0xff1b),
+                        ),
+                        _ConsoleCommandButton(
+                          label: 'Tab',
+                          enabled: connected,
+                          onPressed: () => onKeyStroke(0xff09),
+                        ),
+                        _ConsoleCommandButton(
+                          icon: CupertinoIcons.arrow_up,
+                          label: 'Up',
+                          enabled: connected,
+                          onPressed: () => onKeyStroke(0xff52),
+                        ),
+                        _ConsoleCommandButton(
+                          icon: CupertinoIcons.arrow_down,
+                          label: 'Down',
+                          enabled: connected,
+                          onPressed: () => onKeyStroke(0xff54),
+                        ),
+                      ],
                     ),
                     if (guest.kind == GuestKind.virtualMachine)
-                      _ConsoleCommandButton(
-                        label: 'Ctrl-Alt-Del',
-                        enabled: connected,
-                        onPressed: onCtrlAltDelete,
+                      Padding(
+                        padding: const EdgeInsets.only(left: 8),
+                        child: _ConsoleToolbarGroup(
+                          children: <Widget>[
+                            _ConsoleCommandButton(
+                              label: 'Ctrl-Alt-Del',
+                              enabled: connected,
+                              onPressed: onCtrlAltDelete,
+                            ),
+                          ],
+                        ),
                       ),
                   ],
                 ),
@@ -499,25 +527,35 @@ class _ConsoleCommandButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Padding(
-      padding: const EdgeInsets.symmetric(horizontal: 2),
-      child: CupertinoButton(
-        padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
-        minimumSize: const Size(44, 36),
-        color: CupertinoColors.darkBackgroundGray,
-        disabledColor: CupertinoColors.systemGrey5.darkColor,
-        onPressed: enabled ? onPressed : null,
-        child: Row(
-          mainAxisSize: MainAxisSize.min,
-          children: <Widget>[
-            if (icon != null) ...<Widget>[
-              Icon(icon, size: 15),
-              const SizedBox(width: 5),
-            ],
-            Text(label),
+    return CupertinoButton(
+      padding: const EdgeInsets.symmetric(horizontal: 9, vertical: 7),
+      minimumSize: const Size(44, 36),
+      onPressed: enabled ? onPressed : null,
+      child: Row(
+        mainAxisSize: MainAxisSize.min,
+        children: <Widget>[
+          if (icon != null) ...<Widget>[
+            Icon(icon, size: 15),
+            const SizedBox(width: 5),
           ],
-        ),
+          Text(label),
+        ],
       ),
     );
   }
+}
+
+class _ConsoleToolbarGroup extends StatelessWidget {
+  const _ConsoleToolbarGroup({required this.children});
+
+  final List<Widget> children;
+
+  @override
+  Widget build(BuildContext context) => DecoratedBox(
+    decoration: BoxDecoration(
+      color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
+      borderRadius: BorderRadius.circular(10),
+    ),
+    child: Row(mainAxisSize: MainAxisSize.min, children: children),
+  );
 }

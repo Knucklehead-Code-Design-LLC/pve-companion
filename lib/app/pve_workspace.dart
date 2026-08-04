@@ -28,6 +28,7 @@ import 'workspace/workspace_actions_menu.dart';
 import 'workspace/workspace_command_palette.dart';
 import 'workspace/workspace_keyboard_shortcuts.dart';
 import 'workspace/workspace_section.dart';
+import 'workspace/workspace_settings_sheet.dart';
 import 'workspace/workspace_toolbar.dart';
 
 class PveWorkspace extends StatefulWidget {
@@ -123,7 +124,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
           title: _section.navigationTitle,
           connected: true,
           showServerMenu: false,
-          includeRefreshMenuAction: false,
         ),
         onRefresh: widget.controller.refreshCluster,
         refreshing:
@@ -293,7 +293,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   Widget _buildCompactTrailing() {
     return WorkspaceActionsMenu(
       connected: true,
-      onRefresh: widget.controller.refreshCluster,
       onDisconnect: widget.controller.disconnect,
       onManageServers: _showConnectionProfiles,
       onAbout: _showAbout,
@@ -317,7 +316,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
     required String title,
     required bool connected,
     bool showServerMenu = true,
-    bool includeRefreshMenuAction = true,
   }) {
     final profiles = widget.controller.connectionProfiles;
     return WorkspaceToolbar(
@@ -326,7 +324,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       title: title,
       connected: connected,
       onConnectToProfile: _connectToProfile,
-      onRefresh: widget.controller.refreshCluster,
       onDisconnect: widget.controller.disconnect,
       onManageServers: _showConnectionProfiles,
       onAbout: _showAbout,
@@ -334,7 +331,6 @@ class _PveWorkspaceState extends State<PveWorkspace> {
       onManageNotifications: _showNotifications,
       onClusterAdministration: _showClusterAdministration,
       showServerMenu: showServerMenu,
-      includeRefreshMenuAction: includeRefreshMenuAction,
       liveActivitiesAvailable:
           widget.controller.systemSurfaces.liveActivitiesAvailable,
       datacenterWatchActive:
@@ -460,41 +456,24 @@ class _PveWorkspaceState extends State<PveWorkspace> {
   Future<void> _showAbout() => showPveCompanionAboutDialog(context);
 
   Future<void> _showWorkspaceSettings() {
-    return showCupertinoModalPopup<void>(
-      context: context,
-      builder: (BuildContext settingsContext) => CupertinoActionSheet(
-        title: const Text(PveActionLabels.workspaceSettings),
-        message: const Text(
-          'Manage saved servers, notification preferences, and workspace information.',
-        ),
-        actions: <Widget>[
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.of(settingsContext).pop();
-              unawaited(_showConnectionProfiles());
-            },
-            child: const Text('Manage servers'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.of(settingsContext).pop();
-              unawaited(_showNotifications());
-            },
-            child: const Text('Notification settings'),
-          ),
-          CupertinoActionSheetAction(
-            onPressed: () {
-              Navigator.of(settingsContext).pop();
-              unawaited(_showAbout());
-            },
-            child: const Text('About PVE Companion'),
-          ),
-        ],
-        cancelButton: CupertinoActionSheetAction(
-          onPressed: () => Navigator.of(settingsContext).pop(),
-          child: const Text('Cancel'),
-        ),
+    return showWorkspaceSettingsSheet(
+      context,
+      connected: true,
+      onDisconnect: widget.controller.disconnect,
+      onManageServers: _showConnectionProfiles,
+      onAbout: _showAbout,
+      onViewFleet: _showFleetWorkspace,
+      onManageNotifications: _showNotifications,
+      onClusterAdministration: _showClusterAdministration,
+      liveActivitiesAvailable:
+          widget.controller.systemSurfaces.liveActivitiesAvailable,
+      datacenterWatchActive:
+          widget.controller.systemSurfaces.datacenterWatchActive,
+      onStartDatacenterWatch: () => showDatacenterWatchSheet(
+        context,
+        controller: widget.controller.systemSurfaces,
       ),
+      onEndDatacenterWatch: widget.controller.systemSurfaces.endDatacenterWatch,
     );
   }
 
