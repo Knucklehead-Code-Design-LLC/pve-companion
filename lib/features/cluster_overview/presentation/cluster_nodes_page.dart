@@ -128,6 +128,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
     final canOpenNodeOperations =
         widget.session != null && widget.onNodeOperation != null;
     final Widget search = CupertinoSearchTextField(
+      key: const ValueKey<String>('node-search'),
       controller: _searchController,
       placeholder: 'Search nodes',
       onChanged: (_) => setState(() {}),
@@ -168,6 +169,11 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           const SizedBox(height: 12),
         ],
         PveMetricStrip(
+          showsItemScopes: false,
+          footer: totalCores == null
+              ? 'Latest reported node state. CPU core capacity is not reported.'
+              : 'Latest reported node state · CPU cores from '
+                    '${nodesWithCpuCores.length}/${nodes.length} nodes.',
           items: <PveMetricStripItem>[
             PveMetricStripItem(
               label: 'Nodes',
@@ -192,7 +198,7 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
               scope: 'Derived from the latest health report',
             ),
             PveMetricStripItem(
-              label: 'CPU cores reported',
+              label: 'CPU cores',
               value: totalCores == null ? '—' : '$totalCores',
               icon: CupertinoIcons.speedometer,
               color: totalCores == null
@@ -205,17 +211,19 @@ class _ClusterNodesPageState extends State<ClusterNodesPage> {
           ],
         ),
         const SizedBox(height: 20),
-        const PveSectionTitle(title: 'Node inventory'),
-        const SizedBox(height: 12),
-        PveWideControlBar(primary: search, secondary: filter),
-        Align(
-          alignment: Alignment.centerRight,
-          child: CupertinoButton(
-            key: const ValueKey<String>('node-inventory-sort'),
-            padding: const EdgeInsets.only(top: 8, bottom: 4),
-            onPressed: () => _showSortPicker(context),
-            child: Text('Sort: ${_sort.label}'),
-          ),
+        PveInventoryToolbar(
+          title: const PveSectionTitle(title: 'Node inventory'),
+          search: search,
+          primaryControls: filter,
+          trailingControls: <Widget>[
+            PveInventoryMenuButton(
+              key: const ValueKey<String>('node-inventory-sort'),
+              label: 'Sort: ${_sort.label}',
+              semanticLabel: 'Change node inventory sort order',
+              icon: CupertinoIcons.arrow_up_arrow_down,
+              onPressed: () => _showSortPicker(context),
+            ),
+          ],
         ),
         const SizedBox(height: 8),
         Text(
@@ -491,7 +499,7 @@ class _NodeDetailCard extends StatelessWidget {
             const SizedBox(height: 14),
             _PressureRow(label: 'Memory', pressure: node.memory),
             const SizedBox(height: 14),
-            _PressureRow(label: 'Root disk', pressure: node.rootDisk),
+            _PressureRow(label: 'Disk', pressure: node.rootDisk),
           ],
         ),
       ),

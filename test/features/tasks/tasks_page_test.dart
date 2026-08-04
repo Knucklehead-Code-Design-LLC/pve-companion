@@ -29,12 +29,12 @@ void main() {
 
     expect(find.text('backup on pve-01'), findsOneWidget);
 
-    await tester.tap(
-      find.descendant(
-        of: find.byKey(const ValueKey<String>('task-state-filter')),
-        matching: find.text('Failed'),
-      ),
+    final failedFilter = find.descendant(
+      of: find.byKey(const ValueKey<String>('task-state-filter')),
+      matching: find.text('Failed'),
     );
+    await tester.ensureVisible(failedFilter);
+    await tester.tap(failedFilter);
     await tester.pump();
 
     expect(find.text('backup on pve-01'), findsNothing);
@@ -249,7 +249,13 @@ void main() {
       ),
     );
 
-    await tester.tap(find.byKey(const ValueKey<String>('task-guest-filter')));
+    final refineFilters = find.byKey(
+      const ValueKey<String>('task-refine-filters'),
+    );
+    await tester.ensureVisible(refineFilters);
+    await tester.tap(refineFilters);
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Guest · All guests'));
     await tester.pumpAndSettle();
     await tester.tap(find.textContaining('(101)').first);
     await tester.pumpAndSettle();

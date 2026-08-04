@@ -320,7 +320,7 @@ private struct LargeStatusView: View {
           .foregroundStyle(.secondary)
           .tracking(0.4)
         PressureMetric(
-          label: "Peak CPU",
+          label: "CPU",
           symbol: "cpu",
           fraction: snapshot.cpuFraction
         )
@@ -330,7 +330,7 @@ private struct LargeStatusView: View {
           fraction: snapshot.memoryFraction
         )
         PressureMetric(
-          label: "Root disk",
+          label: "Disk",
           symbol: "internaldrive.fill",
           fraction: snapshot.rootDiskFraction
         )

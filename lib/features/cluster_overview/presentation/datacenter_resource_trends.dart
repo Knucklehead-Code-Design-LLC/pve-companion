@@ -1,114 +1,191 @@
 import 'package:flutter/cupertino.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
+import '../../../core/presentation/pve_data_visualization.dart';
 import '../../../core/presentation/pve_value_format.dart';
 import '../domain/datacenter_resource_history.dart';
 
-/// Shows a comparison between the most recent two local refresh samples.
-/// The connected server does not supply historical monitoring data here.
+/// Shows the last 24 hours of server-recorded node utilization when Proxmox
+/// grants access to its RRD data. It never presents local refreshes as history.
 class DatacenterResourceTrends extends StatelessWidget {
-  const DatacenterResourceTrends({super.key, required this.samples});
+  const DatacenterResourceTrends({super.key, required this.history});
 
-  final List<DatacenterResourceSample> samples;
+  final DatacenterResourceHistory history;
 
   @override
   Widget build(BuildContext context) {
-    final current = samples.isEmpty ? null : samples.last;
-    final previous = samples.length < 2 ? null : samples[samples.length - 2];
     return PveInsetGroup(
-      key: const ValueKey<String>('datacenter-local-resource-trends'),
+      key: const ValueKey<String>('datacenter-resource-history'),
       padding: const EdgeInsets.all(16),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.stretch,
-        children: <Widget>[
-          Text('Refresh comparison', style: PveAppleText.title3(context)),
-          const SizedBox(height: 3),
-          Text(
-            previous == null
-                ? 'Refresh again to compare current utilization. Samples stay only in this app session (up to 24).'
-                : 'Current refresh compared with the previous local refresh. Samples stay only in this app session (up to 24).',
-            style: PveAppleText.secondary(context),
-          ),
-          const SizedBox(height: 12),
-          _TrendRow(
-            label: 'CPU',
-            current: current?.cpuFraction,
-            previous: previous?.cpuFraction,
-          ),
-          const PveRowSeparator(),
-          _TrendRow(
-            label: 'Memory',
-            current: current?.memoryFraction,
-            previous: previous?.memoryFraction,
-          ),
-          const PveRowSeparator(),
-          _TrendRow(
-            label: 'Root disk',
-            current: current?.diskFraction,
-            previous: previous?.diskFraction,
-          ),
-          const PveRowSeparator(),
-          _TrendRow(
-            label: 'Storage',
-            current: current?.storageFraction,
-            previous: previous?.storageFraction,
-          ),
-        ],
-      ),
+      child: history.isAvailable
+          ? _AvailableResourceHistory(history: history)
+          : _UnavailableResourceHistory(reason: history.unavailableReason),
     );
   }
 }
 
-class _TrendRow extends StatelessWidget {
-  const _TrendRow({
-    required this.label,
-    required this.current,
-    required this.previous,
-  });
+class _AvailableResourceHistory extends StatelessWidget {
+  const _AvailableResourceHistory({required this.history});
 
-  final String label;
-  final double? current;
-  final double? previous;
+  final DatacenterResourceHistory history;
 
   @override
   Widget build(BuildContext context) {
-    final change = current == null || previous == null
-        ? null
-        : current! - previous!;
-    final color = change == null
-        ? PveAppleColors.secondaryLabel(context)
-        : change > 0
-        ? PveAppleColors.warning(context)
-        : change < 0
-        ? PveAppleColors.success(context)
-        : PveAppleColors.secondaryLabel(context);
-    final trend = change == null
-        ? 'Comparison unavailable'
-        : change == 0
-        ? 'Unchanged'
-        : '${change > 0 ? 'Up' : 'Down'} ${formatPvePercent(change.abs())}';
-    return Padding(
-      padding: const EdgeInsets.symmetric(vertical: 9),
-      child: Row(
-        children: <Widget>[
-          Expanded(child: Text(label, style: PveAppleText.body(context))),
-          Text(
-            current == null ? 'Not reported' : formatPvePercent(current),
-            style: PveAppleText.body(
-              context,
-            ).copyWith(fontWeight: FontWeight.w600),
-          ),
-          const SizedBox(width: 12),
-          SizedBox(
-            width: 118,
-            child: Text(
-              trend,
-              textAlign: TextAlign.end,
-              style: PveAppleText.caption(context).copyWith(color: color),
+    final samples = history.samples;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Text('Past 24 hours', style: PveAppleText.title3(context)),
+        const SizedBox(height: 3),
+        Text(
+          _historyCoverageLabel(history),
+          style: PveAppleText.secondary(context),
+        ),
+        const SizedBox(height: 14),
+        _ResourceHistoryRow(
+          label: 'CPU',
+          values: samples
+              .map((DatacenterResourceSample sample) => sample.cpuFraction)
+              .toList(growable: false),
+          color: PveAppleColors.primary(context),
+        ),
+        const SizedBox(height: 14),
+        _ResourceHistoryRow(
+          label: 'Memory',
+          values: samples
+              .map((DatacenterResourceSample sample) => sample.memoryFraction)
+              .toList(growable: false),
+          color: CupertinoColors.systemPurple.resolveFrom(context),
+        ),
+        const SizedBox(height: 14),
+        _ResourceHistoryRow(
+          label: 'Disk',
+          values: samples
+              .map((DatacenterResourceSample sample) => sample.diskFraction)
+              .toList(growable: false),
+          color: CupertinoColors.systemTeal.resolveFrom(context),
+        ),
+        const SizedBox(height: 8),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: <Widget>[
+            Text(
+              _timeLabel(samples.first.recordedAt),
+              style: PveAppleText.caption(context),
             ),
-          ),
-        ],
-      ),
+            Text(
+              _timeLabel(samples.last.recordedAt),
+              style: PveAppleText.caption(context),
+            ),
+          ],
+        ),
+      ],
     );
   }
+}
+
+class _ResourceHistoryRow extends StatelessWidget {
+  const _ResourceHistoryRow({
+    required this.label,
+    required this.values,
+    required this.color,
+  });
+
+  final String label;
+  final List<double?> values;
+  final Color color;
+
+  @override
+  Widget build(BuildContext context) {
+    final latestValue = _latestReportedValue(values);
+    final latestLabel = formatPvePercent(latestValue);
+    final latestDescription = latestValue == null
+        ? 'not reported'
+        : latestLabel;
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.stretch,
+      children: <Widget>[
+        Row(
+          children: <Widget>[
+            Expanded(child: Text(label, style: PveAppleText.caption(context))),
+            Text(
+              latestValue == null ? 'Not reported' : latestLabel,
+              style: PveAppleText.caption(
+                context,
+              ).copyWith(color: color, fontWeight: FontWeight.w700),
+            ),
+          ],
+        ),
+        const SizedBox(height: 5),
+        PveSparkline(
+          values: values,
+          color: color,
+          semanticLabel:
+              '$label utilization over the past 24 hours. '
+              'Latest $latestDescription.',
+        ),
+      ],
+    );
+  }
+}
+
+class _UnavailableResourceHistory extends StatelessWidget {
+  const _UnavailableResourceHistory({required this.reason});
+
+  final DatacenterResourceHistoryUnavailableReason? reason;
+
+  @override
+  Widget build(BuildContext context) => Column(
+    crossAxisAlignment: CrossAxisAlignment.stretch,
+    children: <Widget>[
+      Text('Past 24 hours', style: PveAppleText.title3(context)),
+      const SizedBox(height: 3),
+      Text(
+        _unavailableHistoryMessage(reason),
+        style: PveAppleText.secondary(context),
+      ),
+    ],
+  );
+}
+
+double? _latestReportedValue(List<double?> values) {
+  for (var index = values.length - 1; index >= 0; index -= 1) {
+    final value = values[index];
+    if (value != null) {
+      return value;
+    }
+  }
+  return null;
+}
+
+String _historyCoverageLabel(DatacenterResourceHistory history) {
+  final reportingNodeCount = history.reportingNodeCount;
+  final requestedNodeCount = history.requestedNodeCount;
+  if (reportingNodeCount == requestedNodeCount) {
+    return 'Server-recorded node utilization · '
+        '$reportingNodeCount ${reportingNodeCount == 1 ? 'node' : 'nodes'} reporting';
+  }
+  return 'Server-recorded node utilization · '
+      '$reportingNodeCount/$requestedNodeCount nodes reporting';
+}
+
+String _unavailableHistoryMessage(
+  DatacenterResourceHistoryUnavailableReason? reason,
+) => switch (reason) {
+  DatacenterResourceHistoryUnavailableReason.noNodes =>
+    'No nodes are reported by this server.',
+  DatacenterResourceHistoryUnavailableReason.permissionDenied =>
+    'Historical metrics need Sys.Audit access on this server.',
+  DatacenterResourceHistoryUnavailableReason.unsupported =>
+    'This Proxmox server does not provide node history.',
+  DatacenterResourceHistoryUnavailableReason.requestFailed =>
+    'Historical metrics could not be loaded. Refresh to try again.',
+  DatacenterResourceHistoryUnavailableReason.noData ||
+  null => 'No historical metrics are available yet.',
+};
+
+String _timeLabel(DateTime value) {
+  final hour = value.hour.toString().padLeft(2, '0');
+  final minute = value.minute.toString().padLeft(2, '0');
+  return '$hour:$minute';
 }

@@ -3,6 +3,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/app/pve_companion_theme.dart';
 import 'package:pve_companion/features/cluster_overview/application/cluster_overview_controller.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
+import 'package:pve_companion/features/cluster_overview/domain/datacenter_resource_history.dart';
 import 'package:pve_companion/features/cluster_overview/presentation/cluster_overview_page.dart';
 import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
@@ -69,11 +70,11 @@ void main() {
     expect(find.text('Action required'), findsOneWidget);
     expect(find.text('1 node is offline.'), findsOneWidget);
     expect(find.textContaining('compute-a reports critical'), findsOneWidget);
-    expect(find.text('Peak CPU now'), findsOneWidget);
-    expect(find.text('Memory allocated now'), findsOneWidget);
-    expect(find.text('Root disk allocated now'), findsOneWidget);
+    expect(find.text('CPU'), findsWidgets);
+    expect(find.text('Memory'), findsWidgets);
+    expect(find.text('Disk'), findsWidgets);
     expect(find.textContaining('Highest reported node'), findsOneWidget);
-    expect(find.textContaining('Combined reported capacity'), findsNWidgets(2));
+    expect(find.text('Workload mix'), findsOneWidget);
     expect(
       find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
       findsOneWidget,
@@ -293,7 +294,76 @@ void main() {
 
     await tester.pumpWidget(_DashboardTestApp(controller: controller));
 
-    expect(find.text('Current storage used (1/2 reporting)'), findsOneWidget);
+    expect(find.text('2 storage pools · 1 reporting capacity'), findsOneWidget);
+  });
+
+  testWidgets('shows server-recorded performance history when available', (
+    WidgetTester tester,
+  ) async {
+    final base = healthyDatacenterSnapshot();
+    final snapshot = ClusterOverviewSnapshot(
+      version: base.version,
+      nodes: base.nodes,
+      guests: base.guests,
+      storages: base.storages,
+      tasks: base.tasks,
+      resourceHistory: DatacenterResourceHistory(
+        samples: <DatacenterResourceSample>[
+          DatacenterResourceSample(
+            recordedAt: DateTime.utc(2026, 8, 2, 11),
+            cpuFraction: 0.25,
+            memoryFraction: 0.4,
+            diskFraction: 0.5,
+          ),
+          DatacenterResourceSample(
+            recordedAt: DateTime.utc(2026, 8, 2, 12),
+            cpuFraction: 0.5,
+            memoryFraction: 0.6,
+            diskFraction: 0.7,
+          ),
+        ],
+        requestedNodeCount: 2,
+        reportingNodeCount: 2,
+      ),
+    );
+    final controller = await readyDashboardController(snapshot);
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_DashboardTestApp(controller: controller));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('datacenter-resource-history')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(find.text('Performance history'), findsOneWidget);
+    expect(find.text('Past 24 hours'), findsOneWidget);
+    expect(
+      find.text('Server-recorded node utilization · 2 nodes reporting'),
+      findsOneWidget,
+    );
+  });
+
+  testWidgets('uses one clear empty state when server history is unavailable', (
+    WidgetTester tester,
+  ) async {
+    final controller = await readyDashboardController(
+      healthyDatacenterSnapshot(),
+    );
+    addTearDown(controller.dispose);
+
+    await tester.pumpWidget(_DashboardTestApp(controller: controller));
+    await tester.scrollUntilVisible(
+      find.byKey(const ValueKey<String>('datacenter-resource-history')),
+      220,
+      scrollable: find.byType(Scrollable).first,
+    );
+
+    expect(
+      find.text('No historical metrics are available yet.'),
+      findsOneWidget,
+    );
+    expect(find.text('Comparison unavailable'), findsNothing);
   });
 }
 

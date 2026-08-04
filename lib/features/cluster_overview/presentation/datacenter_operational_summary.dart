@@ -47,23 +47,22 @@ class DatacenterOperationalSummary extends StatelessWidget {
           key: const ValueKey<String>('dashboard-resource-pressure'),
           child: PveInsightCard(
             title: 'Resource pressure',
-            subtitle:
-                'Current refresh · peak CPU and combined reported capacity',
+            subtitle: 'Latest reported utilization',
             child: Column(
               children: <Widget>[
                 _DashboardPressureMeter(
-                  label: 'Peak CPU now',
+                  label: 'CPU',
                   pressure: health.pressure.cpu,
                   detail: health.pressure.cpu?.representativeNodeName,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Memory allocated now',
+                  label: 'Memory',
                   pressure: health.pressure.memory,
                 ),
                 const SizedBox(height: 16),
                 _DashboardPressureMeter(
-                  label: 'Root disk allocated now',
+                  label: 'Disk',
                   pressure: health.pressure.rootDisk,
                 ),
               ],
@@ -73,10 +72,11 @@ class DatacenterOperationalSummary extends StatelessWidget {
         KeyedSubtree(
           key: const ValueKey<String>('dashboard-workload-composition'),
           child: PveInsightCard(
-            title: 'Workload composition',
-            subtitle:
-                '${snapshot.storages.length} '
-                '${snapshot.storages.length == 1 ? 'storage pool' : 'storage pools'} configured',
+            title: 'Workload mix',
+            subtitle: _workloadSubtitle(
+              storageCount: snapshot.storages.length,
+              reportingStorageCount: reportingStorageCount,
+            ),
             footer: Row(
               children: <Widget>[
                 Expanded(
@@ -144,11 +144,7 @@ class DatacenterOperationalSummary extends StatelessWidget {
                       ),
                       const SizedBox(height: 12),
                       PveChartLegendItem(
-                        label: reportingStorageCount == 0
-                            ? 'Current storage used'
-                            : 'Current storage used '
-                                  '($reportingStorageCount/'
-                                  '${snapshot.storages.length} reporting)',
+                        label: 'Storage',
                         value: reportingStorageCount == 0
                             ? 'Not reported'
                             : '${formatPveBytes(storageUsedBytes)} / '
@@ -165,6 +161,18 @@ class DatacenterOperationalSummary extends StatelessWidget {
       ],
     );
   }
+}
+
+String _workloadSubtitle({
+  required int storageCount,
+  required int reportingStorageCount,
+}) {
+  final poolNoun = storageCount == 1 ? 'pool' : 'pools';
+  if (reportingStorageCount == 0) {
+    return '$storageCount storage $poolNoun · capacity not reported';
+  }
+  return '$storageCount storage $poolNoun · '
+      '$reportingStorageCount reporting capacity';
 }
 
 class _DashboardPressureMeter extends StatelessWidget {

@@ -372,6 +372,129 @@ class PveResourceMeter extends StatelessWidget {
   }
 }
 
+/// A compact, accessible time-series view for bounded fractional metrics.
+class PveSparkline extends StatelessWidget {
+  const PveSparkline({
+    super.key,
+    required this.values,
+    required this.color,
+    required this.semanticLabel,
+    this.height = 34,
+  });
+
+  final List<double?> values;
+  final Color color;
+  final String semanticLabel;
+  final double height;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      image: true,
+      label: semanticLabel,
+      child: ExcludeSemantics(
+        child: SizedBox(
+          height: height,
+          width: double.infinity,
+          child: CustomPaint(
+            painter: _PveSparklinePainter(
+              values: values,
+              lineColor: color,
+              trackColor: PveAppleColors.separator(
+                context,
+              ).withValues(alpha: 0.4),
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+}
+
+class _PveSparklinePainter extends CustomPainter {
+  const _PveSparklinePainter({
+    required this.values,
+    required this.lineColor,
+    required this.trackColor,
+  });
+
+  final List<double?> values;
+  final Color lineColor;
+  final Color trackColor;
+
+  @override
+  void paint(Canvas canvas, Size size) {
+    if (size.isEmpty) {
+      return;
+    }
+    final trackPaint = Paint()
+      ..color = trackColor
+      ..strokeWidth = 1;
+    canvas.drawLine(
+      Offset(0, size.height / 2),
+      Offset(size.width, size.height / 2),
+      trackPaint,
+    );
+
+    final linePaint = Paint()
+      ..color = lineColor
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 2
+      ..strokeCap = StrokeCap.round
+      ..strokeJoin = StrokeJoin.round;
+    final pointPaint = Paint()..color = lineColor;
+    Path? path;
+    Offset? isolatedPoint;
+    void paintCurrentPath() {
+      if (path != null) {
+        canvas.drawPath(path, linePaint);
+      }
+      if (isolatedPoint != null) {
+        canvas.drawCircle(isolatedPoint, 2.5, pointPaint);
+      }
+    }
+
+    final divisor = math.max(values.length - 1, 1).toDouble();
+    for (var index = 0; index < values.length; index += 1) {
+      final value = values[index];
+      if (value == null || !value.isFinite || value < 0) {
+        paintCurrentPath();
+        path = null;
+        isolatedPoint = null;
+        continue;
+      }
+      final normalizedValue = value.clamp(0, 1).toDouble();
+      final point = Offset(
+        size.width * index / divisor,
+        size.height * (1 - normalizedValue),
+      );
+      if (path == null) {
+        path = Path()..moveTo(point.dx, point.dy);
+        isolatedPoint = point;
+        continue;
+      }
+      path.lineTo(point.dx, point.dy);
+      isolatedPoint = null;
+    }
+    paintCurrentPath();
+  }
+
+  @override
+  bool shouldRepaint(_PveSparklinePainter oldDelegate) {
+    if (oldDelegate.lineColor != lineColor ||
+        oldDelegate.trackColor != trackColor ||
+        oldDelegate.values.length != values.length) {
+      return true;
+    }
+    for (var index = 0; index < values.length; index += 1) {
+      if (oldDelegate.values[index] != values[index]) {
+        return true;
+      }
+    }
+    return false;
+  }
+}
+
 class PveChartLegendItem extends StatelessWidget {
   const PveChartLegendItem({
     super.key,

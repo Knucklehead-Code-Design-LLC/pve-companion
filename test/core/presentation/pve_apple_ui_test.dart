@@ -221,6 +221,104 @@ void main() {
     expect(find.text('View tasks'), findsOneWidget);
   });
 
+  testWidgets('section headers keep routine actions inline at compact width', (
+    WidgetTester tester,
+  ) async {
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: SizedBox(
+            width: 390,
+            child: PveSectionHeader(
+              title: 'Recent activity',
+              actionLabel: 'View Tasks',
+              actionSemanticsLabel: 'View all tasks',
+              onAction: _ignoreAction,
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final title = tester.getRect(find.text('Recent activity'));
+    final action = tester.getRect(find.text('View Tasks'));
+    expect(action.center.dy, lessThan(title.bottom + 15));
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('compact metric strips use one shared reporting note', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(390, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      const CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: PveMetricStrip(
+            showsItemScopes: false,
+            footer: 'Current guest inventory.',
+            items: <PveMetricStripItem>[
+              PveMetricStripItem(
+                label: 'Workloads',
+                value: '4',
+                icon: CupertinoIcons.cube_box,
+                scope: 'Non-template guests reported',
+              ),
+              PveMetricStripItem(
+                label: 'Running',
+                value: '3',
+                icon: CupertinoIcons.play_fill,
+                scope: 'Current reported guest state',
+              ),
+            ],
+          ),
+        ),
+      ),
+    );
+
+    expect(find.text('Non-template guests reported'), findsNothing);
+    expect(find.text('Current guest inventory.'), findsOneWidget);
+    expect(
+      tester.getSemantics(find.text('Workloads')).label,
+      contains('Non-template guests reported'),
+    );
+    expect(tester.takeException(), isNull);
+  });
+
+  testWidgets('wide inventory toolbars place search beside the heading', (
+    WidgetTester tester,
+  ) async {
+    await tester.binding.setSurfaceSize(const Size(1100, 800));
+    addTearDown(() => tester.binding.setSurfaceSize(null));
+    await tester.pumpWidget(
+      CupertinoApp(
+        home: CupertinoPageScaffold(
+          child: SizedBox(
+            width: 1000,
+            child: PveInventoryToolbar(
+              title: const PveSectionTitle(title: 'Guest inventory'),
+              search: const CupertinoSearchTextField(
+                key: ValueKey<String>('toolbar-search'),
+              ),
+              primaryControls: const Text('Status'),
+              trailingControls: <Widget>[
+                PveInventoryMenuButton(label: 'Sort: Status', onPressed: () {}),
+              ],
+            ),
+          ),
+        ),
+      ),
+    );
+
+    final title = tester.getRect(find.text('Guest inventory'));
+    final search = tester.getRect(
+      find.byKey(const ValueKey<String>('toolbar-search')),
+    );
+    expect(search.left, greaterThan(title.right));
+    expect((search.center.dy - title.center.dy).abs(), lessThan(16));
+    expect(tester.takeException(), isNull);
+  });
+
   testWidgets('desktop inspector layouts show primary content beside details', (
     WidgetTester tester,
   ) async {

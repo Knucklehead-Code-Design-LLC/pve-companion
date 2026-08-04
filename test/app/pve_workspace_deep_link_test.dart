@@ -48,12 +48,18 @@ void main() {
       CupertinoApp(home: PveWorkspace(controller: controller)),
     );
     await tester.pump();
-    expect(find.text('Recent activity'), findsNothing);
+    expect(
+      find.byKey(const ValueKey<String>('task-state-filter')),
+      findsNothing,
+    );
 
     controller.openWorkspaceSection(WorkspaceSection.tasks);
     await tester.pump();
 
-    expect(find.text('Recent activity'), findsOneWidget);
+    expect(
+      find.byKey(const ValueKey<String>('task-state-filter')),
+      findsOneWidget,
+    );
   });
 }
 

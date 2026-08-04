@@ -25,8 +25,8 @@ class DatacenterRecentActivitySection extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       children: <Widget>[
         DatacenterDashboardSectionHeader(
-          title: 'Recent reported activity',
-          actionLabel: 'View tasks',
+          title: 'Recent activity',
+          actionLabel: 'View Tasks',
           actionSemanticsLabel: 'View all tasks',
           onAction: onViewTasks,
         ),
