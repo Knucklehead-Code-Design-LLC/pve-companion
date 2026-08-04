@@ -102,6 +102,12 @@ or network connection.
   inventory. The UI distinguishes fully available, partially available,
   unavailable, and unreported pools; availability is never inferred from
   configuration alone.
+- The Overview's historical CPU, memory, and root-disk trends are read from
+  each node's Proxmox RRD endpoint for the past 24 hours. CPU is averaged only
+  across reporting nodes; memory and disk use combined reported usage and
+  capacity. Missing RRD permission, endpoint support, or samples remains a
+  distinct unavailable state and never causes the live snapshot to be
+  discarded.
 - Presentation is split by dashboard responsibility (health, capacity and
   workload, nodes, and activity). `PveWorkspace` owns the drill-down routing;
   dashboard widgets receive callbacks rather than depending on app navigation.

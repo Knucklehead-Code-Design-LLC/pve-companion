@@ -412,6 +412,137 @@ class PveWideControlBar extends StatelessWidget {
   }
 }
 
+/// Keeps an inventory heading, search, and refinement controls in a stable
+/// order across compact and expanded workspaces.
+///
+/// On wider layouts the search field stays with the heading, which makes the
+/// result controls easier to scan without pushing the search affordance into a
+/// separate row. Compact layouts retain the same order vertically.
+class PveInventoryToolbar extends StatelessWidget {
+  const PveInventoryToolbar({
+    super.key,
+    required this.title,
+    required this.search,
+    required this.primaryControls,
+    this.trailingControls = const <Widget>[],
+    this.searchWidth = 320,
+  });
+
+  final Widget title;
+  final Widget search;
+  final Widget primaryControls;
+  final List<Widget> trailingControls;
+  final double searchWidth;
+
+  static const double _inlineControlsBreakpoint = 900;
+
+  @override
+  Widget build(BuildContext context) {
+    return LayoutBuilder(
+      builder: (BuildContext context, BoxConstraints constraints) {
+        final stacksControls =
+            constraints.maxWidth < _inlineControlsBreakpoint ||
+            MediaQuery.textScalerOf(context).scale(14) >= 20;
+        final trailing = _TrailingInventoryControls(controls: trailingControls);
+        if (stacksControls) {
+          return Column(
+            crossAxisAlignment: CrossAxisAlignment.stretch,
+            children: <Widget>[
+              title,
+              const SizedBox(height: 12),
+              search,
+              const SizedBox(height: 10),
+              primaryControls,
+              if (trailingControls.isNotEmpty) ...<Widget>[
+                const SizedBox(height: 8),
+                Align(alignment: Alignment.centerRight, child: trailing),
+              ],
+            ],
+          );
+        }
+        return Column(
+          crossAxisAlignment: CrossAxisAlignment.stretch,
+          children: <Widget>[
+            Row(
+              children: <Widget>[
+                Expanded(child: title),
+                const SizedBox(width: 16),
+                SizedBox(width: searchWidth, child: search),
+              ],
+            ),
+            const SizedBox(height: 10),
+            Wrap(
+              spacing: 12,
+              runSpacing: 8,
+              alignment: WrapAlignment.spaceBetween,
+              crossAxisAlignment: WrapCrossAlignment.center,
+              children: <Widget>[
+                primaryControls,
+                if (trailingControls.isNotEmpty) trailing,
+              ],
+            ),
+          ],
+        );
+      },
+    );
+  }
+}
+
+class _TrailingInventoryControls extends StatelessWidget {
+  const _TrailingInventoryControls({required this.controls});
+
+  final List<Widget> controls;
+
+  @override
+  Widget build(BuildContext context) {
+    return Wrap(
+      spacing: 8,
+      runSpacing: 8,
+      alignment: WrapAlignment.end,
+      crossAxisAlignment: WrapCrossAlignment.center,
+      children: controls,
+    );
+  }
+}
+
+/// A compact button for inventory refinements that open a picker or sheet.
+class PveInventoryMenuButton extends StatelessWidget {
+  const PveInventoryMenuButton({
+    super.key,
+    required this.label,
+    required this.onPressed,
+    this.semanticLabel,
+    this.icon = CupertinoIcons.chevron_down,
+  });
+
+  final String label;
+  final VoidCallback onPressed;
+  final String? semanticLabel;
+  final IconData icon;
+
+  @override
+  Widget build(BuildContext context) {
+    return Semantics(
+      button: true,
+      label: semanticLabel,
+      child: CupertinoButton(
+        padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 7),
+        minimumSize: const Size(44, 36),
+        color: CupertinoColors.tertiarySystemFill.resolveFrom(context),
+        onPressed: onPressed,
+        child: Row(
+          mainAxisSize: MainAxisSize.min,
+          children: <Widget>[
+            Text(label, maxLines: 1, overflow: TextOverflow.ellipsis),
+            const SizedBox(width: 5),
+            Icon(icon, size: 13),
+          ],
+        ),
+      ),
+    );
+  }
+}
+
 class PveMetricStripItem {
   const PveMetricStripItem({
     required this.label,
@@ -431,54 +562,91 @@ class PveMetricStripItem {
 }
 
 class PveMetricStrip extends StatelessWidget {
-  const PveMetricStrip({super.key, required this.items});
+  const PveMetricStrip({
+    super.key,
+    required this.items,
+    this.showsItemScopes = true,
+    this.footer,
+  });
 
   final List<PveMetricStripItem> items;
+
+  /// When related metrics share one reporting context, show it once below the
+  /// strip instead of giving every cell a differently sized third text line.
+  final bool showsItemScopes;
+  final String? footer;
 
   @override
   Widget build(BuildContext context) {
     return PveInsetGroup(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 14),
-      child: LayoutBuilder(
-        builder: (BuildContext context, BoxConstraints constraints) {
-          if (constraints.maxWidth < PveAppleLayout.controlBarStackBreakpoint) {
-            final cellWidth = constraints.maxWidth / 2;
-            return Wrap(
-              runSpacing: 14,
-              children: <Widget>[
-                for (final item in items)
-                  SizedBox(
-                    width: cellWidth,
-                    child: _PveMetricStripCell(item: item),
-                  ),
-              ],
-            );
-          }
-          return Row(
-            children: <Widget>[
-              for (int index = 0; index < items.length; index++) ...<Widget>[
-                if (index > 0)
-                  Container(
-                    width: 0.5,
-                    height: 38,
-                    color: PveAppleColors.separator(
-                      context,
-                    ).withValues(alpha: 0.65),
-                  ),
-                Expanded(child: _PveMetricStripCell(item: items[index])),
-              ],
-            ],
-          );
-        },
+      child: Column(
+        crossAxisAlignment: CrossAxisAlignment.stretch,
+        children: <Widget>[
+          LayoutBuilder(
+            builder: (BuildContext context, BoxConstraints constraints) {
+              if (constraints.maxWidth <
+                  PveAppleLayout.controlBarStackBreakpoint) {
+                final cellWidth = constraints.maxWidth / 2;
+                return Wrap(
+                  runSpacing: 14,
+                  children: <Widget>[
+                    for (final item in items)
+                      SizedBox(
+                        width: cellWidth,
+                        child: _PveMetricStripCell(
+                          item: item,
+                          showsScope: showsItemScopes,
+                        ),
+                      ),
+                  ],
+                );
+              }
+              return Row(
+                children: <Widget>[
+                  for (
+                    int index = 0;
+                    index < items.length;
+                    index++
+                  ) ...<Widget>[
+                    if (index > 0)
+                      Container(
+                        width: 0.5,
+                        height: showsItemScopes ? 54 : 38,
+                        color: PveAppleColors.separator(
+                          context,
+                        ).withValues(alpha: 0.65),
+                      ),
+                    Expanded(
+                      child: _PveMetricStripCell(
+                        item: items[index],
+                        showsScope: showsItemScopes,
+                      ),
+                    ),
+                  ],
+                ],
+              );
+            },
+          ),
+          if (footer != null) ...<Widget>[
+            const SizedBox(height: 8),
+            Text(
+              footer!,
+              textAlign: TextAlign.center,
+              style: PveAppleText.caption(context),
+            ),
+          ],
+        ],
       ),
     );
   }
 }
 
 class _PveMetricStripCell extends StatelessWidget {
-  const _PveMetricStripCell({required this.item});
+  const _PveMetricStripCell({required this.item, required this.showsScope});
 
   final PveMetricStripItem item;
+  final bool showsScope;
 
   @override
   Widget build(BuildContext context) {
@@ -503,11 +671,26 @@ class _PveMetricStripCell extends StatelessWidget {
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: <Widget>[
-                  Text(item.value, style: PveAppleText.title3(context)),
+                  Text(
+                    item.value,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PveAppleText.title3(context),
+                  ),
                   const SizedBox(height: 1),
-                  Text(item.label, style: PveAppleText.caption(context)),
-                  if (item.scope != null)
-                    Text(item.scope!, style: PveAppleText.caption(context)),
+                  Text(
+                    item.label,
+                    maxLines: 1,
+                    overflow: TextOverflow.ellipsis,
+                    style: PveAppleText.caption(context),
+                  ),
+                  if (showsScope && item.scope != null)
+                    Text(
+                      item.scope!,
+                      maxLines: 1,
+                      overflow: TextOverflow.ellipsis,
+                      style: PveAppleText.caption(context),
+                    ),
                 ],
               ),
             ),
@@ -599,7 +782,7 @@ class PveSectionHeader extends StatelessWidget {
         builder: (BuildContext context, BoxConstraints constraints) {
           if (!hasAction) return titleWidget;
           final stacksAction =
-              constraints.maxWidth < 420 ||
+              constraints.maxWidth < 340 ||
               MediaQuery.textScalerOf(context).scale(14) >= 20;
           if (stacksAction) {
             return Column(

@@ -2,6 +2,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pve_companion/core/api/proxmox_api_exception.dart';
 import 'package:pve_companion/core/api/proxmox_session.dart';
 import 'package:pve_companion/features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
+import 'package:pve_companion/features/cluster_overview/domain/datacenter_resource_history.dart';
 
 void main() {
   test(
@@ -117,6 +118,114 @@ void main() {
     expect(snapshot.storages.single.resources, isEmpty);
     expect(snapshot.storages.single.capacityBytes, isNull);
   });
+
+  test(
+    'aggregates server-recorded node history without inventing storage data',
+    () async {
+      final repository = ProxmoxClusterOverviewRepository();
+      final session = _FixtureSession(<String, Object?>{
+        'version': <String, Object?>{'version': '9.2'},
+        'nodes': <Object?>[
+          <String, Object?>{'node': 'pve-01', 'status': 'online'},
+          <String, Object?>{'node': 'pve-02', 'status': 'online'},
+        ],
+        'cluster/resources': const <Object?>[],
+        'storage': const <Object?>[],
+        'cluster/tasks': const <Object?>[],
+        'nodes/pve-01/rrddata': <Object?>[
+          <String, Object?>{
+            'time': 1_700_000_000,
+            'cpu': 0.4,
+            'mem': 30,
+            'maxmem': 100,
+            'rootfs': 10,
+            'maxroot': 100,
+          },
+          <String, Object?>{
+            'time': 1_700_000_300,
+            'cpu': 0.6,
+            'mem': 40,
+            'maxmem': 100,
+            'rootfs': 30,
+            'maxroot': 100,
+          },
+        ],
+        'nodes/pve-02/rrddata': <Object?>[
+          <String, Object?>{
+            'time': 1_700_000_000,
+            'cpu': 0.6,
+            'mem': 60,
+            'maxmem': 200,
+            'rootfs': 40,
+            'maxroot': 100,
+          },
+          <String, Object?>{
+            'time': 1_700_000_300,
+            'cpu': 0.2,
+            'mem': 80,
+            'maxmem': 200,
+            'rootfs': 50,
+            'maxroot': 100,
+          },
+        ],
+      });
+
+      final snapshot = await repository.load(session);
+
+      final history = snapshot.resourceHistory;
+      expect(history.isAvailable, isTrue);
+      expect(history.requestedNodeCount, 2);
+      expect(history.reportingNodeCount, 2);
+      expect(history.samples, hasLength(2));
+      expect(history.samples.first.cpuFraction, 0.5);
+      expect(history.samples.first.memoryFraction, 0.3);
+      expect(history.samples.first.diskFraction, 0.25);
+      expect(
+        history.samples.first.recordedAt,
+        DateTime.fromMillisecondsSinceEpoch(
+          1_700_000_000 * 1000,
+          isUtc: true,
+        ).toLocal(),
+      );
+      expect(
+        session.requests,
+        contains(
+          const _SessionRequest('nodes/pve-01/rrddata', <String, String>{
+            'timeframe': 'day',
+            'cf': 'AVERAGE',
+          }),
+        ),
+      );
+    },
+  );
+
+  test(
+    'keeps live data when historical metrics need additional permission',
+    () async {
+      final repository = ProxmoxClusterOverviewRepository();
+      final session = _FixtureSession(<String, Object?>{
+        'version': <String, Object?>{'version': '9.2'},
+        'nodes': <Object?>[
+          <String, Object?>{'node': 'pve-01', 'status': 'online'},
+        ],
+        'cluster/resources': const <Object?>[],
+        'storage': const <Object?>[],
+        'cluster/tasks': const <Object?>[],
+        'nodes/pve-01/rrddata': const ProxmoxUnauthorizedException(
+          'Permission denied.',
+        ),
+      });
+
+      final snapshot = await repository.load(session);
+
+      expect(snapshot.nodes.single.name, 'pve-01');
+      expect(snapshot.resourceHistory.isAvailable, isFalse);
+      expect(
+        snapshot.resourceHistory.unavailableReason,
+        DatacenterResourceHistoryUnavailableReason.permissionDenied,
+      );
+    },
+  );
 }
 
 class _FixtureSession implements ProxmoxSession {

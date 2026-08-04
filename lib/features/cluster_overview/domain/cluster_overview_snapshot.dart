@@ -1,5 +1,7 @@
 import '../../guests/domain/pve_guest.dart';
 
+import 'datacenter_resource_history.dart';
+
 class ClusterOverviewSnapshot {
   const ClusterOverviewSnapshot({
     required this.version,
@@ -7,6 +9,7 @@ class ClusterOverviewSnapshot {
     required this.guests,
     required this.storages,
     required this.tasks,
+    this.resourceHistory = const DatacenterResourceHistory.unavailable(),
   });
 
   final PveVersion version;
@@ -14,6 +17,7 @@ class ClusterOverviewSnapshot {
   final List<PveGuest> guests;
   final List<ClusterStorage> storages;
   final List<ClusterTask> tasks;
+  final DatacenterResourceHistory resourceHistory;
 
   int get runningGuestCount => guests
       .where((PveGuest guest) => guest.status.toLowerCase() == 'running')

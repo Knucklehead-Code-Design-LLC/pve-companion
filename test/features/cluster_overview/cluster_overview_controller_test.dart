@@ -6,7 +6,6 @@ import 'package:pve_companion/features/cluster_overview/application/cluster_over
 import 'package:pve_companion/features/cluster_overview/data/proxmox_cluster_overview_repository.dart';
 import 'package:pve_companion/features/cluster_overview/domain/cluster_overview_snapshot.dart';
 import 'package:pve_companion/features/cluster_overview/domain/datacenter_resource_history.dart';
-import 'package:pve_companion/features/guests/domain/pve_guest.dart';
 
 void main() {
   test('discards a stale refresh after a newer refresh starts', () async {
@@ -32,53 +31,31 @@ void main() {
   });
 
   test(
-    'keeps a bounded local resource history and clears it with the session',
+    'retains server-provided performance history in the loaded snapshot',
     () async {
+      final history = DatacenterResourceHistory(
+        samples: <DatacenterResourceSample>[
+          DatacenterResourceSample(
+            recordedAt: DateTime.utc(2026, 8, 2),
+            cpuFraction: 0.5,
+            memoryFraction: 0.4,
+            diskFraction: 0.3,
+          ),
+        ],
+        requestedNodeCount: 1,
+        reportingNodeCount: 1,
+      );
       final controller = ClusterOverviewController(
-        _SequencedClusterRepository(),
+        _SequencedClusterRepository(history),
       );
       final session = _FakeSession();
 
-      for (var index = 0; index < 25; index += 1) {
-        await controller.refresh(session);
-      }
+      await controller.refresh(session);
 
-      expect(controller.resourceHistory, hasLength(24));
-      expect(controller.resourceHistory.last.cpuFraction, 0.5);
-      expect(controller.resourceHistory.last.memoryFraction, 0.5);
-      expect(controller.resourceHistory.last.storageFraction, 0.5);
+      expect(controller.snapshot?.resourceHistory, same(history));
       controller.clear();
-      expect(controller.resourceHistory, isEmpty);
+      expect(controller.snapshot, isNull);
       controller.dispose();
-    },
-  );
-
-  test(
-    'does not turn unavailable resource telemetry into zero utilization',
-    () {
-      const snapshot = ClusterOverviewSnapshot(
-        version: PveVersion(version: 'test'),
-        nodes: <ClusterNode>[ClusterNode(name: 'node-a', status: 'online')],
-        guests: <PveGuest>[],
-        storages: <ClusterStorage>[
-          ClusterStorage(
-            name: 'local',
-            type: 'dir',
-            content: 'images',
-            shared: false,
-          ),
-        ],
-        tasks: <ClusterTask>[],
-      );
-
-      final sample = DatacenterResourceSample.fromSnapshot(
-        snapshot,
-        capturedAt: DateTime.utc(2026, 8, 2),
-      );
-
-      expect(sample.memoryFraction, isNull);
-      expect(sample.diskFraction, isNull);
-      expect(sample.storageFraction, isNull);
     },
   );
 }
@@ -106,6 +83,10 @@ class _ControlledClusterRepository implements ClusterOverviewRepository {
 }
 
 class _SequencedClusterRepository implements ClusterOverviewRepository {
+  _SequencedClusterRepository(this.history);
+
+  final DatacenterResourceHistory history;
+
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
     return ClusterOverviewSnapshot(
@@ -139,6 +120,7 @@ class _SequencedClusterRepository implements ClusterOverviewRepository {
         ),
       ],
       tasks: const [],
+      resourceHistory: history,
     );
   }
 }

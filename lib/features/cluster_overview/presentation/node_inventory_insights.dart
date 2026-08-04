@@ -46,7 +46,7 @@ class NodeInventoryInsights extends StatelessWidget {
             child: Column(
               children: <Widget>[
                 _PressureMeter(
-                  label: 'Peak CPU',
+                  label: 'CPU',
                   pressure: health.pressure.cpu,
                   detail: health.pressure.cpu?.representativeNodeName,
                 ),
@@ -57,7 +57,7 @@ class NodeInventoryInsights extends StatelessWidget {
                 ),
                 const SizedBox(height: 16),
                 _PressureMeter(
-                  label: 'Root disk',
+                  label: 'Disk',
                   pressure: health.pressure.rootDisk,
                 ),
               ],

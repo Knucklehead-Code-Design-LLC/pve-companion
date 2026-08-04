@@ -4,12 +4,15 @@ import '../../../core/api/proxmox_api_exception.dart';
 import '../../../core/api/proxmox_session.dart';
 import '../../guests/domain/pve_guest.dart';
 import '../domain/cluster_overview_snapshot.dart';
+import '../domain/datacenter_resource_history.dart';
 
 abstract interface class ClusterOverviewRepository {
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session);
 }
 
 class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
+  static const Duration _resourceHistoryTimeout = Duration(seconds: 8);
+
   @override
   Future<ClusterOverviewSnapshot> load(ProxmoxSession session) async {
     final responses = await Future.wait<Object?>(<Future<Object?>>[
@@ -20,12 +23,15 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
       session.getData('cluster/tasks'),
     ]);
 
+    final nodes = _decodeNodes(responses[1]);
+    final resourceHistory = await _loadResourceHistory(session, nodes);
     return ClusterOverviewSnapshot(
       version: _decodeVersion(responses[0]),
-      nodes: _decodeNodes(responses[1]),
+      nodes: nodes,
       guests: _decodeGuests(responses[2]),
       storages: _decodeStorages(responses[3], responses[2]),
       tasks: _decodeTasks(responses[4]),
+      resourceHistory: resourceHistory,
     );
   }
 
@@ -40,6 +46,213 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
       }
       rethrow;
     }
+  }
+
+  Future<DatacenterResourceHistory> _loadResourceHistory(
+    ProxmoxSession session,
+    List<ClusterNode> nodes,
+  ) async {
+    if (nodes.isEmpty) {
+      return const DatacenterResourceHistory.unavailable(
+        unavailableReason: DatacenterResourceHistoryUnavailableReason.noNodes,
+      );
+    }
+    final nodeResponses = await Future.wait<_NodeResourceHistoryResponse>(
+      nodes.map(
+        (ClusterNode node) => _loadNodeResourceHistory(session, node.name),
+      ),
+    );
+    final samplesByTime = <DateTime, List<_NodeResourceSample>>{};
+    var reportingNodeCount = 0;
+    for (final response in nodeResponses) {
+      if (response.samples.isNotEmpty) {
+        reportingNodeCount += 1;
+      }
+      for (final sample in response.samples) {
+        samplesByTime
+            .putIfAbsent(sample.recordedAt, () => <_NodeResourceSample>[])
+            .add(sample);
+      }
+    }
+    final samples =
+        samplesByTime.entries
+            .map(
+              (MapEntry<DateTime, List<_NodeResourceSample>> entry) =>
+                  _aggregateResourceSample(entry.key, entry.value),
+            )
+            .where(
+              (DatacenterResourceSample sample) => sample.hasReportedMetric,
+            )
+            .toList(growable: false)
+          ..sort(
+            (DatacenterResourceSample left, DatacenterResourceSample right) =>
+                left.recordedAt.compareTo(right.recordedAt),
+          );
+    if (samples.isEmpty) {
+      return DatacenterResourceHistory.unavailable(
+        requestedNodeCount: nodes.length,
+        unavailableReason: _historyUnavailableReason(nodeResponses),
+      );
+    }
+    return DatacenterResourceHistory(
+      samples: samples,
+      requestedNodeCount: nodes.length,
+      reportingNodeCount: reportingNodeCount,
+    );
+  }
+
+  Future<_NodeResourceHistoryResponse> _loadNodeResourceHistory(
+    ProxmoxSession session,
+    String node,
+  ) async {
+    try {
+      final response = await session
+          .getData(
+            'nodes/$node/rrddata',
+            query: const <String, String>{'timeframe': 'day', 'cf': 'AVERAGE'},
+          )
+          .timeout(_resourceHistoryTimeout);
+      return _NodeResourceHistoryResponse.loaded(
+        _decodeNodeResourceSamples(response),
+      );
+    } on ProxmoxUnauthorizedException {
+      return const _NodeResourceHistoryResponse.permissionDenied();
+    } on ProxmoxResponseException catch (error) {
+      if (error.statusCode == 404 || error.statusCode == 501) {
+        return const _NodeResourceHistoryResponse.unsupported();
+      }
+      return const _NodeResourceHistoryResponse.failed();
+    } on ProxmoxApiException {
+      return const _NodeResourceHistoryResponse.failed();
+    } catch (_) {
+      return const _NodeResourceHistoryResponse.failed();
+    }
+  }
+
+  List<_NodeResourceSample> _decodeNodeResourceSamples(Object? value) {
+    return _objects(value, 'node RRD data')
+        .map((Map<String, Object?> sample) {
+          final time = _optionalInt(sample, 'time');
+          if (time == null || time < 0) {
+            return null;
+          }
+          final recordedAt = _unixSecondsToDateTime(time);
+          if (recordedAt == null) {
+            return null;
+          }
+          final memoryUsedBytes = _optionalInt(sample, 'mem');
+          final memoryCapacityBytes = _optionalInt(sample, 'maxmem');
+          // Node RRD samples use rootfs/maxroot while live node status uses
+          // disk/maxdisk. Accept either explicit pair when a server supplies
+          // one schema, without treating a missing capacity as zero.
+          final rootDiskUsedBytes =
+              _optionalInt(sample, 'rootfs') ?? _optionalInt(sample, 'disk');
+          final rootDiskCapacityBytes =
+              _optionalInt(sample, 'maxroot') ??
+              _optionalInt(sample, 'maxdisk');
+          final result = _NodeResourceSample(
+            recordedAt: recordedAt,
+            cpuFraction: _reportedFraction(sample, 'cpu'),
+            memoryUsedBytes: memoryUsedBytes,
+            memoryCapacityBytes: memoryCapacityBytes,
+            diskUsedBytes: rootDiskUsedBytes,
+            diskCapacityBytes: rootDiskCapacityBytes,
+          );
+          return result.hasReportedMetric ? result : null;
+        })
+        .whereType<_NodeResourceSample>()
+        .toList(growable: false);
+  }
+
+  double? _reportedFraction(Map<String, Object?> value, String key) {
+    final fraction = _optionalDouble(value, key);
+    if (fraction == null || !fraction.isFinite || fraction < 0) {
+      return null;
+    }
+    return fraction;
+  }
+
+  DatacenterResourceSample _aggregateResourceSample(
+    DateTime recordedAt,
+    List<_NodeResourceSample> samples,
+  ) {
+    return DatacenterResourceSample(
+      recordedAt: recordedAt,
+      cpuFraction: _averageFraction(
+        samples.map((sample) => sample.cpuFraction),
+      ),
+      memoryFraction: _combinedFraction(
+        samples,
+        usage: (_NodeResourceSample sample) => sample.memoryUsedBytes,
+        capacity: (_NodeResourceSample sample) => sample.memoryCapacityBytes,
+      ),
+      diskFraction: _combinedFraction(
+        samples,
+        usage: (_NodeResourceSample sample) => sample.diskUsedBytes,
+        capacity: (_NodeResourceSample sample) => sample.diskCapacityBytes,
+      ),
+    );
+  }
+
+  double? _averageFraction(Iterable<double?> fractions) {
+    var total = 0.0;
+    var count = 0;
+    for (final fraction in fractions) {
+      if (fraction == null) {
+        continue;
+      }
+      total += fraction;
+      count += 1;
+    }
+    return count == 0 ? null : total / count;
+  }
+
+  double? _combinedFraction(
+    Iterable<_NodeResourceSample> samples, {
+    required int? Function(_NodeResourceSample sample) usage,
+    required int? Function(_NodeResourceSample sample) capacity,
+  }) {
+    var totalUsage = 0;
+    var totalCapacity = 0;
+    var hasReportedPair = false;
+    for (final sample in samples) {
+      final used = usage(sample);
+      final limit = capacity(sample);
+      if (used == null || used < 0 || limit == null || limit <= 0) {
+        continue;
+      }
+      totalUsage += used;
+      totalCapacity += limit;
+      hasReportedPair = true;
+    }
+    if (!hasReportedPair || totalCapacity <= 0) {
+      return null;
+    }
+    return totalUsage / totalCapacity;
+  }
+
+  DatacenterResourceHistoryUnavailableReason _historyUnavailableReason(
+    List<_NodeResourceHistoryResponse> responses,
+  ) {
+    if (responses.every(
+      (_NodeResourceHistoryResponse response) =>
+          response.status == _NodeResourceHistoryStatus.permissionDenied,
+    )) {
+      return DatacenterResourceHistoryUnavailableReason.permissionDenied;
+    }
+    if (responses.every(
+      (_NodeResourceHistoryResponse response) =>
+          response.status == _NodeResourceHistoryStatus.unsupported,
+    )) {
+      return DatacenterResourceHistoryUnavailableReason.unsupported;
+    }
+    if (responses.any(
+      (_NodeResourceHistoryResponse response) =>
+          response.status == _NodeResourceHistoryStatus.failed,
+    )) {
+      return DatacenterResourceHistoryUnavailableReason.requestFailed;
+    }
+    return DatacenterResourceHistoryUnavailableReason.noData;
   }
 
   PveVersion _decodeVersion(Object? value) {
@@ -226,4 +439,57 @@ class ProxmoxClusterOverviewRepository implements ClusterOverviewRepository {
             isUtc: true,
           ).toLocal();
   }
+}
+
+enum _NodeResourceHistoryStatus {
+  loaded,
+  permissionDenied,
+  unsupported,
+  failed,
+}
+
+class _NodeResourceHistoryResponse {
+  const _NodeResourceHistoryResponse.loaded(this.samples)
+    : status = _NodeResourceHistoryStatus.loaded;
+
+  const _NodeResourceHistoryResponse.permissionDenied()
+    : status = _NodeResourceHistoryStatus.permissionDenied,
+      samples = const <_NodeResourceSample>[];
+
+  const _NodeResourceHistoryResponse.unsupported()
+    : status = _NodeResourceHistoryStatus.unsupported,
+      samples = const <_NodeResourceSample>[];
+
+  const _NodeResourceHistoryResponse.failed()
+    : status = _NodeResourceHistoryStatus.failed,
+      samples = const <_NodeResourceSample>[];
+
+  final _NodeResourceHistoryStatus status;
+  final List<_NodeResourceSample> samples;
+}
+
+class _NodeResourceSample {
+  const _NodeResourceSample({
+    required this.recordedAt,
+    required this.cpuFraction,
+    required this.memoryUsedBytes,
+    required this.memoryCapacityBytes,
+    required this.diskUsedBytes,
+    required this.diskCapacityBytes,
+  });
+
+  final DateTime recordedAt;
+  final double? cpuFraction;
+  final int? memoryUsedBytes;
+  final int? memoryCapacityBytes;
+  final int? diskUsedBytes;
+  final int? diskCapacityBytes;
+
+  bool get hasReportedMetric =>
+      cpuFraction != null ||
+      _hasCapacityPair(memoryUsedBytes, memoryCapacityBytes) ||
+      _hasCapacityPair(diskUsedBytes, diskCapacityBytes);
+
+  bool _hasCapacityPair(int? usage, int? capacity) =>
+      usage != null && usage >= 0 && capacity != null && capacity > 0;
 }
