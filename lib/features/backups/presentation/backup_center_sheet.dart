@@ -67,6 +67,7 @@ class _BackupCenterSheetState extends State<_BackupCenterSheet> {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: const Text('Backup Center'),
         trailing: Row(
           mainAxisSize: MainAxisSize.min,
@@ -144,7 +145,7 @@ class _BackupCenterContent extends StatelessWidget {
         Text('Data protection', style: PveAppleText.title2(context)),
         const SizedBox(height: 6),
         Text(
-          'Run an on-demand backup from a guest. This center shows configured destinations, schedules, and backup copies without changing retention policy.',
+          'Review reported destinations, schedules, copies, and recent activity.',
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
@@ -417,7 +418,7 @@ class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
           ),
           const SizedBox(height: 10),
           Text(
-            'This app cannot create storage or schedules. Complete these safe setup steps in the Proxmox web interface, then return here to verify what is reported.',
+            'Set up storage and schedules in Proxmox, then refresh this page to verify the report.',
             style: PveAppleText.secondary(context),
           ),
           const SizedBox(height: 14),
@@ -431,14 +432,14 @@ class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
           const _BackupSetupStep(
             number: '2',
             title: 'Open Datacenter → Backup',
-            detail: 'Create a schedule and select the storage destination.',
+            detail: 'Create a schedule and choose the destination.',
           ),
           const SizedBox(height: 10),
           const _BackupSetupStep(
             number: '3',
-            title: 'Return and refresh Backup Center',
+            title: 'Refresh this page',
             detail:
-                'PVE Companion will show the destinations, schedules, and copies your account can read.',
+                'Confirm the destinations, schedules, and copies reported to your account.',
           ),
           const SizedBox(height: 12),
           Wrap(
@@ -479,7 +480,7 @@ class _BackupSetupChecklistState extends State<_BackupSetupChecklist> {
           ),
           const SizedBox(height: 4),
           Text(
-            'These buttons copy navigation text; they do not open or change Proxmox.',
+            'Copying a path does not change Proxmox.',
             style: PveAppleText.caption(context),
           ),
         ],

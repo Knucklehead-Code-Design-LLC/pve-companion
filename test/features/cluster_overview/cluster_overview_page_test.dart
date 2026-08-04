@@ -31,6 +31,13 @@ void main() {
 
       expect(find.text('Datacenter'), findsOneWidget);
       expect(find.text('All systems operational'), findsOneWidget);
+      final healthSummary = tester.widget<Text>(
+        find.byKey(const ValueKey<String>('datacenter-health-summary')),
+      );
+      expect(healthSummary.maxLines, 1);
+      expect(healthSummary.data, contains('·'));
+      expect(healthSummary.data, contains('1 task'));
+      expect(healthSummary.data, isNot(contains('active')));
       expect(find.text('No active incidents'), findsNothing);
       expect(
         find.byKey(const ValueKey<String>('dashboard-resource-pressure')),
@@ -337,11 +344,7 @@ void main() {
     );
 
     expect(find.text('Performance history'), findsOneWidget);
-    expect(find.text('Past 24 hours'), findsOneWidget);
-    expect(
-      find.text('Server-recorded node utilization · 2 nodes reporting'),
-      findsOneWidget,
-    );
+    expect(find.text('Last 24 hours · 2 nodes reporting'), findsOneWidget);
   });
 
   testWidgets('uses one clear empty state when server history is unavailable', (

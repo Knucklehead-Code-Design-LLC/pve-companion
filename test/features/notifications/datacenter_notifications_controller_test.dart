@@ -162,6 +162,26 @@ void main() {
       expect(notifications.events, isEmpty);
     },
   );
+
+  test('requests a local test alert without changing alert rules', () async {
+    final preferences = _PreferencesRepository();
+    final notifications = _LocalNotifications();
+    final controller = DatacenterNotificationsController(
+      preferencesRepository: preferences,
+      notificationRepository: notifications,
+    );
+    addTearDown(controller.dispose);
+
+    await controller.initialize();
+    await controller.sendTestAlert();
+
+    expect(controller.testAlertRequested, isTrue);
+    expect(controller.isSendingTestAlert, isFalse);
+    expect(notifications.events, hasLength(1));
+    expect(notifications.events.single.identifier, startsWith('test:'));
+    expect(notifications.events.single.title, 'PVE Companion');
+    expect(preferences.saveCount, 0);
+  });
 }
 
 class _PreferencesRepository

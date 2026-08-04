@@ -1,5 +1,4 @@
 import 'package:flutter/cupertino.dart';
-import 'package:flutter/foundation.dart';
 
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
@@ -35,6 +34,7 @@ class _DatacenterNotificationsSheet extends StatelessWidget {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: const Text('Notifications'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -85,23 +85,25 @@ class _NotificationContent extends StatelessWidget {
         authorization == LocalNotificationAuthorization.authorized;
     final backgroundMonitoringAvailable =
         controller.backgroundMonitoringAvailable;
-    final runsOnMacOS = defaultTargetPlatform == TargetPlatform.macOS;
     final settings = controller.settings;
     return ListView(
       controller: scrollController,
       padding: const EdgeInsets.only(bottom: 32),
       children: <Widget>[
-        Text('Datacenter alerts', style: PveAppleText.title2(context)),
+        Text('Alert settings', style: PveAppleText.title2(context)),
         const SizedBox(height: 6),
         Text(
-          'Incident alerts are evaluated when PVE Companion refreshes a datacenter. Connection alerts use Apple-scheduled background activity and remain an opportunistic signal, not a replacement for Proxmox monitoring.',
+          'Choose which new datacenter issues can alert you.',
           style: PveAppleText.secondary(context),
         ),
         const SizedBox(height: 18),
         _NotificationPermissionCard(
           authorization: authorization,
           requesting: controller.isRequestingAuthorization,
+          sendingTestAlert: controller.isSendingTestAlert,
+          testAlertRequested: controller.testAlertRequested,
           onRequest: controller.requestAuthorization,
+          onSendTestAlert: controller.sendTestAlert,
         ),
         if (controller.errorMessage != null) ...<Widget>[
           const SizedBox(height: 10),
@@ -119,21 +121,17 @@ class _NotificationContent extends StatelessWidget {
         const SizedBox(height: 24),
         CupertinoFormSection.insetGrouped(
           margin: EdgeInsets.zero,
-          header: const Text('WHEN TO ALERT'),
+          header: const Text('ALERT TYPES'),
           footer: Text(
             _notificationFooter(
               supported: supported,
               authorized: authorized,
               backgroundMonitoringAvailable: backgroundMonitoringAvailable,
-              runsOnMacOS: runsOnMacOS,
             ),
           ),
           children: <Widget>[
             CupertinoFormRow(
               prefix: const Text('Critical incidents'),
-              helper: const Text(
-                'Offline nodes, critical capacity pressure, and unavailable storage.',
-              ),
               child: CupertinoSwitch(
                 value: settings.criticalIncidentsEnabled,
                 onChanged: supported
@@ -145,9 +143,6 @@ class _NotificationContent extends StatelessWidget {
             ),
             CupertinoFormRow(
               prefix: const Text('Attention alerts'),
-              helper: const Text(
-                'Warning-level capacity pressure and failed recent tasks.',
-              ),
               child: CupertinoSwitch(
                 value: settings.attentionIncidentsEnabled,
                 onChanged: supported
@@ -160,7 +155,6 @@ class _NotificationContent extends StatelessWidget {
             if (backgroundMonitoringAvailable)
               CupertinoFormRow(
                 prefix: const Text('Connection changes'),
-                helper: Text(_connectionChangesHelper(runsOnMacOS)),
                 child: CupertinoSwitch(
                   value: settings.connectionStatusEnabled,
                   onChanged: supported
@@ -181,40 +175,36 @@ String _notificationFooter({
   required bool supported,
   required bool authorized,
   required bool backgroundMonitoringAvailable,
-  required bool runsOnMacOS,
 }) {
   if (!supported) {
     return 'Notifications are available on iPhone, iPad, and Mac builds of PVE Companion.';
   }
   if (!authorized) {
-    return 'You can choose alert types now, but no local alerts are delivered until notifications are allowed in Settings.';
+    return 'Allow notifications in Settings before PVE Companion can deliver local alerts.';
   }
   if (!backgroundMonitoringAvailable) {
-    return 'A new matching incident can create one local alert after refresh. Background connection checks are available on iPhone, iPad, and Mac.';
+    return 'New matching incidents alert after a datacenter refresh.';
   }
-  if (runsOnMacOS) {
-    return 'A new matching incident can create one local alert after refresh. Connection checks require saved Keychain credentials and PVE Companion to remain running; macOS controls timing, so they are not continuous or real-time.';
-  }
-  return 'A new matching incident can create one local alert after refresh. Connection checks require saved Keychain credentials and Apple-scheduled activity; timing is system-controlled, so they are not continuous or real-time.';
-}
-
-String _connectionChangesHelper(bool runsOnMacOS) {
-  if (runsOnMacOS) {
-    return 'Alert when a macOS background check finds that the selected datacenter is unavailable or reachable again. PVE Companion must remain running.';
-  }
-  return 'Alert when a background check finds that the selected datacenter is unavailable or reachable again.';
+  return 'New matching incidents alert after refresh. Connection changes need '
+      'saved credentials and Apple-scheduled checks, so they are not continuous.';
 }
 
 class _NotificationPermissionCard extends StatelessWidget {
   const _NotificationPermissionCard({
     required this.authorization,
     required this.requesting,
+    required this.sendingTestAlert,
+    required this.testAlertRequested,
     required this.onRequest,
+    required this.onSendTestAlert,
   });
 
   final LocalNotificationAuthorization authorization;
   final bool requesting;
+  final bool sendingTestAlert;
+  final bool testAlertRequested;
   final Future<void> Function() onRequest;
+  final Future<void> Function() onSendTestAlert;
 
   @override
   Widget build(BuildContext context) {
@@ -260,6 +250,15 @@ class _NotificationPermissionCard extends StatelessWidget {
               child: requesting
                   ? const CupertinoActivityIndicator(radius: 8)
                   : const Text('Allow'),
+            )
+          else if (authorization == LocalNotificationAuthorization.authorized)
+            CupertinoButton(
+              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
+              minimumSize: const Size(44, 36),
+              onPressed: sendingTestAlert ? null : onSendTestAlert,
+              child: sendingTestAlert
+                  ? const CupertinoActivityIndicator(radius: 8)
+                  : Text(testAlertRequested ? 'Test Requested' : 'Send Test'),
             ),
         ],
       ),
@@ -288,7 +287,7 @@ String _authorizationDetail(
   LocalNotificationAuthorization authorization,
 ) => switch (authorization) {
   LocalNotificationAuthorization.authorized =>
-    'Local alerts are available. Apple platforms can also request opportunistic background checks for saved-credential datacenters.',
+    'Local alerts are ready on this device.',
   LocalNotificationAuthorization.denied =>
     'Local alerts are blocked. Enable notifications for PVE Companion in Settings to receive incident and connection-change alerts.',
   LocalNotificationAuthorization.undetermined =>

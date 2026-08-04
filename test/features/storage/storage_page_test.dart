@@ -1,3 +1,4 @@
+import 'package:flutter/cupertino.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter/material.dart';
 import 'package:flutter_test/flutter_test.dart';
@@ -41,8 +42,15 @@ void main() {
       findsOneWidget,
     );
 
-    await tester.tap(find.text('Shared').first);
-    await tester.pump();
+    await tester.tap(find.byKey(const ValueKey<String>('storage-refine')));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(CupertinoActionSheet),
+        matching: find.text('Shared pools'),
+      ),
+    );
+    await tester.pumpAndSettle();
 
     expect(find.text('local'), findsNothing);
     expect(find.text('backup-nfs'), findsOneWidget);

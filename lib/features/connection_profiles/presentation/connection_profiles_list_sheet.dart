@@ -3,7 +3,6 @@ import 'package:flutter/cupertino.dart';
 import '../../../app/pve_companion_controller.dart';
 import '../../../core/presentation/pve_apple_ui.dart';
 import '../../../core/presentation/pve_modal_sheet.dart';
-import '../../../core/presentation/pve_value_format.dart';
 import '../application/connection_profiles_controller.dart';
 import '../domain/connection_profile.dart';
 import 'connection_profile_form_sheet.dart';
@@ -39,6 +38,7 @@ class ConnectionProfilesListSheet extends StatelessWidget {
     return CupertinoPageScaffold(
       backgroundColor: PveAppleColors.page(context),
       navigationBar: CupertinoNavigationBar(
+        automaticallyImplyLeading: false,
         middle: const Text('Servers'),
         trailing: CupertinoButton(
           padding: EdgeInsets.zero,
@@ -66,42 +66,62 @@ class ConnectionProfilesListSheet extends StatelessWidget {
             }
             return ListView(
               controller: scrollController,
-              padding: const EdgeInsets.only(top: 14, bottom: 32),
+              padding: const EdgeInsets.fromLTRB(20, 20, 20, 32),
               children: <Widget>[
-                CupertinoListSection.insetGrouped(
-                  children: <Widget>[
-                    CupertinoListTile(
-                      leading: const Icon(
-                        CupertinoIcons.add_circled_solid,
-                        size: 20,
+                PveInsetGroup(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: <Widget>[
+                      PveListRow(
+                        leading: const Icon(
+                          CupertinoIcons.add_circled_solid,
+                          size: 20,
+                        ),
+                        title: const Text('Add Server'),
+                        subtitle: const Text('New Proxmox connection'),
+                        onTap: controller.connectionProfiles.isBusy
+                            ? null
+                            : () => _openAddServer(context),
                       ),
-                      title: const Text('Add Server'),
-                      trailing: const CupertinoListTileChevron(),
-                      onTap: controller.connectionProfiles.isBusy
-                          ? null
-                          : () => _openAddServer(context),
-                    ),
-                  ],
-                ),
-                CupertinoListSection.insetGrouped(
-                  header: const Text('SAVED SERVERS'),
-                  footer: const Text(
-                    'Tap a server to connect. Credentials are stored in Apple '
-                    'Keychain only when you choose to remember them.',
+                    ],
                   ),
-                  children: <Widget>[
-                    for (final profile in profiles)
-                      _ConnectionProfileListItem(
-                        profile: profile,
-                        selected: selected?.id == profile.id,
-                        status: profilesController.statusForProfile(profile),
-                        failureMessage: profilesController
-                            .failureMessageForProfile(profile),
-                        disabled: profilesController.isBusy,
-                        onConnect: () => _connect(context, profile),
-                        onRemove: () => _remove(context, profile),
-                      ),
-                  ],
+                ),
+                const SizedBox(height: 24),
+                const PveSectionTitle(title: 'Saved Servers'),
+                const SizedBox(height: 8),
+                PveInsetGroup(
+                  padding: EdgeInsets.zero,
+                  child: Column(
+                    children: <Widget>[
+                      for (
+                        int index = 0;
+                        index < profiles.length;
+                        index++
+                      ) ...<Widget>[
+                        _ConnectionProfileListItem(
+                          profile: profiles[index],
+                          selected: selected?.id == profiles[index].id,
+                          status: profilesController.statusForProfile(
+                            profiles[index],
+                          ),
+                          failureMessage: profilesController
+                              .failureMessageForProfile(profiles[index]),
+                          disabled: profilesController.isBusy,
+                          onConnect: () => _connect(context, profiles[index]),
+                          onManage: () =>
+                              _showProfileActions(context, profiles[index]),
+                        ),
+                        if (index < profiles.length - 1)
+                          const PveRowSeparator(),
+                      ],
+                    ],
+                  ),
+                ),
+                const SizedBox(height: 8),
+                Text(
+                  'Tap a server to connect. Saved credentials stay in Apple '
+                  'Keychain only when you chose to remember them.',
+                  style: PveAppleText.caption(context),
                 ),
               ],
             );
@@ -178,7 +198,48 @@ class ConnectionProfilesListSheet extends StatelessWidget {
       await controller.removeProfile(profile.id);
     }
   }
+
+  Future<void> _showProfileActions(
+    BuildContext context,
+    ConnectionProfile profile,
+  ) async {
+    final action = await showCupertinoModalPopup<_SavedServerAction>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: Text(profile.displayName),
+        message: Text(_profileEndpointLabel(profile)),
+        actions: <Widget>[
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_SavedServerAction.connect),
+            child: const Text('Connect'),
+          ),
+          CupertinoActionSheetAction(
+            isDestructiveAction: true,
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_SavedServerAction.remove),
+            child: const Text('Remove Server'),
+          ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+    if (!context.mounted || action == null) {
+      return;
+    }
+    switch (action) {
+      case _SavedServerAction.connect:
+        await _connect(context, profile);
+      case _SavedServerAction.remove:
+        await _remove(context, profile);
+    }
+  }
 }
+
+enum _SavedServerAction { connect, remove }
 
 class _ConnectionProfileListItem extends StatelessWidget {
   const _ConnectionProfileListItem({
@@ -188,7 +249,7 @@ class _ConnectionProfileListItem extends StatelessWidget {
     required this.failureMessage,
     required this.disabled,
     required this.onConnect,
-    required this.onRemove,
+    required this.onManage,
   });
 
   final ConnectionProfile profile;
@@ -197,46 +258,34 @@ class _ConnectionProfileListItem extends StatelessWidget {
   final String? failureMessage;
   final bool disabled;
   final VoidCallback onConnect;
-  final VoidCallback onRemove;
+  final VoidCallback onManage;
 
   @override
   Widget build(BuildContext context) {
-    return CupertinoListTile(
-      leading: Icon(
-        profile.authenticationKind == ConnectionAuthenticationKind.apiToken
-            ? CupertinoIcons.lock_shield_fill
-            : CupertinoIcons.person_crop_circle_fill,
-      ),
-      title: Row(
-        children: <Widget>[
-          Expanded(child: Text(profile.displayName)),
-          if (selected) ...<Widget>[
-            const SizedBox(width: 8),
-            Icon(
-              CupertinoIcons.check_mark,
-              size: 18,
-              color: PveAppleColors.primary(context),
-              semanticLabel: 'Active server',
-            ),
-          ],
-        ],
-      ),
-      subtitle: _ConnectionProfileSubtitle(
-        profile: profile,
-        status: status,
-        failureMessage: failureMessage,
-      ),
-      onTap: disabled ? null : onConnect,
-      trailing: Semantics(
-        button: true,
-        label: 'Remove ${profile.displayName}',
-        child: CupertinoButton(
-          padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 6),
-          minimumSize: const Size(44, 36),
-          onPressed: disabled ? null : onRemove,
-          child: Text(
-            'Remove',
-            style: TextStyle(color: PveAppleColors.destructive(context)),
+    final statusLabel = _connectionStatusLabel(status);
+    return Semantics(
+      label: selected
+          ? '${profile.displayName}, active server, $statusLabel'
+          : '${profile.displayName}, $statusLabel',
+      child: CupertinoListTile(
+        leading: Icon(
+          CupertinoIcons.rectangle_stack,
+          color: _connectionStatusColor(context, status),
+        ),
+        title: Text(profile.displayName),
+        subtitle: _ConnectionProfileSubtitle(
+          profile: profile,
+          status: status,
+          failureMessage: failureMessage,
+        ),
+        onTap: disabled ? null : onConnect,
+        trailing: Semantics(
+          button: true,
+          label: 'Actions for ${profile.displayName}',
+          child: PveIconAction(
+            icon: CupertinoIcons.ellipsis_circle,
+            label: 'Actions for ${profile.displayName}',
+            onPressed: disabled ? null : onManage,
           ),
         ),
       ),
@@ -257,39 +306,24 @@ class _ConnectionProfileSubtitle extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    final lastConnectedLabel = profile.lastConnectedAt == null
-        ? null
-        : 'Last connected ${formatPveDateTime(profile.lastConnectedAt)}';
     final statusDetail = switch (status) {
-      ConnectionStatus.connected => 'Connected now',
+      ConnectionStatus.connected => 'Connected',
       ConnectionStatus.connecting => 'Connecting…',
       ConnectionStatus.failed => failureMessage ?? 'Last connection failed',
-      ConnectionStatus.disconnected => lastConnectedLabel ?? 'Not connected',
+      ConnectionStatus.disconnected => 'Not connected',
     };
-    return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
-      children: <Widget>[
-        Text(profile.endpoint.toString()),
-        const SizedBox(height: 4),
-        Row(
-          children: <Widget>[
-            PveStatusPill(
-              label: _connectionStatusLabel(status),
-              color: _connectionStatusColor(context, status),
-            ),
-            const SizedBox(width: 8),
-            Expanded(
-              child: Text(
-                statusDetail,
-                maxLines: 1,
-                overflow: TextOverflow.ellipsis,
-              ),
-            ),
-          ],
-        ),
-      ],
+    return Text(
+      '${_profileEndpointLabel(profile)} · $statusDetail',
+      maxLines: 1,
+      overflow: TextOverflow.ellipsis,
     );
   }
+}
+
+String _profileEndpointLabel(ConnectionProfile profile) {
+  final endpoint = profile.endpoint;
+  final port = endpoint.hasPort ? ':${endpoint.port}' : '';
+  return '${endpoint.host}$port';
 }
 
 String _connectionStatusLabel(ConnectionStatus status) => switch (status) {

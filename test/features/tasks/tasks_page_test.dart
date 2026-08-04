@@ -29,13 +29,17 @@ void main() {
 
     expect(find.text('backup on pve-01'), findsOneWidget);
 
-    final failedFilter = find.descendant(
-      of: find.byKey(const ValueKey<String>('task-state-filter')),
-      matching: find.text('Failed'),
+    await tester.tap(find.byKey(const ValueKey<String>('task-refine')));
+    await tester.pumpAndSettle();
+    await tester.tap(find.text('Status · All activity'));
+    await tester.pumpAndSettle();
+    await tester.tap(
+      find.descendant(
+        of: find.byType(CupertinoActionSheet),
+        matching: find.text('Failed'),
+      ),
     );
-    await tester.ensureVisible(failedFilter);
-    await tester.tap(failedFilter);
-    await tester.pump();
+    await tester.pumpAndSettle();
 
     expect(find.text('backup on pve-01'), findsNothing);
     expect(find.text('No tasks match these controls.'), findsOneWidget);
@@ -249,9 +253,7 @@ void main() {
       ),
     );
 
-    final refineFilters = find.byKey(
-      const ValueKey<String>('task-refine-filters'),
-    );
+    final refineFilters = find.byKey(const ValueKey<String>('task-refine'));
     await tester.ensureVisible(refineFilters);
     await tester.tap(refineFilters);
     await tester.pumpAndSettle();

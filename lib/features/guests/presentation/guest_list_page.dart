@@ -112,39 +112,6 @@ class _GuestListPageState extends State<GuestListPage> {
         .where((PveGuest guest) => guest.kind == GuestKind.virtualMachine)
         .length;
     final containerCount = workloads.length - virtualMachineCount;
-    final Widget filter = PveSlidingSegmentedControl<_GuestFilter>(
-      key: const ValueKey<String>('guest-status-filter'),
-      groupValue: _filter,
-      semanticLabels: const <_GuestFilter, String>{
-        _GuestFilter.all: 'All guests',
-        _GuestFilter.running: 'Running guests',
-        _GuestFilter.stopped: 'Stopped guests',
-        _GuestFilter.templates: 'Templates',
-      },
-      children: const <_GuestFilter, Widget>{
-        _GuestFilter.all: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('All'),
-        ),
-        _GuestFilter.running: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Running'),
-        ),
-        _GuestFilter.stopped: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Stopped'),
-        ),
-        _GuestFilter.templates: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Templates'),
-        ),
-      },
-      onValueChanged: (_GuestFilter? value) {
-        if (value != null) {
-          setState(() => _filter = value);
-        }
-      },
-    );
     final Widget search = CupertinoSearchTextField(
       key: const ValueKey<String>('guest-search'),
       controller: _searchController,
@@ -168,7 +135,7 @@ class _GuestListPageState extends State<GuestListPage> {
           footer: 'Current non-template guest inventory.',
           items: <PveMetricStripItem>[
             PveMetricStripItem(
-              label: 'Workloads',
+              label: 'Guests',
               value: '${workloads.length}',
               icon: CupertinoIcons.cube_box,
               scope: 'Non-template guests reported',
@@ -181,13 +148,13 @@ class _GuestListPageState extends State<GuestListPage> {
               scope: 'Current reported guest state',
             ),
             PveMetricStripItem(
-              label: 'Virtual machines',
+              label: 'VMs',
               value: '$virtualMachineCount',
               icon: CupertinoIcons.desktopcomputer,
               scope: 'Of ${workloads.length} workloads',
             ),
             PveMetricStripItem(
-              label: 'Containers',
+              label: 'CTs',
               value: '$containerCount',
               icon: CupertinoIcons.cube_box_fill,
               scope: 'Of ${workloads.length} workloads',
@@ -198,14 +165,13 @@ class _GuestListPageState extends State<GuestListPage> {
         PveInventoryToolbar(
           title: const PveSectionTitle(title: 'Guest inventory'),
           search: search,
-          primaryControls: filter,
           trailingControls: <Widget>[
             PveInventoryMenuButton(
-              key: const ValueKey<String>('guest-inventory-sort'),
-              label: 'Sort: ${_sort.label}',
-              semanticLabel: 'Change guest inventory sort order',
-              icon: CupertinoIcons.arrow_up_arrow_down,
-              onPressed: () => _showSortPicker(context),
+              key: const ValueKey<String>('guest-inventory-refine'),
+              label: 'Refine',
+              semanticLabel: 'Filter and sort guest inventory',
+              icon: CupertinoIcons.line_horizontal_3_decrease_circle,
+              onPressed: () => _showGuestControls(context),
             ),
           ],
         ),
@@ -365,17 +331,34 @@ class _GuestListPageState extends State<GuestListPage> {
     return guest.cpuFraction ?? memory;
   }
 
-  Future<void> _showSortPicker(BuildContext context) async {
-    final sort = await showCupertinoModalPopup<_GuestInventorySort>(
+  Future<void> _showGuestControls(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
       context: context,
       builder: (BuildContext popupContext) => CupertinoActionSheet(
-        title: const Text('Sort guest inventory'),
+        title: const Text('Refine guests'),
+        message: Text('Filter: ${_filter.label} · Sort: ${_sort.label}'),
         actions: <Widget>[
+          for (final value in _GuestFilter.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _filter,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _filter = value);
+                }
+              },
+              child: Text(value.label),
+            ),
           for (final value in _GuestInventorySort.values)
             CupertinoActionSheetAction(
               isDefaultAction: value == _sort,
-              onPressed: () => Navigator.of(popupContext).pop(value),
-              child: Text(value.label),
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(() => _sort = value);
+                }
+              },
+              child: Text('Sort: ${value.label}'),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -384,9 +367,6 @@ class _GuestListPageState extends State<GuestListPage> {
         ),
       ),
     );
-    if (sort != null && mounted) {
-      setState(() => _sort = sort);
-    }
   }
 
   bool _matchesSearch(PveGuest guest) {
@@ -879,7 +859,16 @@ class _GuestListItem extends StatelessWidget {
   }
 }
 
-enum _GuestFilter { all, running, stopped, templates }
+enum _GuestFilter {
+  all('All guests'),
+  running('Running'),
+  stopped('Stopped'),
+  templates('Templates');
+
+  const _GuestFilter(this.label);
+
+  final String label;
+}
 
 enum _GuestInventorySort {
   status('Status'),

@@ -23,7 +23,7 @@ class DatacenterHealthBanner extends StatelessWidget {
       onTap: onViewNodes,
       semanticLabel:
           'Datacenter health. ${_healthTitle(health)}. '
-          '${_healthSummary(health)}',
+          '${_healthAccessibilitySummary(health)}',
       padding: const EdgeInsets.all(16),
       child: Column(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -59,9 +59,22 @@ class DatacenterHealthBanner extends StatelessWidget {
                       style: PveAppleText.title3(context),
                     ),
                     const SizedBox(height: 2),
-                    Text(
-                      _healthSummary(health),
-                      style: PveAppleText.secondary(context),
+                    Semantics(
+                      label: _healthAccessibilitySummary(health),
+                      child: ExcludeSemantics(
+                        child: FittedBox(
+                          fit: BoxFit.scaleDown,
+                          alignment: Alignment.centerLeft,
+                          child: Text(
+                            _healthSummary(health),
+                            key: const ValueKey<String>(
+                              'datacenter-health-summary',
+                            ),
+                            maxLines: 1,
+                            style: PveAppleText.secondary(context),
+                          ),
+                        ),
+                      ),
                     ),
                   ],
                 ),
@@ -133,10 +146,23 @@ String _healthSummary(DatacenterHealth health) {
   final runningTaskCount = health.tasks.runningTaskCount;
   final onlineNodes = health.nodes.length - health.offlineNodeCount;
   final taskSummary = runningTaskCount == 0
+      ? 'no tasks'
+      : '$runningTaskCount ${runningTaskCount == 1 ? 'task' : 'tasks'}';
+  final guestCount = health.workload.runningGuests;
+  return '$onlineNodes/${health.nodes.length} nodes · '
+      '$guestCount ${guestCount == 1 ? 'guest' : 'guests'} · $taskSummary';
+}
+
+String _healthAccessibilitySummary(DatacenterHealth health) {
+  final runningTaskCount = health.tasks.runningTaskCount;
+  final onlineNodes = health.nodes.length - health.offlineNodeCount;
+  final taskSummary = runningTaskCount == 0
       ? 'no active tasks'
       : '$runningTaskCount active ${runningTaskCount == 1 ? 'task' : 'tasks'}';
-  return '$onlineNodes/${health.nodes.length} nodes online · '
-      '${health.workload.runningGuests} guests running · $taskSummary';
+  final guestCount = health.workload.runningGuests;
+  return '$onlineNodes of ${health.nodes.length} nodes online, '
+      '$guestCount ${guestCount == 1 ? 'guest' : 'guests'} running, '
+      '$taskSummary';
 }
 
 String _healthTitle(DatacenterHealth health) => switch (health.state) {

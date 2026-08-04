@@ -105,10 +105,7 @@ void main() {
       304,
     );
     expect(find.text('Manage Servers'), findsNothing);
-    expect(
-      find.bySemanticsLabel('Workspace actions and settings'),
-      findsOneWidget,
-    );
+    expect(find.bySemanticsLabel('Workspace settings'), findsOneWidget);
     debugDefaultTargetPlatformOverride = null;
   });
 
@@ -349,7 +346,6 @@ class _NavigationHarnessState extends State<_NavigationHarness> {
             connected: true,
             showServerMenu: false,
             onConnectToProfile: (_) {},
-            onRefresh: () {},
             onDisconnect: () {},
             onManageServers: () {},
             onAbout: () {},

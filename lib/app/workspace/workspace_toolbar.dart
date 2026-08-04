@@ -18,7 +18,6 @@ class WorkspaceToolbar extends StatelessWidget
     required this.title,
     required this.connected,
     required this.onConnectToProfile,
-    required this.onRefresh,
     required this.onDisconnect,
     required this.onManageServers,
     required this.onAbout,
@@ -26,7 +25,6 @@ class WorkspaceToolbar extends StatelessWidget
     this.onManageNotifications,
     this.onClusterAdministration,
     this.showServerMenu = true,
-    this.includeRefreshMenuAction = true,
     this.liveActivitiesAvailable = false,
     this.datacenterWatchActive = false,
     this.onStartDatacenterWatch,
@@ -40,7 +38,6 @@ class WorkspaceToolbar extends StatelessWidget
   final String title;
   final bool connected;
   final ValueChanged<String> onConnectToProfile;
-  final VoidCallback onRefresh;
   final VoidCallback onDisconnect;
   final VoidCallback onManageServers;
   final VoidCallback onAbout;
@@ -48,7 +45,6 @@ class WorkspaceToolbar extends StatelessWidget
   final VoidCallback? onManageNotifications;
   final VoidCallback? onClusterAdministration;
   final bool showServerMenu;
-  final bool includeRefreshMenuAction;
   final bool liveActivitiesAvailable;
   final bool datacenterWatchActive;
   final VoidCallback? onStartDatacenterWatch;
@@ -88,14 +84,12 @@ class WorkspaceToolbar extends StatelessWidget
           trailing: _WorkspaceToolbarActions(
             showsDesktopWorkspaceCommands: showsDesktopWorkspaceCommands,
             connected: connected,
-            onRefresh: onRefresh,
             onDisconnect: onDisconnect,
             onManageServers: onManageServers,
             onAbout: onAbout,
             onViewFleet: onViewFleet,
             onManageNotifications: onManageNotifications,
             onClusterAdministration: onClusterAdministration,
-            includeRefreshMenuAction: includeRefreshMenuAction,
             liveActivitiesAvailable: liveActivitiesAvailable,
             datacenterWatchActive: datacenterWatchActive,
             onStartDatacenterWatch: onStartDatacenterWatch,
@@ -140,14 +134,12 @@ class _WorkspaceToolbarActions extends StatelessWidget {
   const _WorkspaceToolbarActions({
     required this.showsDesktopWorkspaceCommands,
     required this.connected,
-    required this.onRefresh,
     required this.onDisconnect,
     required this.onManageServers,
     required this.onAbout,
     required this.onViewFleet,
     required this.onManageNotifications,
     required this.onClusterAdministration,
-    required this.includeRefreshMenuAction,
     required this.liveActivitiesAvailable,
     required this.datacenterWatchActive,
     required this.onStartDatacenterWatch,
@@ -156,14 +148,12 @@ class _WorkspaceToolbarActions extends StatelessWidget {
 
   final bool showsDesktopWorkspaceCommands;
   final bool connected;
-  final VoidCallback onRefresh;
   final VoidCallback onDisconnect;
   final VoidCallback onManageServers;
   final VoidCallback onAbout;
   final VoidCallback? onViewFleet;
   final VoidCallback? onManageNotifications;
   final VoidCallback? onClusterAdministration;
-  final bool includeRefreshMenuAction;
   final bool liveActivitiesAvailable;
   final bool datacenterWatchActive;
   final VoidCallback? onStartDatacenterWatch;
@@ -173,14 +163,12 @@ class _WorkspaceToolbarActions extends StatelessWidget {
   Widget build(BuildContext context) {
     final menu = WorkspaceActionsMenu(
       connected: connected,
-      onRefresh: onRefresh,
       onDisconnect: onDisconnect,
       onManageServers: onManageServers,
       onAbout: onAbout,
       onViewFleet: onViewFleet,
       onManageNotifications: onManageNotifications,
       onClusterAdministration: onClusterAdministration,
-      includeRefreshAction: includeRefreshMenuAction,
       liveActivitiesAvailable: liveActivitiesAvailable,
       datacenterWatchActive: datacenterWatchActive,
       onStartDatacenterWatch: onStartDatacenterWatch,

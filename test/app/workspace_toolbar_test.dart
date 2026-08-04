@@ -7,7 +7,7 @@ import 'package:pve_companion/core/presentation/pve_apple_ui.dart';
 import 'package:pve_companion/features/connection_profiles/domain/connection_profile.dart';
 
 void main() {
-  testWidgets('uses a navigation bar and anchored command menus', (
+  testWidgets('opens workspace settings from the navigation bar', (
     WidgetTester tester,
   ) async {
     tester.view.physicalSize = const Size(390, 844);
@@ -15,18 +15,16 @@ void main() {
     addTearDown(tester.view.resetPhysicalSize);
     addTearDown(tester.view.resetDevicePixelRatio);
 
-    var refreshed = false;
-    final routeObserver = _RoutePushObserver();
     final profile = ConnectionProfile.apiToken(
       displayName: 'Pennsylvania Lab',
       endpoint: Uri.parse('https://pve-01.example.com:8006'),
       tokenId: 'viewer@pve!companion',
     );
 
+    var openedServerManagement = false;
     await tester.pumpWidget(
       MaterialApp(
         theme: PveCompanionTheme.light(),
-        navigatorObservers: <NavigatorObserver>[routeObserver],
         home: CupertinoPageScaffold(
           navigationBar: WorkspaceToolbar(
             profiles: <ConnectionProfile>[profile],
@@ -34,9 +32,8 @@ void main() {
             title: 'Datacenter',
             connected: true,
             onConnectToProfile: (_) {},
-            onRefresh: () => refreshed = true,
             onDisconnect: () {},
-            onManageServers: () {},
+            onManageServers: () => openedServerManagement = true,
             onAbout: () {},
             onViewFleet: () {},
             onManageNotifications: () {},
@@ -49,33 +46,24 @@ void main() {
 
     expect(find.byType(CupertinoNavigationBar), findsOneWidget);
     expect(find.text('Datacenter'), findsOneWidget);
-    expect(find.byTooltip('Workspace actions and settings'), findsOneWidget);
-    final initialPushCount = routeObserver.pushCount;
+    expect(find.byTooltip('Workspace settings'), findsOneWidget);
 
-    await tester.tap(find.bySemanticsLabel('Workspace actions and settings'));
+    await tester.tap(find.bySemanticsLabel('Workspace settings'));
     await tester.pumpAndSettle();
 
-    expect(find.text('Refresh data'), findsOneWidget);
-    expect(find.text('Manage servers'), findsOneWidget);
-    expect(find.text('Datacenter portfolio'), findsOneWidget);
-    expect(find.text('Notification settings'), findsOneWidget);
-    expect(find.text('Cluster administration'), findsOneWidget);
-    expect(find.byType(CupertinoActionSheet), findsNothing);
-    expect(routeObserver.pushCount, initialPushCount);
-
-    final menuRect = tester.getRect(
-      find.byKey(const ValueKey<String>('pve-command-menu-panel')),
-    );
-    expect(menuRect.width, 260);
-    expect(menuRect.height, lessThan(500));
-    expect(menuRect.bottom, lessThanOrEqualTo(844));
-
-    await tester.tap(find.text('Refresh data'));
-    await tester.pump();
-
-    expect(refreshed, isTrue);
+    expect(find.text('Workspace settings'), findsOneWidget);
+    expect(find.text('Manage Servers'), findsOneWidget);
+    expect(find.text('Datacenter Portfolio'), findsOneWidget);
+    expect(find.text('Notifications'), findsOneWidget);
+    expect(find.text('Cluster Administration'), findsOneWidget);
     expect(find.text('Refresh data'), findsNothing);
-    expect(routeObserver.pushCount, initialPushCount);
+    expect(find.byType(CupertinoActionSheet), findsNothing);
+
+    await tester.tap(find.text('Manage Servers'));
+    await tester.pumpAndSettle();
+
+    expect(openedServerManagement, isTrue);
+    expect(find.text('Workspace settings'), findsNothing);
   });
 
   testWidgets('exposes notification and server management on macOS', (
@@ -96,7 +84,6 @@ void main() {
             title: 'Datacenter',
             connected: true,
             onConnectToProfile: (_) {},
-            onRefresh: () {},
             onDisconnect: () {},
             onManageServers: () => openedServerManagement = true,
             onAbout: () {},
@@ -137,7 +124,6 @@ void main() {
             showServerMenu: false,
             lastUpdatedAt: refreshedAt,
             onConnectToProfile: (_) {},
-            onRefresh: () {},
             onDisconnect: () {},
             onManageServers: () {},
             onAbout: () {},
@@ -152,14 +138,4 @@ void main() {
     expect(find.byType(PveFreshnessLabel), findsOneWidget);
     expect(tester.getTopLeft(find.text('Datacenter')).dx, lessThan(300));
   });
-}
-
-class _RoutePushObserver extends NavigatorObserver {
-  int pushCount = 0;
-
-  @override
-  void didPush(Route<dynamic> route, Route<dynamic>? previousRoute) {
-    pushCount += 1;
-    super.didPush(route, previousRoute);
-  }
 }

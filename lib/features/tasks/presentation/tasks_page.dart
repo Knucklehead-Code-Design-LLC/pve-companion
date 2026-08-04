@@ -137,33 +137,6 @@ class _TasksPageState extends State<TasksPage> {
     final successfulCount = tasks
         .where((ClusterTask task) => task.state == ClusterTaskState.successful)
         .length;
-    final Widget filter = PveSlidingSegmentedControl<TaskStateFilter>(
-      key: const ValueKey<String>('task-state-filter'),
-      groupValue: _taskQuery.state,
-      children: const <TaskStateFilter, Widget>{
-        TaskStateFilter.all: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('All'),
-        ),
-        TaskStateFilter.running: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Running'),
-        ),
-        TaskStateFilter.failed: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Failed'),
-        ),
-        TaskStateFilter.unknown: Padding(
-          padding: EdgeInsets.symmetric(horizontal: 8),
-          child: Text('Unknown'),
-        ),
-      },
-      onValueChanged: (TaskStateFilter? value) {
-        if (value != null) {
-          setState(() => _taskQuery = _taskQuery.copyWith(state: value));
-        }
-      },
-    );
     void inspectTask(ClusterTask task) {
       if (usesDesktopInspector) {
         setState(() => _selectedTaskUpid = task.upid);
@@ -233,21 +206,13 @@ class _TasksPageState extends State<TasksPage> {
             onChanged: (String value) =>
                 setState(() => _taskQuery = _taskQuery.copyWith(query: value)),
           ),
-          primaryControls: filter,
           trailingControls: <Widget>[
             PveInventoryMenuButton(
-              key: const ValueKey<String>('task-refine-filters'),
-              label: _taskRefinementLabel,
-              semanticLabel: 'Refine task activity filters',
+              key: const ValueKey<String>('task-refine'),
+              label: 'Refine',
+              semanticLabel: 'Filter and sort task activity',
               icon: CupertinoIcons.line_horizontal_3_decrease_circle,
               onPressed: () => _showTaskRefinementPicker(snapshot),
-            ),
-            PveInventoryMenuButton(
-              key: const ValueKey<String>('task-sort'),
-              label: 'Sort: ${_taskSortLabel(_taskQuery.sort)}',
-              semanticLabel: 'Change task activity sort order',
-              icon: CupertinoIcons.arrow_up_arrow_down,
-              onPressed: () => _showTaskSortPicker(context),
             ),
           ],
         ),
@@ -418,11 +383,6 @@ class _TasksPageState extends State<TasksPage> {
     setState(() => _taskQuery = _taskQuery.clearFilters());
   }
 
-  String get _taskRefinementLabel {
-    final count = _taskRefinementCount;
-    return count == 0 ? 'Filters' : 'Filters ($count)';
-  }
-
   int get _taskRefinementCount {
     var count = 0;
     if (_taskQuery.period != TaskPeriodFilter.all) {
@@ -452,6 +412,11 @@ class _TasksPageState extends State<TasksPage> {
         actions: <Widget>[
           CupertinoActionSheetAction(
             onPressed: () =>
+                Navigator.of(popupContext).pop(_TaskRefinement.state),
+            child: Text('Status · ${_taskStateFilterLabel(_taskQuery.state)}'),
+          ),
+          CupertinoActionSheetAction(
+            onPressed: () =>
                 Navigator.of(popupContext).pop(_TaskRefinement.period),
             child: Text('Time · ${_taskPeriodLabel(_taskQuery.period)}'),
           ),
@@ -473,7 +438,13 @@ class _TasksPageState extends State<TasksPage> {
                   Navigator.of(popupContext).pop(_TaskRefinement.guest),
               child: Text('Guest · ${selectedGuest?.title ?? 'All guests'}'),
             ),
-          if (_taskRefinementCount > 0)
+          CupertinoActionSheetAction(
+            onPressed: () =>
+                Navigator.of(popupContext).pop(_TaskRefinement.sort),
+            child: Text('Sort · ${_taskSortLabel(_taskQuery.sort)}'),
+          ),
+          if (_taskRefinementCount > 0 ||
+              _taskQuery.state != TaskStateFilter.all)
             CupertinoActionSheetAction(
               isDestructiveAction: true,
               onPressed: () =>
@@ -499,6 +470,9 @@ class _TasksPageState extends State<TasksPage> {
     List<PveGuest> guests,
   ) async {
     switch (selection) {
+      case _TaskRefinement.state:
+        await _showTaskStatePicker(context);
+        return;
       case _TaskRefinement.period:
         await _showTaskPeriodPicker(context);
         return;
@@ -527,10 +501,16 @@ class _TasksPageState extends State<TasksPage> {
       case _TaskRefinement.guest:
         await _showTaskGuestFilterPicker(context, guests);
         return;
+      case _TaskRefinement.sort:
+        await _showTaskSortPicker(context);
+        return;
       case _TaskRefinement.clear:
         setState(
           () => _taskQuery = _taskQuery
-              .copyWith(period: TaskPeriodFilter.all)
+              .copyWith(
+                state: TaskStateFilter.all,
+                period: TaskPeriodFilter.all,
+              )
               .withNode(null)
               .withOperatorName(null)
               .withGuestVmid(null),
@@ -557,6 +537,34 @@ class _TasksPageState extends State<TasksPage> {
                 }
               },
               child: Text(_taskPeriodLabel(value)),
+            ),
+        ],
+        cancelButton: CupertinoActionSheetAction(
+          onPressed: () => Navigator.of(popupContext).pop(),
+          child: const Text('Cancel'),
+        ),
+      ),
+    );
+  }
+
+  Future<void> _showTaskStatePicker(BuildContext context) async {
+    await showCupertinoModalPopup<void>(
+      context: context,
+      builder: (BuildContext popupContext) => CupertinoActionSheet(
+        title: const Text('Status'),
+        actions: <Widget>[
+          for (final TaskStateFilter value in TaskStateFilter.values)
+            CupertinoActionSheetAction(
+              isDefaultAction: value == _taskQuery.state,
+              onPressed: () {
+                Navigator.of(popupContext).pop();
+                if (mounted) {
+                  setState(
+                    () => _taskQuery = _taskQuery.copyWith(state: value),
+                  );
+                }
+              },
+              child: Text(_taskStateFilterLabel(value)),
             ),
         ],
         cancelButton: CupertinoActionSheetAction(
@@ -1097,7 +1105,14 @@ String _taskAgeLabel(ClusterTask task) {
   return 'Active just now';
 }
 
-enum _TaskRefinement { period, node, operatorName, guest, clear }
+enum _TaskRefinement { state, period, node, operatorName, guest, sort, clear }
+
+String _taskStateFilterLabel(TaskStateFilter value) => switch (value) {
+  TaskStateFilter.all => 'All activity',
+  TaskStateFilter.running => 'Running',
+  TaskStateFilter.failed => 'Failed',
+  TaskStateFilter.unknown => 'Unknown',
+};
 
 String _taskPeriodLabel(TaskPeriodFilter value) => switch (value) {
   TaskPeriodFilter.all => 'Any time',
